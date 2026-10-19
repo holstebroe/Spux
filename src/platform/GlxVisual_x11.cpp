@@ -1,6 +1,6 @@
 // The GLX visual a GL window is created with (see GlxVisual.hpp). libGL is opened at run time and only
 // two of its functions are used, so this adds no link dependency to a plugin that never opens a GL window.
-#if defined(__linux__) && !defined(__APPLE__)
+#if defined(SPUX_HAS_X11)
 #include <dlfcn.h>
 
 #include "GlxVisual.hpp"

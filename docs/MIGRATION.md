@@ -64,7 +64,7 @@ plugin-specific views and page code.
    `gl_context_test`. Tearwash's `TwGui` runs on `NativeWindow` (its GUI test now also opens a real X11
    window under `xvfb-run`; snapshot identical). Left: Plumeflow switches to the spux copies (its own
    step 8 session; it keeps `src/gfx` until then), and Acidus, Gritbaal, Syrebas, Tannhauser, Kikset and
-   Paulascape move their `GuiWindow`s in their own steps. Not done: Cocoa window and CGL context; the
+   Paulascape move their `GuiWindow`s in their own steps. `-DSPUX_WITH_X11=OFF` builds without X11 (CI job build-linux-minimal). Not done: Cocoa window and CGL context; the
    Win32 files are not compiled or run yet (no Windows toolchain here; CI on windows-latest is the check).
 4. `spux_core` and `spux_dsp`: merge the duplicates, add kernel references, replace libm in the older
    plugins. Acidus runs its strict gate.

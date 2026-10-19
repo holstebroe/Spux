@@ -1,6 +1,6 @@
 // X11 child window (ported from the Acidus GuiWindow X11 section). Own Display connection per window,
 // so several plugin instances in one host do not interfere; every Xlib call is made under a mutex.
-#if defined(__linux__) && !defined(__APPLE__)
+#if defined(SPUX_HAS_X11)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>

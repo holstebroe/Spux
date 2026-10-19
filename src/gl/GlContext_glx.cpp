@@ -1,7 +1,7 @@
 // GLX context (X11). libGL is opened with dlopen so the plugin loads on machines without it. Each
 // context has its own Display connection, so the editor thread's Xlib use and the render thread never
 // share one, and instances do not interfere.
-#if defined(__linux__) && !defined(__APPLE__)
+#if defined(SPUX_HAS_X11)
 #include <dlfcn.h>
 
 #include <atomic>

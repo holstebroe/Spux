@@ -21,6 +21,9 @@ public:
     // in *error when the platform has no context code, the library is missing or 3.3 is not available.
     static std::unique_ptr<GlContext> createForWindow(const ParentWindow& window, std::string* error = nullptr);
     // A context with a width x height default framebuffer that is not shown (tests, golden frames).
+    // Render into a framebuffer object and read that back: Mesa's software rasteriser writes a pbuffer's
+    // default framebuffer with PutImage, which an Xvfb server may refuse with an X error (BadMatch) that
+    // ends the process.
     static std::unique_ptr<GlContext> createOffscreen(int width, int height, std::string* error = nullptr);
 
     // Binds the context to the calling thread; a context is used from one thread at a time.

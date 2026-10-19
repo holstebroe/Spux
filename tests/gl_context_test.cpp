@@ -56,7 +56,7 @@ TEST_CASE("offscreen context: function table loads and renders") {
     ctx->doneCurrent();
 }
 
-#if defined(__linux__) && !defined(__APPLE__)
+#if defined(SPUX_HAS_X11)
 TEST_CASE("window context: a GL window takes a context and presents") {
     if (!std::getenv("DISPLAY"))
         return;

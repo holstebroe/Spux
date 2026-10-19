@@ -1,7 +1,7 @@
 // Platforms without a GL context implementation: the editor uses the software renderer.
 #include "spux/gl/GlContext.hpp"
 
-#if !defined(_WIN32) && !(defined(__linux__) && !defined(__APPLE__))
+#if !defined(_WIN32) && !defined(SPUX_HAS_X11)
 namespace spux::inline v1::gl {
 std::unique_ptr<GlContext> GlContext::createForWindow(const ParentWindow&, std::string* error) {
     if (error)

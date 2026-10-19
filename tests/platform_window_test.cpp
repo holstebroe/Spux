@@ -12,7 +12,7 @@
 #include "doctest.h"
 #include "spux/platform/NativeWindow.hpp"
 
-#if defined(__linux__) && !defined(__APPLE__)
+#if defined(SPUX_HAS_X11)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #endif
@@ -50,7 +50,7 @@ struct Sink : WindowEvents {
 }
 } // namespace
 
-#if defined(__linux__) && !defined(__APPLE__)
+#if defined(SPUX_HAS_X11)
 TEST_CASE("X11 window: present, read back, input and ticks") {
     if (!std::getenv("DISPLAY")) {
         std::printf("platform_window_test: no DISPLAY, skipped\n");

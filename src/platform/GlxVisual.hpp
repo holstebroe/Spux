@@ -1,6 +1,6 @@
 // X11 only: picks the visual a GL window must be created with (shared by the window and the context code).
 #pragma once
-#if defined(__linux__) && !defined(__APPLE__)
+#if defined(SPUX_HAS_X11)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 

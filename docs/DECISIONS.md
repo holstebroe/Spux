@@ -109,3 +109,4 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   registered per module under a name made from the module handle, so plugins with different spux versions
   in one host never share a window class (L13). `WindowOptions::keyboard` (default true, so Plumeflow is
   unchanged) lets a window without key input leave the keyboard to the host.
+  `SPUX_WITH_X11` (default ON) turns the X11 window and GLX context off for headless Linux builds; windows then report no support.
