@@ -1,0 +1,10 @@
+[submodule "third_party/clap"]
+	path = third_party/clap
+	url = https://github.com/free-audio/clap.git
+[submodule "third_party/clap-wrapper"]
+	path = third_party/clap-wrapper
+	url = https://github.com/holstebroe/clap-wrapper.git
+	branch = vst3-midi-out
+[submodule "third_party/doctest"]
+	path = third_party/doctest
+	url = https://github.com/doctest/doctest.git

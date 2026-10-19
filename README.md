@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. Nothing is extracted yet. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); no code is extracted yet. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.
@@ -49,12 +49,29 @@ spux is a git submodule at `extern/spux`, pinned to a release tag. spux itself o
 clap, clap-wrapper and doctest.
 
 ```cmake
-add_subdirectory(extern/spux)            # or -DSPUX_SOURCE_DIR=/path/to/local/spux while developing
+if(SPUX_SOURCE_DIR)                      # -DSPUX_SOURCE_DIR=/path/to/local/spux while developing
+  add_subdirectory(${SPUX_SOURCE_DIR} spux)
+else()
+  add_subdirectory(extern/spux)
+endif()
 set(MYPLUGIN_UI "RETRO" CACHE STRING "RETRO, CLASSIC, MODERN or NONE")
 target_link_libraries(myplugin_core PRIVATE spux_dsp spux_params spux_state)
 target_link_libraries(myplugin PRIVATE spux_clap spux_ui_${MYPLUGIN_UI_LOWER})
 spux_target_flags(myplugin)              # determinism and warning flags, hidden visibility
 ```
+
+## Building spux itself
+
+```
+git submodule update --init --recursive
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
+cmake --build build --config Release --target spux_size_canary_report
+```
+
+Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY` (both on only in a top-level build), `SPUX_BUILD_VST3`
+(makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`.
 
 ## Licence
 

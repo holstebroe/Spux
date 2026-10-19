@@ -97,3 +97,6 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 
 - 2026-10-19: first version, from the analysis of Acidus, Gritbaal, Kikset, Lumeoid, Paulascape,
   Plumeflow, Rodee, Syrebas, Tannhauser and Tearwash, and the Plumeflow WP8 GPU editor.
+- 2026-10-19: migration step 1 (CMake skeleton, CI). No decision changed. Pins: clap 1.2.10, doctest v2.5.3,
+  clap-wrapper = the fork at `vst3-midi-out` (98bed60). L11 stays Proposed; `.clang-format` and the CI check exist now.
+  Plugins pin spux to a commit until tags start (L4 applies from the first tag).

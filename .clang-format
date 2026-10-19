@@ -1,0 +1,8 @@
+# Code style: DESIGN_GUIDELINES section 10 (LLVM base, 4 spaces, 120 columns).
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
+AccessModifierOffset: -4
+PointerAlignment: Left
+NamespaceIndentation: None
+SortIncludes: CaseSensitive

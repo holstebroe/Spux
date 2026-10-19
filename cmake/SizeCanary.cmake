@@ -1,0 +1,21 @@
+# cmake -DCANARY=<file> -DBUDGET=<budget.cmake> -P SizeCanary.cmake
+# Prints the size of the canary and fails when it is over the budget for this platform. In GitHub
+# Actions the line also goes to the job summary.
+file(SIZE "${CANARY}" size)
+if(WIN32)
+  set(plat WINDOWS)
+elseif(APPLE)
+  set(plat MACOS)
+else()
+  set(plat LINUX)
+endif()
+include("${BUDGET}")
+set(max ${SPUX_CANARY_MAX_BYTES_${plat}})
+set(line "size canary (${plat}): ${size} bytes, budget ${max} (0 = report only)")
+message(STATUS "${line}")
+if(DEFINED ENV{GITHUB_STEP_SUMMARY})
+  file(APPEND "$ENV{GITHUB_STEP_SUMMARY}" "${line}\n")
+endif()
+if(max GREATER 0 AND size GREATER max)
+  message(FATAL_ERROR "size canary over budget: ${size} > ${max}")
+endif()
