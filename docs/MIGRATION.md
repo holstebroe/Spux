@@ -11,8 +11,8 @@ only in namespace and include guards, or not at all.
 | Classic CPU renderer | Plumeflow `ui/SoftRenderer` + the files above | Merge into one supersampled renderer with shading helpers. |
 | Retro style and fonts | Acidus `RetroSkin`, Syrebas and Gritbaal renderers, Paulascape `Framebuffer` and pt2 font, Kikset `Graphics` | Four drifting forks of the same `Graphics`. |
 | Skin interfaces | Acidus `IGuiSkin`, Gritbaal `IControlRenderer`, Syrebas `IControlRenderer` | Become the per-widget painter interfaces. |
-| Native window | Plumeflow `gfx/NativeWindow*` (ported from Acidus); `GuiWindow` code in Acidus, Gritbaal, Syrebas, Tannhauser, Tearwash, Kikset, Paulascape | Plumeflow's version is the base; Cocoa missing. |
-| GL context and function table | Plumeflow `gfx/GlApi`, `GlContext_{wgl,glx,none}` | Generic as is. |
+| Native window | Plumeflow `gfx/NativeWindow*` (ported from Acidus); `GuiWindow` code in Acidus, Gritbaal, Syrebas, Tannhauser, Tearwash, Kikset, Paulascape | Plumeflow's version is the base; Cocoa missing. **Moved to `spux_platform` (step 3); Tearwash migrated.** |
+| GL context and function table | Plumeflow `gfx/GlApi`, `GlContext_{wgl,glx,none}` | Generic as is. **Moved to `spux_ui_modern` (step 3), namespace `spux::gl`.** |
 | Renderer interface | Plumeflow `ui/IRenderer` | Generic as is. |
 | GPU renderer, shaders, SDF fonts | Plumeflow `ui/GpuRenderer`, `ui/shaders`, `ui/FontAtlas`, `ui/InterFont`, `tools/make_fonts.py`, `cmake/EmbedShaders.cmake` | Generic as is. |
 | Immediate-mode `Gui` | Plumeflow `ui/Gui` | Needs: painter split, parameter binding through spux, plugin-specific ids out (10 `plugin::P_*` uses), modulation as an optional interface. |
@@ -57,7 +57,15 @@ plugin-specific views and page code.
    identical). Left: Tannhauser and Acidus still hold their copies (migrate in their own steps;
    Acidus's copy differs from the others by namespace only, checked). Not moved yet: Acidus's
    `ModernSkin`, `IGuiSkin`, `RetroSkin` (step 6/7).
-3. Platform: Plumeflow `NativeWindow`; move the other `GuiWindow`s onto it.
+3. Platform: Plumeflow `NativeWindow`; move the other `GuiWindow`s onto it. **Done in spux and Tearwash**
+   (2026-10-19): `spux_platform` (STATIC; `spux::platform::NativeWindow`, `WindowEvents`, X11, Win32 and a
+   none variant) and the GL parts of `spux_ui_modern` (STATIC; `spux::gl::GlApi`, `GlContext` for GLX, WGL
+   and none). Plumeflow's `gfx_window_test` window cases became `platform_window_test`; new
+   `gl_context_test`. Tearwash's `TwGui` runs on `NativeWindow` (its GUI test now also opens a real X11
+   window under `xvfb-run`; snapshot identical). Left: Plumeflow switches to the spux copies (its own
+   step 8 session; it keeps `src/gfx` until then), and Acidus, Gritbaal, Syrebas, Tannhauser, Kikset and
+   Paulascape move their `GuiWindow`s in their own steps. Not done: Cocoa window and CGL context; the
+   Win32 files are not compiled or run yet (no Windows toolchain here; CI on windows-latest is the check).
 4. `spux_core` and `spux_dsp`: merge the duplicates, add kernel references, replace libm in the older
    plugins. Acidus runs its strict gate.
 5. `spux_params`, `spux_state`, `spux_clap`.

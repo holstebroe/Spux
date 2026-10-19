@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. The CMake skeleton, flags and CI exist (migration step 1); no code is extracted yet. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2) and the native window and GL context (step 3) are extracted. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.
@@ -32,11 +32,11 @@ target; a plugin links the targets it lists and nothing else.
 | `spux_state` | Chunked state container (magic per plugin, version, CRC, unknown chunks skipped) | `spux_core` |
 | `spux_clap` | Thin CLAP glue (traits/CRTP): params, state, ports, GUI, timer | `spux_params`, `spux_state`, clap |
 | `spux_midi` | Standard MIDI file read and write | `spux_core` |
-| `spux_platform` | Native child window (Win32, X11, later Cocoa), timer, file dialog | OS only |
+| `spux_platform` | Native child window (Win32, X11, later Cocoa) with input events and a tick timer | OS only |
 | `spux_ui_core` | Immediate-mode `Gui`, `IRenderer`, layout helpers, editor shell, telemetry views | `spux_platform`, `spux_params` |
 | `spux_ui_retro` | Retro style and the pixel renderer, bitmap fonts | `spux_ui_core` |
 | `spux_ui_classic` | (built so far: `Graphics`, `Font`, `FileDialog`, `ClassicDraw`, atlas font data) Classic style, the supersampled CPU renderer with shading helpers, atlas fonts | `spux_ui_core` |
-| `spux_ui_modern` | Modern style, GPU renderer (OpenGL 3.3), SDF font atlas, software fallback | `spux_ui_core` |
+| `spux_ui_modern` | (built so far: the GL function table and context, `spux::gl`) Modern style, GPU renderer (OpenGL 3.3), SDF font atlas, software fallback | `spux_ui_core` |
 | `spux_presetbrowser` | Optional shared preset browser | `spux_ui_core`, `spux_state` |
 | `spux_testing` | Allocation guard, reference-render null test, golden hashes, WAV I/O, loudness, render-safety check, CLAP smoke host | `spux_core` |
 

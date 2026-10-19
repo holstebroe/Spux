@@ -146,7 +146,7 @@ smooths by itself.
 ### Layers
 
 ```
-spux_platform   NativeWindow (Win32, X11, later Cocoa), timer, file dialog, GL context
+spux_platform   NativeWindow (Win32, X11, later Cocoa) with its timer; the GL context is in spux_ui_modern
 spux_ui_core    IRenderer, Gui (immediate mode), layout helpers, Theme, Editor shell, telemetry views
   flavor        Style (painters + Theme data) and Renderer:
                   Retro:   RetroStyle   + PixelRenderer

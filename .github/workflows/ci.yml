@@ -22,12 +22,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: X11 headers and a virtual display (the window and GL tests)
+        if: matrix.name == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev xvfb
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build --config Release --parallel
       - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: ${{ matrix.name == 'linux' && 'xvfb-run -a ' || '' }}ctest --test-dir build -C Release --output-on-failure
       - name: Size canary
         run: cmake --build build --config Release --target spux_size_canary_report
 
@@ -39,9 +42,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y libx11-dev xvfb
       - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSPUX_BUILD_CANARY=OFF
       - run: cmake --build build --parallel
-      - run: ctest --test-dir build --output-on-failure
+      - run: xvfb-run -a ctest --test-dir build --output-on-failure
 
   sanitizers:
     name: sanitizers-linux
@@ -51,9 +55,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - run: sudo apt-get update && sudo apt-get install -y libx11-dev xvfb
       - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DSPUX_SANITIZE=address,undefined
       - run: cmake --build build --parallel
-      - run: ctest --test-dir build --output-on-failure
+      - run: xvfb-run -a ctest --test-dir build --output-on-failure
 
   format:
     name: clang-format
