@@ -42,5 +42,12 @@ TEST_CASE("Classic drawing renders the same pixels") {
     CHECK(c::Font::defaultPanelFont().getWidth() == 7);
     CHECK(c::textWidth(c::kLabelFont, "CUTOFF", 6.f) > 0.f);
     // Regenerate only when a Classic look change is intended; say so in the changelog line.
-    CHECK(fnv1a(buf) == 0x5b43c5fa2e0ea164ull);
+    // The shading uses libm (sin, cos, pow, floor), so the pixels differ in the last bit between toolchains:
+    // one golden hash per toolchain family (R3 asks for bit-identical output within one build only).
+#if defined(_MSC_VER)
+    constexpr uint64_t kGolden = 3023575240762236434ull; // MSVC
+#else
+    constexpr uint64_t kGolden = 0x5b43c5fa2e0ea164ull; // GCC (CI Linux)
+#endif
+    CHECK(fnv1a(buf) == kGolden);
 }
