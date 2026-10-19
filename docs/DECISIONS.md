@@ -103,3 +103,10 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 - 2026-10-19: migration step 2 (Classic drawing code into `spux_ui_classic`, Tearwash as pilot). No decision
   changed. `modern/` became `classic/` as U1 says; `ModernDraw` became `ClassicDraw`. `spux_ui_classic` is a
   STATIC library and the first module with sources; a plugin on C++17 (Tearwash) is raised to C++20 by it (L2).
+- 2026-10-19: migration step 3 (native window and GL context). No decision changed. `spux_platform` and the GL
+  parts of `spux_ui_modern` are STATIC libraries now (the guidelines listed the GL context under the
+  platform; it lives in `spux_ui_modern`, U13, and the layer table says so). The Win32 window class is
+  registered per module under a name made from the module handle, so plugins with different spux versions
+  in one host never share a window class (L13). `WindowOptions::keyboard` (default true, so Plumeflow is
+  unchanged) lets a window without key input leave the keyboard to the host.
+  `SPUX_WITH_X11` (default ON) turns the X11 window and GLX context off for headless Linux builds; windows then report no support.

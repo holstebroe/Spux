@@ -17,6 +17,7 @@ else()
 endif()
 option(SPUX_BUILD_TESTS "Build the spux tests" ${_spux_dev})
 option(SPUX_BUILD_CANARY "Build the size canary plugin" ${_spux_dev})
+option(SPUX_WITH_X11 "Linux: build the X11 window and GLX context. OFF for headless builds without X11 headers; windows then report no support" ON)
 option(SPUX_BUILD_VST3 "Make clap-wrapper's make_clapfirst_plugins available (downloads the VST3 SDK)" OFF)
 
 # The plugin chooses its language level; spux needs C++20 at least. The top-level build sets it.
@@ -64,10 +65,8 @@ spux_module(spux_params DEPENDS spux_core)
 spux_module(spux_state DEPENDS spux_core)
 spux_module(spux_clap DEPENDS spux_params spux_state clap)
 spux_module(spux_midi DEPENDS spux_core)
-spux_module(spux_platform)
 spux_module(spux_ui_core DEPENDS spux_platform spux_params)
 spux_module(spux_ui_retro DEPENDS spux_ui_core)
-spux_module(spux_ui_modern DEPENDS spux_ui_core)
 spux_module(spux_presetbrowser DEPENDS spux_ui_core spux_state)
 spux_module(spux_testing DEPENDS spux_core spux_doctest)
 
@@ -85,6 +84,47 @@ target_compile_features(spux_ui_classic PUBLIC cxx_std_20)
 target_link_libraries(spux_ui_classic PUBLIC spux_ui_core)
 set_target_properties(spux_ui_classic PROPERTIES POSITION_INDEPENDENT_CODE ON)
 spux_target_flags(spux_ui_classic)
+
+# spux_platform: native child window (X11, Win32, none elsewhere). Sources, so STATIC; it is not part of
+# `all` of a plugin that never links it. The OS libraries are public because a plugin links the window
+# code. The GLX visual lookup opens libGL at run time, so no GL library is needed here.
+add_library(spux_platform STATIC
+  ${SPUX_ROOT}/src/platform/NativeWindow_x11.cpp
+  ${SPUX_ROOT}/src/platform/NativeWindow_win32.cpp
+  ${SPUX_ROOT}/src/platform/NativeWindow_other.cpp
+  ${SPUX_ROOT}/src/platform/GlxVisual_x11.cpp)
+add_library(spux::spux_platform ALIAS spux_platform)
+target_include_directories(spux_platform PUBLIC ${SPUX_ROOT}/include)
+target_include_directories(spux_platform PRIVATE ${SPUX_ROOT}/src/platform)
+target_compile_features(spux_platform PUBLIC cxx_std_20)
+set_target_properties(spux_platform PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
+if(UNIX AND NOT APPLE AND SPUX_WITH_X11)
+  find_package(X11 REQUIRED)
+  find_package(Threads REQUIRED)
+  target_compile_definitions(spux_platform PUBLIC SPUX_HAS_X11=1)
+  target_include_directories(spux_platform PUBLIC ${X11_INCLUDE_DIR})
+  target_link_libraries(spux_platform PUBLIC ${X11_LIBRARIES} Threads::Threads ${CMAKE_DL_LIBS})
+elseif(WIN32)
+  target_link_libraries(spux_platform PUBLIC user32 gdi32)
+endif()
+spux_target_flags(spux_platform)
+
+# spux_ui_modern: so far the GL parts only (function table loaded at run time, context per window; GPU
+# renderer, shaders and style follow in step 7). OpenGL is opened at run time on Linux and Windows.
+add_library(spux_ui_modern STATIC
+  ${SPUX_ROOT}/src/gl/GlApi.cpp
+  ${SPUX_ROOT}/src/gl/GlContext_glx.cpp
+  ${SPUX_ROOT}/src/gl/GlContext_wgl.cpp
+  ${SPUX_ROOT}/src/gl/GlContext_none.cpp)
+add_library(spux::spux_ui_modern ALIAS spux_ui_modern)
+target_include_directories(spux_ui_modern PUBLIC ${SPUX_ROOT}/include)
+target_compile_features(spux_ui_modern PUBLIC cxx_std_20)
+target_link_libraries(spux_ui_modern PUBLIC spux_ui_core)
+if(WIN32)
+  target_link_libraries(spux_ui_modern PUBLIC opengl32)
+endif()
+set_target_properties(spux_ui_modern PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
+spux_target_flags(spux_ui_modern)
 
 if(SPUX_BUILD_TESTS)
   enable_testing()
