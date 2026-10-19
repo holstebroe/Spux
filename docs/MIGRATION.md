@@ -29,11 +29,11 @@ only in namespace and include guards, or not at all.
 | One-pole, biquad, SVF, delay line | Acidus, Gritbaal, Tannhauser `Dsp.hpp`, Lumeoid, Plumeflow | Generic forms only; character filters stay in plugins. |
 | Ramps and smoothing | Lumeoid `ramp`, Tannhauser `onePoleCoeff` | Become smoothing policies. |
 | Denormal guard | Plumeflow, plus inline code in Acidus, Tannhauser, Tearwash | One class. |
-| Allocation guard | Lumeoid, Plumeflow | `spux_testing`. |
-| WAV, loudness, metrics | Kikset `WavWriter`, Tannhauser `Loudness`, Tearwash `analysis/Metrics` | `spux_testing`. |
-| MIDI files | Acidus `MidiExport`, Paulascape `midi_export`, `midi_file_reader` | `spux_midi`. |
-| CLAP smoke host | Kikset `clap_smoke_main`, Paulascape `clap_host_test_main`, Mimicry `host/clap` | `spux_testing`. |
-| Packaging | `DeployClap.cmake` in Acidus, Kikset, Paulascape, Tannhauser, Tearwash | spux CMake helpers. |
+| Allocation guard | Lumeoid, Plumeflow | `spux_testing`. **Moved to `spux_testing_allocguard` (step 3a).** |
+| WAV, loudness, metrics | Kikset `WavWriter`, Plumeflow `tools/Wav`, `tools/Loudness`, Tannhauser `Loudness`, Tearwash `analysis/Metrics` | `spux_testing`. **Moved (step 3a).** |
+| MIDI files | Acidus `MidiExport`, Paulascape `midi_export`, `midi_file_reader`, Lumeoid `tools/midi_file`, Plumeflow `tools/MidiFile` | `spux_midi`. **Writer and readers moved (step 3a)**; what decides the notes stays in the plugin. |
+| CLAP smoke host | Kikset `clap_smoke_main`, Paulascape `clap_host_test_main`, Mimicry `host/clap` | `spux_testing`. **Moved to `spux_testing_clap` and `spux_clap_smoke` (step 3a)**; Mimicry's `host/clap` not looked at yet. |
+| Packaging | `DeployClap.cmake` in Acidus, Kikset, Paulascape, Tannhauser, Tearwash | spux CMake helpers. **Done (step 3a)**: `spux_deploy_clap`, `spux_package`, `spux_add_installer`. |
 | Build flags | `LumeoidFlags.cmake`, `PlumeflowFlags.cmake`, Kikset inline | `spux_target_flags`. |
 
 ## Stays in the plugins
@@ -66,6 +66,16 @@ plugin-specific views and page code.
    step 8 session; it keeps `src/gfx` until then), and Acidus, Gritbaal, Syrebas, Tannhauser, Kikset and
    Paulascape move their `GuiWindow`s in their own steps. `-DSPUX_WITH_X11=OFF` builds without X11 (CI job build-linux-minimal). Not done: Cocoa window and CGL context; the
    Win32 files are not compiled or run yet (no Windows toolchain here; CI on windows-latest is the check).
+3a. Testing, MIDI and packaging utilities. **Done in spux** (2026-10-19): `spux_testing` (header-only: `Wav`, `Loudness`,
+   `Metrics`, `RenderSafety`, `Hash` with `GoldenFile`, `NullTest`), `spux_testing_allocguard`, `spux_testing_clap` (`ClapHost`)
+   and the tool `spux_clap_smoke`, `spux_midi` (`MidiFile`, `MidiNotes`, `MidiWriter`), and `cmake/SpuxPackaging.cmake`
+   (`spux_deploy_clap`, `spux_package` through CPack, `spux_add_installer` for Inno Setup or NSIS) with
+   `cmake/SpuxTesting.cmake`. Checked against the originals: the Paulascape writer and reader and the Plumeflow and Lumeoid
+   readers agree on random files, Acidus's serializer byte for byte on a pattern, Plumeflow's loudness bit for bit and
+   Tannhauser's within 1e-9 LU. **No plugin migrated.** Left, per plugin (their own steps): replace the copies of
+   `alloc_guard`, `Wav`/`WavWriter`, `Loudness`, `Metrics`, `DeployClap.cmake`, the smoke mains and the MIDI code; Tannhauser's
+   `presetLoudness` (the phrases and the engine) and Acidus's `renderPatternNotes` / Paulascape's note generation stay in the
+   plugin. Differences a plugin will see when it switches: see the DECISIONS history of this date.
 4. `spux_core` and `spux_dsp`: merge the duplicates, add kernel references, replace libm in the older
    plugins. Acidus runs its strict gate.
 5. `spux_params`, `spux_state`, `spux_clap`.

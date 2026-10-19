@@ -110,3 +110,13 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   in one host never share a window class (L13). `WindowOptions::keyboard` (default true, so Plumeflow is
   unchanged) lets a window without key input leave the keyboard to the host.
   `SPUX_WITH_X11` (default ON) turns the X11 window and GLX context off for headless Linux builds; windows then report no support.
+- 2026-10-19: migration step 3a (testing, MIDI and packaging utilities). No decision changed. P10 is implemented as
+  `spux_deploy_clap`, `spux_package` (CPack zip) and `spux_add_installer` (a hook for the plugin's own Inno Setup or NSIS
+  script); the installer choice stays with the plugin. S5/S6 numbers are parameters of the null test (default -90 dBFS peak,
+  optional RMS relative to the reference); the open numbers table is unchanged. Differences from the merged originals that a
+  plugin will meet when it switches: the allocation guard aborts on a violation by default (Lumeoid; Plumeflow counted) and also
+  sees nothrow and aligned `new`; `DeployClap` creates the `CLAPTEST` folder when it is missing (Paulascape; three copies
+  stopped with an error); 16-bit WAV pads an odd data chunk; the MIDI reader rejects SMPTE time and keeps meta and sysex
+  events, and paired notes are keyed by channel and key and a repeated note-on ends the sounding note (Plumeflow keyed by key
+  only and dropped the first note). The standard FNV-1a offset basis is used by `Fnv1a64`; the Classic drawing golden was
+  made with a basis missing its last digit and keeps it as `kFnvLegacyBasis` (the golden is unchanged).

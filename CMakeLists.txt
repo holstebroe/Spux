@@ -34,6 +34,7 @@ if(_spux_dev)
 endif()
 
 include(${SPUX_ROOT}/cmake/SpuxFlags.cmake)
+include(${SPUX_ROOT}/cmake/SpuxPackaging.cmake)
 include(${SPUX_ROOT}/cmake/SpuxTesting.cmake)
 
 # Third party (spux owns the versions, L6): clap, clap-wrapper (author's fork, L7), doctest.

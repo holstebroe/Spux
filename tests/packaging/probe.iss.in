@@ -1,0 +1,8 @@
+; Inno Setup script template used by the packaging test
+[Setup]
+AppName=@SPUX_NAME@
+AppVersion=@SPUX_VERSION@
+AppPublisher=@SPUX_COMPANY@
+OutputDir=@SPUX_OUTPUT_DIR@
+[Files]
+Source: "$<TARGET_FILE:Probe>"; DestDir: "{commoncf}\CLAP"

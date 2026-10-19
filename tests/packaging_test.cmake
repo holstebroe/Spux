@@ -1,0 +1,101 @@
+# ctest driver: cmake -DSPUX_CMAKE_DIR=.. -DPROBE_SOURCE=.. -DWORK=.. -DGENERATOR=.. -P packaging_test.cmake
+# Configures and builds a probe project with spux's packaging helpers, then checks the deploy target, the
+# release zip and the installer hook (with a stand-in for the Inno Setup compiler on non-Windows systems).
+file(REMOVE_RECURSE "${WORK}")
+file(MAKE_DIRECTORY "${WORK}")
+
+function(run what)
+  execute_process(COMMAND ${ARGN} RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+  if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "${what} failed (${rc})\n${out}\n${err}")
+  endif()
+  set(last_output "${out}${err}" PARENT_SCOPE)
+endfunction()
+
+function(expect_failure what)
+  execute_process(COMMAND ${ARGN} RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+  if(rc EQUAL 0)
+    message(FATAL_ERROR "${what} should have failed\n${out}\n${err}")
+  endif()
+  set(last_output "${out}${err}" PARENT_SCOPE)
+endfunction()
+
+# A stand-in installer compiler: records its arguments.
+if(NOT WIN32)
+  file(WRITE "${WORK}/fake-iscc.sh" "#!/bin/sh\necho \"$@\" > \"${WORK}/fake-iscc.log\"\n")
+  file(CHMOD "${WORK}/fake-iscc.sh" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
+  set(args "-DPROBE_TOOL=${WORK}/fake-iscc.sh")
+endif()
+
+run("configure" ${CMAKE_COMMAND} -S "${PROBE_SOURCE}" -B "${WORK}/build" -G "${GENERATOR}"
+    -DCMAKE_BUILD_TYPE=Release -DSPUX_CMAKE_DIR=${SPUX_CMAKE_DIR} ${args})
+run("build" ${CMAKE_COMMAND} --build "${WORK}/build" --config Release)
+
+# --- deploy ---
+set(clapdir "${WORK}/clap-test")
+expect_failure("deploy without CLAPTEST" ${CMAKE_COMMAND} --build "${WORK}/build" --config Release --target deploy_probe)
+if(NOT last_output MATCHES "CLAPTEST")
+  message(FATAL_ERROR "the deploy error does not mention CLAPTEST:\n${last_output}")
+endif()
+set(ENV{CLAPTEST} "${clapdir}")
+run("deploy" ${CMAKE_COMMAND} --build "${WORK}/build" --config Release --target deploy_probe)
+if(NOT EXISTS "${clapdir}/Probe.clap") # the folder is created
+  message(FATAL_ERROR "Probe.clap was not deployed to ${clapdir}")
+endif()
+run("deploy again" ${CMAKE_COMMAND} --build "${WORK}/build" --config Release --target deploy_probe)
+unset(ENV{CLAPTEST})
+
+# --- zip ---
+run("cpack" ${CMAKE_CPACK_COMMAND} -C Release --config "${WORK}/build/CPackConfig.cmake" -B "${WORK}/pkg")
+file(GLOB zips "${WORK}/pkg/*.zip")
+list(LENGTH zips nzips)
+if(NOT nzips EQUAL 1)
+  message(FATAL_ERROR "expected one zip in ${WORK}/pkg, got: ${zips}")
+endif()
+get_filename_component(zipname "${zips}" NAME)
+if(NOT zipname MATCHES "^Probe-1\\.2\\.3-[a-z]+-[a-z0-9_]+\\.zip$")
+  message(FATAL_ERROR "unexpected package name ${zipname}")
+endif()
+execute_process(COMMAND ${CMAKE_COMMAND} -E tar tf "${zips}" OUTPUT_VARIABLE listing)
+foreach(want "/clap/Probe.clap" "/README.txt" "/vst3/")
+  string(FIND "${listing}" "${want}" at)
+  if(at EQUAL -1)
+    message(FATAL_ERROR "the zip lacks ${want}:\n${listing}")
+  endif()
+endforeach()
+
+# --- installer hook ---
+set(script "${WORK}/build/installer/Release/Probe.iss")
+if(NOT WIN32)
+  run("installer" ${CMAKE_COMMAND} --build "${WORK}/build" --config Release --target installer)
+  file(READ "${WORK}/fake-iscc.log" log)
+  foreach(want "/DSPUX_NAME=Probe" "/DSPUX_VERSION=1.2.3" "/DSPUX_COMPANY=Holstebroe" "Probe.iss")
+    string(FIND "${log}" "${want}" at)
+    if(at EQUAL -1)
+      message(FATAL_ERROR "the installer tool was not called with ${want}: ${log}")
+    endif()
+  endforeach()
+endif()
+if(NOT EXISTS "${script}")
+  message(FATAL_ERROR "the installer script was not generated at ${script}")
+endif()
+file(READ "${script}" text)
+foreach(want "AppName=Probe" "AppVersion=1.2.3" "AppPublisher=Holstebroe" "Probe.clap")
+  string(FIND "${text}" "${want}" at)
+  if(at EQUAL -1)
+    message(FATAL_ERROR "the installer script lacks ${want}:\n${text}")
+  endif()
+endforeach()
+string(FIND "${text}" "$<" at)
+if(NOT at EQUAL -1)
+  message(FATAL_ERROR "a generator expression was left in the script:\n${text}")
+endif()
+
+# --- no tool: the target fails with a message, configuring is fine ---
+run("configure without a tool" ${CMAKE_COMMAND} -S "${PROBE_SOURCE}" -B "${WORK}/build2" -G "${GENERATOR}"
+    -DCMAKE_BUILD_TYPE=Release -DSPUX_CMAKE_DIR=${SPUX_CMAKE_DIR} -DCMAKE_PROGRAM_PATH=${WORK}/nowhere)
+expect_failure("installer without a tool" ${CMAKE_COMMAND} --build "${WORK}/build2" --config Release --target installer)
+if(NOT last_output MATCHES "SPUX_INSTALLER_TOOL")
+  message(FATAL_ERROR "the missing-tool message does not name SPUX_INSTALLER_TOOL:\n${last_output}")
+endif()
+message(STATUS "packaging test passed")

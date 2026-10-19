@@ -55,3 +55,8 @@ if(TARGET spux_clap_smoke)
   spux_add_clap_smoke_test(clap_smoke_tool spux_test_plugin_good ARGS --plugins 1 --params 2 --require-audio)
 endif()
 
+# Packaging helpers: deploy target, release zip and the installer hook, in a probe project.
+add_test(NAME packaging_test
+  COMMAND ${CMAKE_COMMAND} -DSPUX_CMAKE_DIR=${SPUX_ROOT}/cmake -DPROBE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/packaging
+          -DWORK=${CMAKE_CURRENT_BINARY_DIR}/packaging_work -DGENERATOR=${CMAKE_GENERATOR}
+          -P ${CMAKE_CURRENT_SOURCE_DIR}/packaging_test.cmake)

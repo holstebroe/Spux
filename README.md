@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2) and the native window and GL context (step 3) are extracted. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3) and the testing, MIDI and packaging utilities (step 3a) are extracted. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.
@@ -31,17 +31,31 @@ target; a plugin links the targets it lists and nothing else.
 | `spux_params` | `ParamInfo`, laws, X-macro helpers, value text, key lookup, atomic store, edit queue | `spux_core` |
 | `spux_state` | Chunked state container (magic per plugin, version, CRC, unknown chunks skipped) | `spux_core` |
 | `spux_clap` | Thin CLAP glue (traits/CRTP): params, state, ports, GUI, timer | `spux_params`, `spux_state`, clap |
-| `spux_midi` | Standard MIDI file read and write | `spux_core` |
+| `spux_midi` (header-only) | Standard MIDI file reader (raw events, tempo map, timed and paired notes) and writer (tracks with tick priorities) | `spux_core` |
 | `spux_platform` | Native child window (Win32, X11, later Cocoa) with input events and a tick timer | OS only |
 | `spux_ui_core` | Immediate-mode `Gui`, `IRenderer`, layout helpers, editor shell, telemetry views | `spux_platform`, `spux_params` |
 | `spux_ui_retro` | Retro style and the pixel renderer, bitmap fonts | `spux_ui_core` |
 | `spux_ui_classic` | (built so far: `Graphics`, `Font`, `FileDialog`, `ClassicDraw`, atlas font data) Classic style, the supersampled CPU renderer with shading helpers, atlas fonts | `spux_ui_core` |
 | `spux_ui_modern` | (built so far: the GL function table and context, `spux::gl`) Modern style, GPU renderer (OpenGL 3.3), SDF font atlas, software fallback | `spux_ui_core` |
 | `spux_presetbrowser` | Optional shared preset browser | `spux_ui_core`, `spux_state` |
-| `spux_testing` | Allocation guard, reference-render null test, golden hashes, WAV I/O, loudness, render-safety check, CLAP smoke host | `spux_core` |
+| `spux_testing` (header-only) | WAV read and write, BS.1770 loudness, analysis metrics (filters, FFT, band levels, Schroeder decay), render-safety check, FNV golden hashes and golden files, reference-render null test | `spux_core`, doctest |
+| `spux_testing_allocguard` | Replaces the global `operator new` to catch allocations on the audio thread. Test executables only | nothing |
+| `spux_testing_clap` | CLAP smoke host: loads a built `.clap` like a DAW and runs the shared checks. Test executables only (`spux_clap_smoke` is the command line tool) | clap, X11 on Linux |
 
 Commercial-only code (licence checks and similar) lives in the private `spux-commercial` library, which
 depends on spux, never the other way round.
+
+## Testing and packaging helpers
+
+- **Null test.** `runNullTest(name, rendered, options)` compares a render with the float WAV stored in the plugin repository and
+  reports the peak and RMS of the difference per case; the threshold is `NullOptions::peakThresholdDb` (-90 by default, -110 for Acidus,
+  `-infinity` for bit-exact). `SPUX_UPDATE_REFERENCES=1` regenerates the references (a case without one fails). See `spux/testing/NullTest.hpp`.
+- **Golden hashes.** `Fnv1a64`, `hashFloats`, `GoldenFile` (one file per platform and compiler, `SPUX_UPDATE_GOLDEN=1` to record).
+- **Smoke host.** `spux_add_clap_smoke_test(name plugin-target ARGS ...)` registers a ctest entry; the same checks are a library
+  call (`runClapSmoke`) with an `extra` callback for plugin-specific ones.
+- **Packaging** (`cmake/SpuxPackaging.cmake`, included by spux): `spux_deploy_clap(target)` copies the `.clap` to `$CLAPTEST`;
+  `spux_package(NAME .. VERSION .. CLAP_TARGETS ..)` sets up a release zip with CPack (`cpack -C Release`); `spux_add_installer(..)`
+  runs Inno Setup or NSIS on the plugin's own script.
 
 ## Using spux in a plugin
 
@@ -70,7 +84,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target spux_size_canary_report
 ```
 
-Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY` (both on only in a top-level build), `SPUX_BUILD_VST3`
+Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY`, `SPUX_BUILD_SMOKE_TOOL` (all on only in a top-level build), `SPUX_BUILD_VST3`
 (makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`.
 
 ## Licence
