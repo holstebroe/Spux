@@ -22,6 +22,7 @@ spux_add_test(metrics_test)
 spux_add_test(hash_test)
 spux_add_test(render_safety_test)
 spux_add_test(null_test)
+spux_add_test(midi_test spux_midi)
 
 # The CLAP smoke host against a small test plugin and four broken variants of it.
 function(spux_test_plugin name fault)
