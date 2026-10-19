@@ -3,6 +3,7 @@
 // drawn and the pixels hashed. A change here is a change of how every Classic panel looks.
 #include <doctest.h>
 
+#include "spux/testing/Hash.hpp"
 #include "spux/ui/classic/ClassicDraw.hpp"
 #include "spux/ui/classic/DisplayFont.hpp"
 #include "spux/ui/classic/Font.hpp"
@@ -11,18 +12,6 @@
 #include <vector>
 
 namespace c = spux::ui::classic;
-
-namespace {
-uint64_t fnv1a(const std::vector<uint32_t>& px) {
-    uint64_t h = 1469598103934665603ull;
-    for (uint32_t v : px)
-        for (int i = 0; i < 4; ++i) {
-            h ^= (v >> (8 * i)) & 0xFF;
-            h *= 1099511628211ull;
-        }
-    return h;
-}
-} // namespace
 
 TEST_CASE("Classic drawing renders the same pixels") {
     constexpr int W = 160, H = 100, S = 2;
@@ -49,5 +38,5 @@ TEST_CASE("Classic drawing renders the same pixels") {
 #else
     constexpr uint64_t kGolden = 0x5b43c5fa2e0ea164ull; // GCC (CI Linux)
 #endif
-    CHECK(fnv1a(buf) == kGolden);
+    CHECK(spux::testing::hashWords(buf, spux::testing::kFnvLegacyBasis) == kGolden);
 }

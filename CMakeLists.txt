@@ -68,7 +68,16 @@ spux_module(spux_midi DEPENDS spux_core)
 spux_module(spux_ui_core DEPENDS spux_platform spux_params)
 spux_module(spux_ui_retro DEPENDS spux_ui_core)
 spux_module(spux_presetbrowser DEPENDS spux_ui_core spux_state)
-spux_module(spux_testing DEPENDS spux_core spux_doctest)
+spux_module(spux_testing DEPENDS spux_core spux_doctest)    # header-only: WAV, loudness, metrics, hashes, null test
+
+# spux_testing_allocguard: replaces the global operator new/delete to catch allocations on the audio thread.
+# Test executables only, never a plugin (the replacement is process-wide).
+add_library(spux_testing_allocguard STATIC ${SPUX_ROOT}/src/testing/AllocGuard.cpp)
+add_library(spux::spux_testing_allocguard ALIAS spux_testing_allocguard)
+target_include_directories(spux_testing_allocguard PUBLIC ${SPUX_ROOT}/include)
+target_compile_features(spux_testing_allocguard PUBLIC cxx_std_20)
+set_target_properties(spux_testing_allocguard PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
+spux_target_flags(spux_testing_allocguard)
 
 # spux_ui_classic: Classic drawing code (Graphics, Font, FileDialog, ClassicDraw), the first module with
 # sources, so it is a STATIC library. CPU drawing only. The font data headers (DisplayFont.hpp,
