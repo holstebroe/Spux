@@ -45,7 +45,11 @@ plugin-specific views and page code.
 
 ## Order [M1]
 
-1. Create the repository: README, these documents, CMake skeleton, `spux_target_flags`, CI.
+1. Create the repository: README, these documents, CMake skeleton, `spux_target_flags`, CI. **Done**
+   (2026-10-19): module targets as INTERFACE placeholders, `cmake/SpuxFlags.cmake`, `spux::v1`,
+   `SPUX_SOURCE_DIR`, submodules `third_party/{clap,clap-wrapper,doctest}`, doctest target,
+   `.clang-format`, CI (Linux, Windows, clang-format), size canary (`canary/`, budget in
+   `canary/budget.cmake`, still report-only).
 2. Classic drawing code (byte-identical copies): no sound risk. Pilot: Tearwash drops its vendored GUI.
 3. Platform: Plumeflow `NativeWindow`; move the other `GuiWindow`s onto it.
 4. `spux_core` and `spux_dsp`: merge the duplicates, add kernel references, replace libm in the older

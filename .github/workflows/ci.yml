@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**', 'docs/**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: windows-latest
+            name: windows
+    name: build-${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Size canary
+        run: cmake --build build --config Release --target spux_size_canary_report
+
+  # Same source with the UI and optional parts off: what a headless plugin builds.
+  build-minimal:
+    name: build-linux-minimal
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSPUX_BUILD_CANARY=OFF
+      - run: cmake --build build --parallel
+      - run: ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    name: sanitizers-linux
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DSPUX_SANITIZE=address,undefined
+      - run: cmake --build build --parallel
+      - run: ctest --test-dir build --output-on-failure
+
+  format:
+    name: clang-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: clang-format (pinned, so the check does not move with the runner image)
+        run: |
+          pip install clang-format==18.1.8
+          git ls-files '*.hpp' '*.cpp' '*.h' ':!:third_party/**' | xargs --no-run-if-empty clang-format --dry-run -Werror
