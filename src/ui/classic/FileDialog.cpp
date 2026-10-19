@@ -14,8 +14,9 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <commdlg.h>
 #include <windows.h>
+
+#include <commdlg.h> // after windows.h; the blank line keeps clang-format from sorting it before
 #endif
 
 namespace spux::inline v1::ui::classic {
