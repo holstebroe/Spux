@@ -7,7 +7,7 @@ only in namespace and include guards, or not at all.
 
 | spux part | Source today | Notes |
 | --- | --- | --- |
-| Classic drawing (`Graphics`, `Font`, `FileDialog`, `modern/ModernDraw`, `DisplayFont`, `LabelFont`) | Acidus, Tannhauser, Tearwash | Three copies; Tannhauser and Tearwash byte-identical. Rename `modern/` to `classic/`. |
+| Classic drawing (`Graphics`, `Font`, `FileDialog`, `modern/ModernDraw`, `DisplayFont`, `LabelFont`) | Acidus, Tannhauser, Tearwash | Three copies; Tannhauser and Tearwash byte-identical. Renamed `modern/` to `classic/`. **Moved to `spux_ui_classic` (step 2); Tearwash migrated.** |
 | Classic CPU renderer | Plumeflow `ui/SoftRenderer` + the files above | Merge into one supersampled renderer with shading helpers. |
 | Retro style and fonts | Acidus `RetroSkin`, Syrebas and Gritbaal renderers, Paulascape `Framebuffer` and pt2 font, Kikset `Graphics` | Four drifting forks of the same `Graphics`. |
 | Skin interfaces | Acidus `IGuiSkin`, Gritbaal `IControlRenderer`, Syrebas `IControlRenderer` | Become the per-widget painter interfaces. |
@@ -51,6 +51,12 @@ plugin-specific views and page code.
    `.clang-format`, CI (Linux, Windows, clang-format), size canary (`canary/`, budget in
    `canary/budget.cmake`, still report-only).
 2. Classic drawing code (byte-identical copies): no sound risk. Pilot: Tearwash drops its vendored GUI.
+   **Done** (2026-10-19): `spux_ui_classic` (STATIC) holds `Graphics`, `Font`, `FileDialog`, `ClassicDraw`
+   (was `modern/ModernDraw`) and the `DisplayFont`/`LabelFont` data, namespace `spux::ui::classic`; golden
+   hash test `ui_classic_golden_test`. Tearwash uses it (its `src/tearwash/gui` is gone, snapshots
+   identical). Left: Tannhauser and Acidus still hold their copies (migrate in their own steps;
+   Acidus's copy differs from the others by namespace only, checked). Not moved yet: Acidus's
+   `ModernSkin`, `IGuiSkin`, `RetroSkin` (step 6/7).
 3. Platform: Plumeflow `NativeWindow`; move the other `GuiWindow`s onto it.
 4. `spux_core` and `spux_dsp`: merge the duplicates, add kernel references, replace libm in the older
    plugins. Acidus runs its strict gate.

@@ -35,7 +35,7 @@ target; a plugin links the targets it lists and nothing else.
 | `spux_platform` | Native child window (Win32, X11, later Cocoa), timer, file dialog | OS only |
 | `spux_ui_core` | Immediate-mode `Gui`, `IRenderer`, layout helpers, editor shell, telemetry views | `spux_platform`, `spux_params` |
 | `spux_ui_retro` | Retro style and the pixel renderer, bitmap fonts | `spux_ui_core` |
-| `spux_ui_classic` | Classic style, the supersampled CPU renderer with shading helpers, atlas fonts | `spux_ui_core` |
+| `spux_ui_classic` | (built so far: `Graphics`, `Font`, `FileDialog`, `ClassicDraw`, atlas font data) Classic style, the supersampled CPU renderer with shading helpers, atlas fonts | `spux_ui_core` |
 | `spux_ui_modern` | Modern style, GPU renderer (OpenGL 3.3), SDF font atlas, software fallback | `spux_ui_core` |
 | `spux_presetbrowser` | Optional shared preset browser | `spux_ui_core`, `spux_state` |
 | `spux_testing` | Allocation guard, reference-render null test, golden hashes, WAV I/O, loudness, render-safety check, CLAP smoke host | `spux_core` |

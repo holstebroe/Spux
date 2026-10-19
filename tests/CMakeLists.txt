@@ -12,3 +12,4 @@ endfunction()
 
 spux_add_test(version_test spux_core)
 spux_add_test(determinism_flags_test spux_core)
+spux_add_test(ui_classic_golden_test spux_ui_classic)

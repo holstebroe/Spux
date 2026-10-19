@@ -67,10 +67,24 @@ spux_module(spux_midi DEPENDS spux_core)
 spux_module(spux_platform)
 spux_module(spux_ui_core DEPENDS spux_platform spux_params)
 spux_module(spux_ui_retro DEPENDS spux_ui_core)
-spux_module(spux_ui_classic DEPENDS spux_ui_core)
 spux_module(spux_ui_modern DEPENDS spux_ui_core)
 spux_module(spux_presetbrowser DEPENDS spux_ui_core spux_state)
 spux_module(spux_testing DEPENDS spux_core spux_doctest)
+
+# spux_ui_classic: Classic drawing code (Graphics, Font, FileDialog, ClassicDraw), the first module with
+# sources, so it is a STATIC library. CPU drawing only. The font data headers (DisplayFont.hpp,
+# LabelFont.hpp) are headers a plugin includes where it needs them; nothing else is compiled in.
+add_library(spux_ui_classic STATIC
+  ${SPUX_ROOT}/src/ui/classic/Font.cpp
+  ${SPUX_ROOT}/src/ui/classic/Graphics.cpp
+  ${SPUX_ROOT}/src/ui/classic/FileDialog.cpp
+  ${SPUX_ROOT}/src/ui/classic/ClassicDraw.cpp)
+add_library(spux::spux_ui_classic ALIAS spux_ui_classic)
+target_include_directories(spux_ui_classic PUBLIC ${SPUX_ROOT}/include)
+target_compile_features(spux_ui_classic PUBLIC cxx_std_20)
+target_link_libraries(spux_ui_classic PUBLIC spux_ui_core)
+set_target_properties(spux_ui_classic PROPERTIES POSITION_INDEPENDENT_CODE ON)
+spux_target_flags(spux_ui_classic)
 
 if(SPUX_BUILD_TESTS)
   enable_testing()
