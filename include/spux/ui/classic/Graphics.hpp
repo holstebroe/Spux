@@ -1,9 +1,9 @@
 #ifndef SPUX_UI_CLASSIC_GRAPHICS_HPP
 #define SPUX_UI_CLASSIC_GRAPHICS_HPP
 
-#include <cstdint>
-#include <cstddef>
 #include "spux/ui/classic/Font.hpp"
+#include <cstddef>
+#include <cstdint>
 
 namespace spux::inline v1::ui::classic {
 
@@ -44,6 +44,6 @@ private:
     uint32_t bufferHeight_{0};
 };
 
-} // namespace spux::v1::ui::classic
+} // namespace spux::inline v1::ui::classic
 
 #endif // SPUX_UI_CLASSIC_GRAPHICS_HPP

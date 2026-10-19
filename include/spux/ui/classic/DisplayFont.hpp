@@ -8,6 +8,8 @@
 
 #include "spux/ui/classic/ClassicDraw.hpp"
 
+// clang-format off
+
 namespace spux::inline v1::ui::classic {
 namespace displayfont_data {
 

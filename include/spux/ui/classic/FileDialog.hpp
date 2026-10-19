@@ -15,9 +15,9 @@ namespace spux::inline v1::ui::classic {
 struct FileDialogOptions {
     bool save{false};
     std::string title;
-    std::string filterName;   // e.g. "Calibration profiles"
-    std::string extension;    // without the dot, e.g. "json"
-    std::string startPath;    // a directory, or a directory and file name
+    std::string filterName; // e.g. "Calibration profiles"
+    std::string extension;  // without the dot, e.g. "json"
+    std::string startPath;  // a directory, or a directory and file name
 };
 
 // The user's home directory (HOME, or USERPROFILE on Windows), or "".
@@ -50,6 +50,6 @@ private:
 std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& options);
 #endif
 
-} // namespace spux::v1::ui::classic
+} // namespace spux::inline v1::ui::classic
 
 #endif // SPUX_UI_CLASSIC_FILE_DIALOG_HPP

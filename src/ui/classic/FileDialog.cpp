@@ -14,8 +14,8 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <windows.h>
 #include <commdlg.h>
+#include <windows.h>
 #endif
 
 namespace spux::inline v1::ui::classic {
@@ -33,36 +33,47 @@ std::string homeDirectory() {
 
 static bool onPath(const char* program) {
     const char* path = std::getenv("PATH");
-    if (!path) return false;
+    if (!path)
+        return false;
     std::string dirs(path);
     size_t start = 0;
     while (start <= dirs.size()) {
         const size_t end = std::min(dirs.find(':', start), dirs.size());
         const std::string file = dirs.substr(start, end - start) + "/" + program;
-        if (end > start && access(file.c_str(), X_OK) == 0) return true;
+        if (end > start && access(file.c_str(), X_OK) == 0)
+            return true;
         start = end + 1;
     }
     return false;
 }
 
 bool FileDialogProcess::start(const FileDialogOptions& options) {
-    if (running()) return true;
+    if (running())
+        return true;
     const std::string pattern = "*." + options.extension;
     const std::string described = options.filterName + " (" + pattern + ")";
     std::vector<std::string> args;
     if (onPath("zenity")) {
-        args = { "zenity", "--file-selection", "--title=" + options.title,
-                 "--file-filter=" + described + " | " + pattern, "--file-filter=All files | *",
-                 "--filename=" + options.startPath };
-        if (options.save) { args.push_back("--save"); args.push_back("--confirm-overwrite"); }
+        args = {"zenity",
+                "--file-selection",
+                "--title=" + options.title,
+                "--file-filter=" + described + " | " + pattern,
+                "--file-filter=All files | *",
+                "--filename=" + options.startPath};
+        if (options.save) {
+            args.push_back("--save");
+            args.push_back("--confirm-overwrite");
+        }
     } else if (onPath("kdialog")) {
-        args = { "kdialog", options.save ? "--getsavefilename" : "--getopenfilename", options.startPath,
-                 pattern + "|" + described, "--title", options.title };
+        args = {"kdialog",         options.save ? "--getsavefilename" : "--getopenfilename",
+                options.startPath, pattern + "|" + described,
+                "--title",         options.title};
     } else {
         return false;
     }
     int fds[2];
-    if (pipe(fds) != 0) return false;
+    if (pipe(fds) != 0)
+        return false;
     posix_spawn_file_actions_t actions;
     posix_spawn_file_actions_init(&actions);
     posix_spawn_file_actions_adddup2(&actions, fds[1], 1);
@@ -71,13 +82,17 @@ bool FileDialogProcess::start(const FileDialogOptions& options) {
     posix_spawn_file_actions_addopen(&actions, 0, "/dev/null", O_RDONLY, 0);
     posix_spawn_file_actions_addopen(&actions, 2, "/dev/null", O_WRONLY, 0);
     std::vector<char*> argv;
-    for (auto& a : args) argv.push_back(&a[0]);
+    for (auto& a : args)
+        argv.push_back(&a[0]);
     argv.push_back(nullptr);
     pid_t pid = 0;
     const int err = posix_spawnp(&pid, argv[0], &actions, nullptr, argv.data(), environ);
     posix_spawn_file_actions_destroy(&actions);
     close(fds[1]);
-    if (err != 0) { close(fds[0]); return false; }
+    if (err != 0) {
+        close(fds[0]);
+        return false;
+    }
     fcntl(fds[0], F_SETFL, fcntl(fds[0], F_GETFL) | O_NONBLOCK);
     pid_ = pid;
     fd_ = fds[0];
@@ -87,13 +102,17 @@ bool FileDialogProcess::start(const FileDialogOptions& options) {
 }
 
 bool FileDialogProcess::poll(std::string& path, bool& save) {
-    if (!running()) return false;
+    if (!running())
+        return false;
     char buf[512];
     ssize_t n;
-    while ((n = read(fd_, buf, sizeof(buf))) > 0) output_.append(buf, static_cast<size_t>(n));
+    while ((n = read(fd_, buf, sizeof(buf))) > 0)
+        output_.append(buf, static_cast<size_t>(n));
     int status = 0;
-    if (waitpid(pid_, &status, WNOHANG) != pid_) return false;
-    while ((n = read(fd_, buf, sizeof(buf))) > 0) output_.append(buf, static_cast<size_t>(n));
+    if (waitpid(pid_, &status, WNOHANG) != pid_)
+        return false;
+    while ((n = read(fd_, buf, sizeof(buf))) > 0)
+        output_.append(buf, static_cast<size_t>(n));
     close(fd_);
     pid_ = 0;
     fd_ = -1;
@@ -106,7 +125,8 @@ bool FileDialogProcess::poll(std::string& path, bool& save) {
 }
 
 void FileDialogProcess::cancel() {
-    if (!running()) return;
+    if (!running())
+        return;
     kill(pid_, SIGTERM);
     waitpid(pid_, nullptr, 0);
     close(fd_);
@@ -117,15 +137,18 @@ void FileDialogProcess::cancel() {
 #elif defined(_WIN32)
 
 static std::wstring widen(const std::string& s) {
-    if (s.empty()) return std::wstring();
+    if (s.empty())
+        return std::wstring();
     const int n = MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), nullptr, 0);
     std::wstring w(static_cast<size_t>(n > 0 ? n : 0), L'\0');
-    if (n > 0) MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), &w[0], n);
+    if (n > 0)
+        MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), &w[0], n);
     return w;
 }
 
 std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& options) {
-    const std::filesystem::path start = std::filesystem::u8path(options.startPath);
+    const std::filesystem::path start = std::filesystem::path(
+        std::u8string(reinterpret_cast<const char8_t*>(options.startPath.data()), options.startPath.size()));
     std::wstring dir, name;
     std::error_code ec;
     if (!options.startPath.empty() && std::filesystem::is_directory(start, ec)) {
@@ -135,7 +158,8 @@ std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& option
         name = start.filename().wstring();
     }
     std::vector<wchar_t> file(MAX_PATH, L'\0');
-    if (name.size() < file.size()) std::copy(name.begin(), name.end(), file.begin());
+    if (name.size() < file.size())
+        std::copy(name.begin(), name.end(), file.begin());
     const std::wstring ext = widen(options.extension);
     std::wstring filter = widen(options.filterName) + L" (*." + ext + L")";
     filter.push_back(L'\0');
@@ -163,4 +187,4 @@ std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& option
 
 #endif
 
-} // namespace spux::v1::ui::classic
+} // namespace spux::inline v1::ui::classic

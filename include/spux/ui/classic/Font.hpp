@@ -1,8 +1,8 @@
 #ifndef SPUX_UI_CLASSIC_FONT_HPP
 #define SPUX_UI_CLASSIC_FONT_HPP
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 namespace spux::inline v1::ui::classic {
 
@@ -29,6 +29,6 @@ private:
     bool classic_{false};
 };
 
-} // namespace spux::v1::ui::classic
+} // namespace spux::inline v1::ui::classic
 
 #endif // SPUX_UI_CLASSIC_FONT_HPP

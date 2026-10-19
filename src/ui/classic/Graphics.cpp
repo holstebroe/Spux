@@ -24,7 +24,8 @@ void Graphics::blendPixel(int bx, int by, uint32_t srcColor) {
     }
 
     uint32_t srcA = (srcColor >> 24) & 0xFF;
-    if (srcA == 0) return;
+    if (srcA == 0)
+        return;
 
     size_t idx = static_cast<size_t>(by) * bufferWidth_ + static_cast<size_t>(bx);
     if (srcA == 255) {
@@ -84,7 +85,8 @@ void Graphics::drawLine(int x0, int y0, int x1, int y1, uint32_t color, int thic
             }
         }
 
-        if (sx0 == sx1 && sy0 == sy1) break;
+        if (sx0 == sx1 && sy0 == sy1)
+            break;
         int e2 = 2 * err;
         if (e2 > -dy) {
             err -= dy;
@@ -166,8 +168,10 @@ void Graphics::fillCircle(int cx, int cy, int radius, uint32_t color) {
 }
 
 void Graphics::drawText(const Font& font, const char* text, int x, int y, uint32_t color, int textScale) {
-    if (!text) return;
-    if (textScale < 1) textScale = 1;
+    if (!text)
+        return;
+    if (textScale < 1)
+        textScale = 1;
 
     int currX = x;
     size_t len = std::strlen(text);
@@ -196,4 +200,4 @@ void Graphics::drawText(const Font& font, const char* text, int x, int y, uint32
     }
 }
 
-} // namespace spux::v1::ui::classic
+} // namespace spux::inline v1::ui::classic
