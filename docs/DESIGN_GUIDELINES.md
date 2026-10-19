@@ -1,0 +1,284 @@
+# spux design guidelines
+
+These are the rules for building spux and for using it in a plugin. The reasons behind each rule are in
+`DECISIONS.md` (ids in brackets). Where a rule and the code disagree, fix one of them in the same commit.
+
+## 1. Principles
+
+1. **The plugin decides.** spux offers building blocks; it never forces a feature, a flavor or a policy
+   on a plugin. Anything a plugin does not call is not compiled into it [P6, U4].
+2. **Pay only for what you use.** Size and build time matter: a Retro build is small, a `UI=NONE` build
+   is fast (section 4).
+3. **Sound is a contract.** Once a plugin is released, old projects must sound the same or
+   inaudibly different. Character changes are new code, not edits (section 3).
+4. **Building blocks, not character.** spux holds the generic parts. What gives a plugin its own sound
+   (the Acidus ladder and Stinchcombe network, the Tannhauser OTA SVF, the Paula RC filters, the
+   Tearwash reverb) stays in the plugin repository.
+5. **Extract on the third copy**, or earlier when two copies are already identical.
+6. **No process-global mutable state.** Several plugin instances, and several plugins with different
+   spux versions, share one host process.
+
+### SOLID in spux
+
+| Principle | How spux applies it |
+| --- | --- |
+| Single responsibility | Window, layout, interaction and drawing are separate parts. A DSP block does one job. |
+| Open/closed | New behaviour is a new class, policy, widget or painter. Shipped behaviour is not edited in ways that change sound (section 3). |
+| Liskov substitution | Every renderer honours `IRenderer`; effect calls have plain defaults, so any renderer can stand in. Every painter draws inside its widget's bounds. |
+| Interface segregation | Small interfaces: one painter per widget type, an editor-host core plus optional extensions (modulation, presets). |
+| Dependency inversion | DSP depends on nothing. Widgets depend on an abstract parameter binding, not on CLAP. Plugins depend on spux interfaces, spux never on plugins. |
+
+## 2. Real-time and determinism rules
+
+- **R1** Nothing on the audio thread allocates, locks (except `try_lock`), throws, makes system calls or
+  touches the GPU. Debug and test builds check this (allocation guard, thread asserts) [P8].
+- **R2** No libm in the audio path: use `spux_core` math, provided `spux_bench` shows it is at least as
+  fast [S4].
+- **R3** Output is bit-identical within one build for any block size and every re-render [S3]. Use
+  PCG32 for all randomness. `spux_target_flags` sets `-ffp-contract=off -fno-fast-math` and
+  `/fp:precise`; never override them.
+- **R4** Derive coefficients from times and frequencies, never from a fixed sample rate.
+- **R5** The control tick is a template parameter (default 64 samples); a plugin may use none [S9].
+- **R6** Flush denormals around processing (`DenormalGuard`).
+- **R7** The GUI reads audio-side state only through the parameter store, the edit queue and the
+  telemetry rings [P7].
+
+## 3. Sound compatibility
+
+### What may change in existing code [S1]
+
+| Allowed in place | Not allowed in place (make a new class, policy or option) |
+| --- | --- |
+| Bug fixes | A different curve, law, tuning, saturation shape or default |
+| Optimizations | Changing what a parameter value means |
+| Rounding changes nobody can hear | Removing or renaming anything a released plugin uses |
+| New methods, overloads, policies | Changing a shipped smoothing policy's curve [S10] |
+
+Parameter laws (normalized to plain value) count as sound: the host stores normalized automation [P2].
+
+Before a plugin's 1.0 release, duplicates are merged freely [S2].
+
+### How a change is checked [S5, S6]
+
+1. **Kernel references in spux.** Each DSP building block has short reference outputs and a golden hash
+   per platform and compiler. A changed hash is a change detector, not a failure: update the golden
+   file in the same commit and note it in the changelog.
+2. **Reference renders in each plugin.** A curated set of patches and note sequences, a few seconds
+   each, stored as 32-bit float (or 24-bit) WAV in the plugin repo. The null test renders with the
+   current code, subtracts the stored file and fails above the threshold (proposed -90 dBFS peak). One
+   checkout is enough. Accepting a change means regenerating the references in the same commit.
+3. **Acidus is strict.** Its calibration is the product. A spux update in Acidus must pass
+   `reference_conformance_test` and the null test at the tighter threshold (proposed -110 dBFS), and the
+   report lists every difference per patch. The author signs off audible changes; nothing is accepted
+   silently.
+4. **State version.** Every plugin state carries a version field and a migration hook [S7, P9], so a
+   later converter can restore old behaviour or rescue old data.
+
+## 4. Build rules: only what is used
+
+1. **Header-only templates** for `spux_core` and `spux_dsp`. Nothing is compiled unless a plugin
+   instantiates it.
+2. **Small separate targets** for code with `.cpp` files (see the README table). A plugin lists the
+   targets it links. There is no umbrella library.
+3. **Section garbage collection**: `-ffunction-sections -fdata-sections` and `--gc-sections`; MSVC `/Gy`
+   and `/OPT:REF,ICF`. `spux_target_flags` sets them.
+4. **No static registries or self-registering objects.** They force code into every binary. Everything
+   is reached through calls the plugin makes.
+5. **Large data in its own translation unit** (fonts, tables), so it is linked only when referenced.
+6. **Hidden visibility** and the inline version namespace on everything [L13].
+7. **A size canary**: CI builds a minimal Retro test plugin and tracks its stripped size.
+8. spux owns clap, clap-wrapper and doctest [L6]. A plugin's CMake adds spux and nothing else
+   third-party for these.
+
+## 5. DSP building blocks
+
+- Templates on the sample type; `float` for audio and `double` for phase and coefficients by default
+  [S8].
+- Variants as **policies** (template parameters), in the style of Gritbaal's `TanhSaturator` and
+  `NewtonSolver`: saturator shape, solver, smoothing, interpolation. Use C++20 concepts to state what a
+  policy must provide.
+- No virtual calls per sample.
+- Every nonlinear block states its anti-aliasing (oversampling, ADAA) and has an alias test.
+- Each block documents its law and constants in its header and has a kernel reference (section 3).
+- First merges (before any 1.0): one PCG32, one set of math approximations, one half-band design, one
+  BLEP family (orders 2, 4, 16, 32; the pt2-clone table stays in its BSD-3 folder).
+
+### Smoothing [S10]
+
+`Smoothed<Policy, T>` with `NoSmoothing`, `LinearRamp` (per tick), `OnePole<Tau>` and `Slew`. The plugin
+picks a policy per parameter. Plain helpers (`onePoleCoeff(tau, fs)`) stay available for code that
+smooths by itself.
+
+## 6. Parameters, state and CLAP
+
+- **Parameters** come from the plugin's X-macro `.def` file [P2]: id, key, name, kind, range, law,
+  default, flags, enum labels, smoothing policy. Never renumber ids or rename keys; only append. spux
+  provides the macros, the laws, value text and parsing, key lookup, the atomic `ParamStore` and the
+  SPSC `EditQueue` (with slots reserved for gesture begin and end).
+- **State** uses the chunk container [P3]: a 4-byte magic chosen by the plugin, a version, chunks with
+  id, length and CRC; unknown chunks are skipped and damaged ones counted. Never break loading of older
+  versions.
+- **Presets** [P4]: factory presets compiled in, user presets as files; both go through the state
+  container.
+- **CLAP glue** [P1] is a traits or CRTP base that implements the params, state, audio and note ports,
+  GUI and timer extensions and forwards to the plugin. It stays thin: a plugin can always implement an
+  extension itself.
+- **Plugin IDs** [P12] are deferred until the brand name is chosen. Once released they never change.
+
+## 7. User interface
+
+### Flavors [U1 to U6]
+
+| Flavor | Look | Renderer | Fonts | Scaling |
+| --- | --- | --- | --- | --- |
+| Retro | Pixel art, small footprint | Integer pixel renderer, no anti-aliasing | Bitmap (5x7, 7-px panel, pt2 8x8) | Whole steps |
+| Classic | Shaded hardware panels: materials, lighting, worn paint | Supersampled CPU renderer (2x, box filter) with shading helpers | Pre-rasterized atlas | Steps up to a cap |
+| Modern | Glass panels, glow, bloom, animated views | GPU (OpenGL 3.3); fallback: the same style on the software renderer | SDF atlas baked at editor open | Free, fixed aspect |
+
+- A build has exactly one flavor, set by `<PLUGIN>_UI=RETRO|CLASSIC|MODERN|NONE`. Only that flavor's
+  targets are compiled.
+- The plugin declares which flavors it supports. spux forces none.
+- A plugin written against the standard widgets moves **up** from Retro to Classic or Modern by changing
+  the option. Moving down works for standard widgets; a plugin's own GPU views then look plain.
+- Modern's fallback is the Modern style on the software renderer [U5]: same layout, effects drawn
+  plain. Its users are remote and virtual sessions, broken drivers, and headless tests.
+
+### Layers
+
+```
+spux_platform   NativeWindow (Win32, X11, later Cocoa), timer, file dialog, GL context
+spux_ui_core    IRenderer, Gui (immediate mode), layout helpers, Theme, Editor shell, telemetry views
+  flavor        Style (painters + Theme data) and Renderer:
+                  Retro:   RetroStyle   + PixelRenderer
+                  Classic: ClassicStyle + ShadedRenderer
+                  Modern:  ModernStyle  + GpuRenderer (fallback: SoftRenderer)
+plugin          Page functions, its own views, its EditorHost implementation
+```
+
+### Renderer contract
+
+`IRenderer` has two parts: the basics (rectangles, rounded rectangles, lines, polylines, circles,
+gradients, clipping, text) that every renderer implements, and the **effect extensions** (glow,
+emission, blend mode, arcs, shadows, glass panels, strips, fill-under, pixel-size text, animated
+background) with plain default implementations. Renderers override what they can; plugin code never
+checks which renderer it runs on. Coordinates are logical pixels; colours are straight-alpha ARGB.
+
+### Immediate mode [U7]
+
+The plugin writes **page functions** that run every frame:
+
+```
+void filterPage(spux::ui::Gui& g, const Layout& l) {
+    g.panel(l.filter, "Filter");
+    g.knob(P_cutoff, l.cutoff);
+    if (g.plainValue(P_mode) == ModeLadder) g.knob(P_drive, l.drive);
+}
+```
+
+Each widget call reads its value from the parameter store, handles input inside its rectangle, asks the
+flavor's painter to draw it, and on a drag writes the value back with gestures. `Gui` keeps only the
+hot, active and focused widget ids and drag state. Overlays (popups, tooltips) are drawn at the end of
+the frame and block input below them.
+
+**Retained-style caches keep the CPU flavors cheap:**
+
+1. Frames are drawn only when something changed: input, the parameter-store version counter, telemetry,
+   or a running animation. 60 fps while active, about 20 fps idle, nothing while hidden.
+2. The static background (panel, printed labels) is a cached layer.
+3. A widget whose state is unchanged since the last frame skips drawing; the renderer reports the dirty
+   region, so the window blits only that.
+4. Widget ids come from the parameter id, or a label inside an id scope (`pushId`) in loops; a debug
+   assert catches collisions.
+5. Layout helpers (rows, columns, grids) return `Rect`s. A layout table can stay as data that a page
+   loops over.
+
+**Acceptance gate.** Immediate mode is adopted only if it is not noticeably more expensive than retained
+mode and its layout code is as simple or simpler. The test: port one panel of Tannhauser and one of
+Acidus, then compare with today's retained version:
+
+| Measure | Pass |
+| --- | --- |
+| Lines of layout and widget code | Same or fewer |
+| CPU per frame, Classic renderer, idle and while dragging a knob | Within about 10 % with caches and change-driven frames on |
+| Binary size of the Retro build | Within about 5 % |
+
+If it fails, spux uses a retained widget tree behind the same painter interfaces; flavors and styles
+are unaffected.
+
+### Painters and themes [U8]
+
+- One painter interface per widget type (`KnobPainter`, `SwitchPainter`, `MeterPainter`, ...). A
+  painter receives the renderer, the bounds and a state struct (value, hot, active, focused,
+  modulation, label).
+- A flavor implements the painters it supports. A plugin that uses a widget its flavor lacks fails to
+  compile; no other plugin is affected.
+- A flavor's look is a `Theme` data struct: colours, metrics (text sizes, minimum widget sizes), fonts.
+  A plugin can supply its own theme values.
+- Every painter draws inside the bounds it is given (plus the declared margin), so incremental redraws
+  stay clean.
+
+### Editing helpers [U9]
+
+Value entry by typing, Tab focus, tooltips, popups and dropdowns, double-click reset, shift for fine
+adjustment, mouse wheel, right-click hooks. The plugin can override text formatting per widget.
+
+### Editor host
+
+The plugin implements an `EditorHost` core (parameters, edit queue, telemetry, flush request, UI state)
+plus only the optional extensions it uses (modulation display, preset access). Widgets never see CLAP.
+
+### Modern specifics [U12, U13]
+
+- OpenGL 3.3 core through a runtime-loaded function table: no GL headers or libraries at build time, no
+  glad, one table and one context per editor.
+- All GPU objects are created when the editor opens and freed when it closes; nothing while closed. A
+  quality governor lowers bloom and detail when frame time is over budget.
+- Shaders are self-contained fragment shaders, so a Metal or WebGPU backend later is a port of the
+  renderer only.
+- Text is an SDF atlas baked at editor open from an embedded TTF subset (Inter, OFL). Ship the font
+  licence.
+
+### Telemetry [P7]
+
+`spux::TelemetryRing<Frame>` is a lock-free single-producer ring. The audio thread writes only while the
+editor is visible; the frame type is defined by the plugin. spux provides generic consumers: spectrum
+(FFT, log bands, attack and release smoothing), source histories, level meters.
+
+## 8. Platforms
+
+Windows first; Linux builds and tests in CI; macOS later (Cocoa window and CGL context still missing).
+OpenGL is available in practice on all three; the software fallback covers remote and virtual sessions
+and broken drivers [U14].
+
+## 9. Testing and performance
+
+- doctest for unit tests [L14].
+- `spux_testing` provides: allocation guard, golden hashes, reference-render null test, WAV I/O,
+  loudness, render safety (finite output, peak below 1 for a chord), a CLAP smoke host.
+- GUI: golden frames rendered headlessly (software renderer) and offscreen (GPU), plus simulated input
+  that checks the parameter edits produced.
+- CPU budget [P11]: `spux_bench` for kernels and a fixed scenario per plugin (for example 8 voices,
+  48 kHz, 128-sample blocks), Release builds only. CI fails on a regression over the stored baseline
+  (proposed 10 to 15 %); absolute targets live in each plugin's plan.
+- CI builds each plugin's native flavor on every push and every flavor nightly [U6].
+
+## 10. Code style [L11, proposed]
+
+`PascalCase` types and file names, `camelCase` functions, `kConstants`, `member_` with a trailing
+underscore, lower-case namespaces (`spux::dsp`), `.hpp`/`.cpp`, `#pragma once`, `.clang-format` with an
+LLVM base, 4-space indent, 120 columns, checked in CI. Comments say why, not what.
+
+## 11. Licensing and private code
+
+- spux is MIT. Third-party code keeps its licence in its own folder and is listed in
+  `THIRD_PARTY_LICENSES.md` with what a shipped binary must include.
+- Commercial-only code (licence keys, copy protection) lives in the private `spux-commercial`, which
+  depends on spux. Public plugins build with a stub [L9].
+
+## 12. Changing spux from a plugin
+
+1. Make the change in spux (a local checkout through `SPUX_SOURCE_DIR`), with tests, kernel references
+   and docs.
+2. Release a tag.
+3. In the plugin: bump the submodule, run its null test (and for Acidus the strict gate), accept or
+   reject the differences, commit pointer and references together.
