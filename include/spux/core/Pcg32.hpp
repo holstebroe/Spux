@@ -1,12 +1,5 @@
-// PCG32 (O'Neill, XSH-RR 64/32): the one source of randomness in spux and the plugins (R3). Merged from
-// Lumeoid `core/pcg32.hpp` and Plumeflow `dsp/Pcg32.hpp`, which produce the same sequence for the same
-// seed and stream.
-//
-// Differences a plugin meets when it switches:
-//   - Lumeoid: `reseed(seed, stream)` is `seed(seed, stream)`; everything else is the same.
-//   - Plumeflow: the default constructor gives the PCG reference state (Lumeoid's), not seed(0, 1); a
-//     generator that is used before it is seeded therefore starts elsewhere. The two-argument
-//     constructor, `seed`, `derive` and all draws are unchanged.
+// PCG32 (O'Neill, XSH-RR 64/32): the one source of randomness in spux and the plugins (R3). The default
+// constructor gives the PCG reference state.
 #pragma once
 
 #include <cstdint>
@@ -60,7 +53,7 @@ public:
     }
 
     // A generator derived from a patch seed, a voice slot and a note counter (never time or addresses),
-    // so a render is the same for the same preset, seed and notes (Plumeflow spec 03).
+    // so a render is the same for the same preset, seed and notes.
     static constexpr Pcg32 derive(std::uint32_t patchSeed, std::uint32_t voiceSlot, std::uint32_t noteCounter,
                                   std::uint32_t salt = 0) {
         std::uint64_t h = 0x9E3779B97F4A7C15ull;

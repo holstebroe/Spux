@@ -1,4 +1,4 @@
-// OpenGL 3.3 core function table, loaded at run time through the platform's getProcAddress (spec 11).
+// OpenGL 3.3 core function table, loaded at run time through the platform's getProcAddress.
 // No GL headers or libraries are needed to build, and nothing is process-global: every device owns its
 // own table, so several editors in one host (each with its own context) never share state. Only the
 // functions the renderer uses are listed.
@@ -132,7 +132,7 @@ struct GlApi {
     int major = 0, minor = 0;
     char renderer[128] = {};
     char version[64] = {};
-    // true for a software rasteriser (llvmpipe, Microsoft Basic Render Driver, SwiftShader...)
+    // true for a software rasterizer (llvmpipe, Microsoft Basic Render Driver, SwiftShader...)
     bool softwareRenderer() const;
 };
 

@@ -1,4 +1,4 @@
-// Parameter smoothing as policies (decision S10, guidelines section 5). The plugin picks a policy per
+// Parameter smoothing as policies (guidelines section 5). The plugin picks a policy per
 // parameter: Smoothed<OnePole<0.02>> cutoff; Smoothed<LinearRamp<>> gain; Smoothed<NoSmoothing> mode.
 // A shipped policy never changes its curve; a different curve is a new policy.
 //
@@ -8,10 +8,10 @@
 //   NoSmoothing      the target, at once.
 //   LinearRamp<N>    a straight line from the current value to the target over N samples (one control
 //                    tick, default 64); evaluated from the position like TickRamp, so with targets set at
-//                    tick boundaries it is bit-identical to Lumeoid's Ramp.
+//                    tick boundaries it equals TickRamp exactly.
 //   OnePole<Tau>     y += a (target - y), a = 1 - e^(-1 / (Tau fs)), Tau in seconds (63 % after Tau);
 //                    snaps to the target once a step no longer changes the value.
-//   Slew<Rate>       moves towards the target by at most Rate units per second.
+//   Slew<Rate>       moves toward the target by at most Rate units per second.
 #pragma once
 
 #include <concepts>
@@ -21,7 +21,7 @@
 namespace spux::inline v1 {
 
 // One-pole smoothing coefficient for time constant tau (seconds) at rate fs: 1 - e^(-1 / (tau fs)).
-// 1 (no smoothing) for tau <= 0 or fs <= 0. From Tannhauser `onePoleCoeff` (expD instead of std::exp).
+// 1 (no smoothing) for tau <= 0 or fs <= 0.
 template <std::floating_point T = double> [[nodiscard]] constexpr T onePoleCoeff(double tauSeconds, double sampleRate) {
     if (!(tauSeconds > 0.0) || !(sampleRate > 0.0))
         return T(1);

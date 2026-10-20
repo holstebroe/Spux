@@ -1,7 +1,7 @@
-// The control tick (R5, decision S9): control-rate work (modulation, coefficient updates, parameter
+// The control tick (R5): control-rate work (modulation, coefficient updates, parameter
 // targets) happens every N samples, counted from the start of the render, never from the start of a
 // host block. That keeps the output identical for any block size (R3). N is a template parameter,
-// 64 by default (Lumeoid and Plumeflow); a plugin may use none.
+// 64 by default; a plugin may use none.
 #pragma once
 
 #include <concepts>
@@ -41,10 +41,9 @@ private:
     int pos_ = 0;
 };
 
-// A value that moves linearly across one tick (Lumeoid `Ramp`, `DoubleRamp`): `at(pos)` is the value at
+// A value that moves linearly across one tick: `at(pos)` is the value at
 // sample `pos` of the tick, from `start` at 0 to `end` at N (the first sample of the next tick). It is
-// evaluated from the position, so it does not depend on how the host splits blocks. For T = float and
-// N = 64 it is bit-identical to Lumeoid's Ramp.
+// evaluated from the position, so it does not depend on how the host splits blocks.
 template <std::floating_point T = float, int N = 64>
     requires(N > 0)
 struct TickRamp {

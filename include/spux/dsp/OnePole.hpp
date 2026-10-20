@@ -2,8 +2,7 @@
 // from one state. Stable under coefficient changes every sample.
 //
 // Law: g = tan(pi fc / fs), G = g / (1 + g); v = (x - s) G, lp = v + s, s' = lp + v; hp = x - lp,
-// ap = lp - hp. The cutoff is clamped to [1e-6, 0.49] of the sample rate. Same arithmetic as Lumeoid
-// `fx::OnePole`, Tannhauser `OnePoleLp` and Plumeflow's tone filters.
+// ap = lp - hp. The cutoff is clamped to [1e-6, 0.49] of the sample rate.
 #pragma once
 
 #include <concepts>

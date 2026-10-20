@@ -42,7 +42,7 @@ These are the rules for building spux and for using it in a plugin. The reasons 
 | Principle | How spux applies it |
 | --- | --- |
 | Single responsibility | Window, layout, interaction and drawing are separate parts. A DSP block does one job. |
-| Open/closed | New behaviour is a new class, policy, widget or painter. Shipped behaviour is not edited in ways that change sound (section 3). |
+| Open/closed | New behavior is a new class, policy, widget or painter. Shipped behavior is not edited in ways that change sound (section 3). |
 | Liskov substitution | Every renderer honours `IRenderer`; effect calls have plain defaults, so any renderer can stand in. Every painter draws inside its widget's bounds. |
 | Interface segregation | Small interfaces: one painter per widget type, an editor-host core plus optional extensions (modulation, presets). |
 | Dependency inversion | DSP depends on nothing. Widgets depend on an abstract parameter binding, not on CLAP. Plugins depend on spux interfaces, spux never on plugins. |
@@ -98,7 +98,7 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
    Bit-exactness is not required: a one-ulp change moves Acidus's ladder by -70 to -90 dBFS and its
    harmonics by about 0.003 dB.
 4. **State version.** Every plugin state carries a version field and a migration hook [S7, P9], so a
-   later converter can restore old behaviour or rescue old data.
+   later converter can restore old behavior or rescue old data.
 
 ## 4. Build rules: only what is used
 
@@ -115,6 +115,15 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
 7. **A size canary**: CI builds a minimal Retro test plugin and tracks its stripped size.
 8. spux owns clap, clap-wrapper and doctest [L6]. A plugin's CMake adds spux and nothing else
    third-party for these.
+9. **UI code: size or speed, by the plugin's kind** [U16]. UI code never runs on the audio thread, so its
+   optimization is a choice: a simple plugin built in the Retro flavor (a handful of controls, a small binary
+   is the point) compiles its UI for size (`-Os`, MSVC `/O1`); a plugin that is large in concept and in its
+   number of controls, or draws a Classic or Modern panel, keeps the build's speed flags. spux's UI targets
+   follow `SPUX_UI_OPTIMIZE` (`AUTO`, `SIZE`, `SPEED`); `AUTO`, the default, picks `SIZE` for
+   `SPUX_UI_FLAVOR=RETRO` and `SPEED` otherwise. A plugin sets `SPUX_UI_FLAVOR` to its `<PLUGIN>_UI` before
+   adding spux, and compiles its own GUI files the same way. Measured on Acidus (docs/UI_GATE.md): `-Os`
+   saves about 60 KB and costs about 20 % more UI instructions per frame, still far below the retained
+   version it replaced.
 
 ## 5. DSP building blocks
 
@@ -205,7 +214,7 @@ plugin          Page functions, its own views, its EditorHost implementation
 gradients, clipping, text) that every renderer implements, and the **effect extensions** (glow,
 emission, blend mode, arcs, shadows, glass panels, strips, fill-under, pixel-size text, animated
 background) with plain default implementations. Renderers override what they can; plugin code never
-checks which renderer it runs on. Coordinates are logical pixels; colours are straight-alpha ARGB.
+checks which renderer it runs on. Coordinates are logical pixels; colors are straight-alpha ARGB.
 
 ### Immediate mode [U7]
 
@@ -236,7 +245,24 @@ the frame and block input below them.
 5. Layout helpers (rows, columns, grids) return `Rect`s. A layout table can stay as data that a page
    loops over.
 
-**Acceptance gate.** Immediate mode is adopted only if it is not noticeably more expensive than retained
+How `spux_ui_core` does it (`spux/ui/Gui.hpp`, `Layers.hpp`, `Editor.hpp`):
+
+- A CPU renderer keeps three layers (`CpuLayers`): background, widgets, and display (widgets plus the
+  overlays, used only while an overlay is up). A widget that changed is redrawn over a copy of the
+  background under its bounds plus its painter's margin; a widget that is no longer drawn is erased.
+  Therefore cached widget areas must not overlap: panels, frames and printed labels belong to the
+  background (`RootView::background`). `Gui::overlapCount()` reports violations. A GPU renderer has no
+  layers and draws everything every frame.
+- The change test is a hash of the painter's state struct. A plugin view that is not a standard widget
+  uses `Gui::view(id, area, key)` with a key of what it shows, and `Gui::interact` for its input.
+- `Gui<Style>` is a thin template over `GuiCore` (the interaction, compiled once): a Style is a struct
+  with a `theme` and one painter member per widget it supports. A page calling a widget the Style lacks
+  does not compile (U4); a widget call can also name its own painter.
+- `Editor<Style>` takes the logical size and the plugin's `RootView` (background, frame, a content
+  version for what changes outside the parameters, an animation flag, a tick hook).
+
+**Acceptance gate** (run 2026-10-20, docs/UI_GATE.md; U7 decided for immediate mode, size cost accepted).
+Immediate mode is adopted only if it is not noticeably more expensive than retained
 mode and its layout code is as simple or simpler. The test: port one panel of Tannhauser and one of
 Acidus, then compare with today's retained version:
 
@@ -251,12 +277,14 @@ are unaffected.
 
 ### Painters and themes [U8]
 
-- One painter interface per widget type (`KnobPainter`, `SwitchPainter`, `MeterPainter`, ...). A
-  painter receives the renderer, the bounds and a state struct (value, hot, active, focused,
-  modulation, label).
+- One painter interface per widget type (`KnobPainter`, `SliderPainter`, `TogglePainter`,
+  `SelectorPainter`, `ButtonPainter`, `DropdownPainter`, `StepperPainter`, `PanelPainter`,
+  `TextFieldPainter`, `PopupPainter`, `TooltipPainter`; `spux/ui/Painters.hpp`). A painter receives the
+  renderer, the bounds and a state struct (value, hot, active, focused, modulation, label). It may answer
+  geometry questions the interaction needs (a knob's depth handle, a selector's cells, a popup's rows).
 - A flavor implements the painters it supports. A plugin that uses a widget its flavor lacks fails to
   compile; no other plugin is affected.
-- A flavor's look is a `Theme` data struct: colours, metrics (text sizes, minimum widget sizes), fonts.
+- A flavor's look is a `Theme` data struct: colors, metrics (text sizes, minimum widget sizes), fonts.
   A plugin can supply its own theme values.
 - Every painter draws inside the bounds it is given (plus the declared margin), so incremental redraws
   stay clean.
@@ -270,6 +298,9 @@ adjustment, mouse wheel, right-click hooks. The plugin can override text formatt
 
 The plugin implements an `EditorHost` core (parameters, edit queue, telemetry, flush request, UI state)
 plus only the optional extensions it uses (modulation display, preset access). Widgets never see CLAP.
+Widgets name parameters by id and reach them through the host's `ParamTable`; `StoreEditorHost<N>`
+implements the parameter part over a `ParamStore` and an `EditQueue`. Value text and parsing default to
+spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per widget (`valueText`).
 
 ### Modern specifics [U12, U13]
 
@@ -280,13 +311,14 @@ plus only the optional extensions it uses (modulation display, preset access). W
 - Shaders are self-contained fragment shaders, so a Metal or WebGPU backend later is a port of the
   renderer only.
 - Text is an SDF atlas baked at editor open from an embedded TTF subset (Inter, OFL). Ship the font
-  licence.
+  license.
 
 ### Telemetry [P7]
 
-`spux::TelemetryRing<Frame>` is a lock-free single-producer ring. The audio thread writes only while the
-editor is visible; the frame type is defined by the plugin. spux provides generic consumers: spectrum
-(FFT, log bands, attack and release smoothing), source histories, level meters.
+`spux::TelemetryRing<Frame>` (`spux/core/TelemetryRing.hpp`) is a lock-free single-producer ring, with
+`SampleRing` for output samples. The audio thread writes only while the editor is visible; the frame
+type is defined by the plugin. spux provides generic consumers (`spux/ui/Live.hpp`): spectrum (FFT, log
+bands, attack and release smoothing), source histories, level meters.
 
 ## 8. Platforms
 
@@ -321,9 +353,9 @@ LLVM base, 4-space indent, 120 columns, checked in CI. Comments say why, not wha
 
 ## 11. Licensing and private code
 
-- spux is MIT. Third-party code keeps its licence in its own folder and is listed in
+- spux is MIT. Third-party code keeps its license in its own folder and is listed in
   `THIRD_PARTY_LICENSES.md` with what a shipped binary must include.
-- Commercial-only code (licence keys, copy protection) lives in the private `spux-commercial`, which
+- Commercial-only code (license keys, copy protection) lives in the private `spux-commercial`, which
   depends on spux. Public plugins build with a stub [L9].
 
 ## 12. Changing spux from a plugin

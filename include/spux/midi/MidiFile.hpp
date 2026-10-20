@@ -1,8 +1,7 @@
 // Standard MIDI File reader (formats 0, 1 and 2, PPQ time division). It keeps every event, in file order
 // track by track, with its absolute tick; helpers that turn those into timed notes are in MidiNotes.hpp.
 //
-// Merged from Paulascape (midi_file_reader.hpp: raw events), Lumeoid (tools/midi_file.cpp: bounds checks,
-// tempo map) and Plumeflow (tools/MidiFile.hpp: paired notes). It never throws and never asserts: a
+// It never throws and never asserts: a
 // malformed file returns false with a message, and a truncated one is cut off at the damage.
 #pragma once
 

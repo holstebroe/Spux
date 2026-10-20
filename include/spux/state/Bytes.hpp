@@ -1,5 +1,5 @@
 // Little-endian byte writing and bounds-checked reading, CRC-32 and four-character codes for the state
-// container (from Lumeoid `state/container`). Nothing here runs on the audio thread.
+// container. Nothing here runs on the audio thread.
 #pragma once
 
 #include <array>

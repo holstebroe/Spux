@@ -1,9 +1,8 @@
-// Ornstein-Uhlenbeck process for slow random drift (oscillator pitch, analog wobble), from Plumeflow
-// `OuProcess` and `Drift`. Exact discretisation: x' = a x + sigma sqrt(1 - a^2) n with a = e^(-dt / tau)
+// Ornstein-Uhlenbeck process for slow random drift (oscillator pitch, analog wobble).
+// Exact discretization: x' = a x + sigma sqrt(1 - a^2) n with a = e^(-dt / tau)
 // and n Gaussian (Pcg32::nextGaussian), so the stationary RMS is sigma for any step dt. Step it at the
 // control tick (dt = tick samples / sample rate) or per sample; the law holds for any dt (R4).
-// What sigma means (cents, volts) and how a knob maps to it stays in the plugin (Plumeflow: 0..25 cents).
-// setup() uses expD (Plumeflow used std::exp; a last-bit difference).
+// What sigma means (cents, volts) and how a knob maps to it stays in the plugin. setup() uses expD.
 #pragma once
 
 #include <cmath>

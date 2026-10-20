@@ -3,7 +3,7 @@
 spux (Signal Processing & User eXperience) is a shared C++20 library for the author's audio plugins
 (CLAP, VST3 through clap-wrapper): DSP building blocks, parameters and state, CLAP glue, windowing and
 an editor UI in three flavors (Retro, Classic, Modern). No third-party DSP or GUI frameworks (no JUCE).
-MIT licence.
+MIT license.
 
 ## Where things are
 
@@ -48,6 +48,13 @@ MIT licence.
     copy, or when two copies are identical.
 12. Commercial-only code belongs in the private `spux-commercial`, never here.
 13. Commits small and focused; keep `docs/` in step with the code in the same commit.
+14. **US English** everywhere: identifiers, comments, docs and commit messages (color, center, behavior,
+    license, analyze, canceled).
+15. **Comments document the library, not how it was made.** Code and build files never name a concrete
+    plugin or cite a decision id (L1, U7, ...), a plugin's spec or a work package. Where code came from and
+    what a plugin meets when it switches goes in `docs/MIGRATION.md` ("Provenance and switch notes"); why
+    it was decided goes in `docs/DECISIONS.md`. Guideline rule ids (R1 to R6) and section pointers are fine.
+    Tests may name the code they pin compatibility with.
 
 ## Build
 
@@ -60,6 +67,11 @@ ctest --test-dir build -C Release --output-on-failure
 After DSP changes run the DSP tests and `spux_bench` (Release). After UI changes run the GUI tests
 (golden frames, software and offscreen GPU).
 
+UI code optimization (guidelines 4.9): a simple Retro plugin compiles its UI for size, a large plugin
+(many controls, Classic or Modern) for speed. spux's UI targets follow `SPUX_UI_OPTIMIZE`
+(`AUTO`: `SIZE` when `SPUX_UI_FLAVOR=RETRO`, `SPEED` otherwise); a plugin sets `SPUX_UI_FLAVOR` to its
+flavor before adding spux.
+
 ## For plugin repositories
 
 Add this section to each plugin's CLAUDE.md:
@@ -67,8 +79,9 @@ Add this section to each plugin's CLAUDE.md:
 > **Using spux.** Shared code lives in spux (`extern/spux`, pinned to a tag). Change shared code in spux
 > (develop with `-DSPUX_SOURCE_DIR=...`), release a tag, then bump the submodule here and run this
 > plugin's null test against its reference renders. Accept differences by regenerating the references
-> in the same commit as the pointer bump. This plugin's UI flavor: `<flavor>`. Character code stays in
-> this repository.
+> in the same commit as the pointer bump. This plugin's UI flavor: `<flavor>` (set `SPUX_UI_FLAVOR` to it
+> before adding spux: a simple Retro plugin builds its UI for size, a large one for speed). Character code
+> stays in this repository.
 
 For Acidus add: "Strict gate: every spux bump runs `reference_conformance_test` and the null test within
 its sound tolerances; report every difference per patch to the author before accepting."

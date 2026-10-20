@@ -14,7 +14,7 @@
 using namespace spux;
 
 namespace {
-// Clears a texture-backed framebuffer to a colour and reads one pixel back. Mesa's software rasteriser
+// Clears a texture-backed framebuffer to a color and reads one pixel back. Mesa's software rasterizer
 // writes a pbuffer's default framebuffer with PutImage, which an Xvfb server may refuse, so the offscreen
 // case renders into a framebuffer object, as the GPU renderer does.
 void clearAndRead(gl::GlApi& api, int w, int h) {

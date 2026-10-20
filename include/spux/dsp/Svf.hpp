@@ -1,11 +1,11 @@
 // Linear state-variable filter, trapezoidal (TPT; Simper's form): low-pass, band-pass and high-pass from
-// one update, stable under coefficient changes every sample. Generic only: a saturating SVF (Tannhauser's
-// OTA SVF) is character code and stays in its plugin.
+// one update, stable under coefficient changes every sample. Generic only: a saturating SVF (an OTA
+// SVF) is character code and stays in its plugin.
 //
 // Law: g = tan(pi fc / fs), k = 1 / Q (damping, 2 = no resonance, 0 = self-oscillation);
 //   a1 = 1 / (1 + g (g + k)); v3 = x - ic2; v1 = a1 (ic1 + g v3); v2 = ic2 + g v1;
 //   ic1' = 2 v1 - ic1; ic2' = 2 v2 - ic2; low = v2, band = v1, high = x - k v1 - v2.
-// The cutoff is clamped to [1e-6, 0.49] of the sample rate. Same arithmetic as Plumeflow `NoiseFilter`.
+// The cutoff is clamped to [1e-6, 0.49] of the sample rate.
 #pragma once
 
 #include <concepts>
@@ -20,7 +20,7 @@ template <std::floating_point T> struct SvfOutputs {
     [[nodiscard]] T notch() const { return low + high; }
     [[nodiscard]] T peak() const { return low - high; }
     [[nodiscard]] T allpass() const { return low + high - k * band; }
-    [[nodiscard]] T bandUnity() const { return k * band; } // band-pass with 0 dB at the centre
+    [[nodiscard]] T bandUnity() const { return k * band; } // band-pass with 0 dB at the center
 };
 
 template <std::floating_point T = float> class Svf {

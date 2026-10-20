@@ -1,4 +1,4 @@
-// OpenGL context bound to a native window (or to nothing, for headless tests), spec 11. One context per
+// OpenGL context bound to a native window (or to nothing, for headless tests). One context per
 // editor instance; nothing is shared. The platform parts are WGL (Windows), GLX (X11) and, later, CGL.
 // The OpenGL library is opened at run time, so a machine without it simply gets no GPU context and the
 // editor falls back to the software renderer.
@@ -21,7 +21,7 @@ public:
     // in *error when the platform has no context code, the library is missing or 3.3 is not available.
     static std::unique_ptr<GlContext> createForWindow(const ParentWindow& window, std::string* error = nullptr);
     // A context with a width x height default framebuffer that is not shown (tests, golden frames).
-    // Render into a framebuffer object and read that back: Mesa's software rasteriser writes a pbuffer's
+    // Render into a framebuffer object and read that back: Mesa's software rasterizer writes a pbuffer's
     // default framebuffer with PutImage, which an Xvfb server may refuse with an X error (BadMatch) that
     // ends the process.
     static std::unique_ptr<GlContext> createOffscreen(int width, int height, std::string* error = nullptr);

@@ -1,7 +1,4 @@
-// Circular delay line with integer, linear and 4-point cubic Hermite reads. Merged from Lumeoid
-// `fx::DelayLine` (this form; its `read` is `readHermite`) and Plumeflow `DelayLine` (`push` is `write`;
-// the same delays, but it interpolated from the older sample, so its fractional reads differ in the
-// last bit).
+// Circular delay line with integer, linear and 4-point cubic Hermite reads.
 //
 // Read before write: delay 1 is the sample of the last write(). Integer and linear reads need
 // delay >= 1, Hermite reads delay >= 2, all at most maxDelay(). The capacity is a power of two,

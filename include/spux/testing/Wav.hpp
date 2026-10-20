@@ -1,7 +1,7 @@
 // WAV reading and writing for tests and offline tools: reference renders are stored as 32-bit float
 // WAV (24-bit also reads and writes), one file per case. Interleaved float samples in memory.
 //
-// Writes: PCM 16 (the Kikset layout, mono or more), PCM 24 and IEEE float 32. Reads: PCM 8/16/24/32,
+// Writes: PCM 16 (mono or more), PCM 24 and IEEE float 32. Reads: PCM 8/16/24/32,
 // float 32/64, plain or WAVE_FORMAT_EXTENSIBLE. Never throws; errors come back as a message.
 // The integer formats write with the scale 2^(n-1) - 1 and read with 2^(n-1), the usual convention, so a
 // round trip is off by up to 1.5 quanta; only float 32 is exact (and is what references use).

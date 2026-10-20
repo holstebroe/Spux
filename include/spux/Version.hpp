@@ -1,4 +1,4 @@
-// Version and the inline namespace every spux symbol lives in (decision L1, L13): two plugins built
+// Version and the inline namespace every spux symbol lives in: two plugins built
 // against different spux versions can share one host process without clashing symbols.
 #pragma once
 

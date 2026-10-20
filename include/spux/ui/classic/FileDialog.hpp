@@ -1,7 +1,7 @@
 #ifndef SPUX_UI_CLASSIC_FILE_DIALOG_HPP
 #define SPUX_UI_CLASSIC_FILE_DIALOG_HPP
 
-// Open / save file dialogs for the plugin GUIs (Acidus's calibration files, pattern banks).
+// Open / save file dialogs for the plugin GUIs (data files, banks, presets).
 //
 // Linux: plain X11 has no file dialog, so zenity or kdialog runs as a child
 // process whose output (the chosen path) the GUI's event loop polls; the GUI
@@ -35,7 +35,7 @@ public:
     // False if neither zenity nor kdialog is installed or it could not start.
     bool start(const FileDialogOptions& options);
     // True once the dialog has closed: `path` is the chosen file, or empty
-    // when it was cancelled. `save` tells which kind of dialog it was.
+    // when it was canceled. `save` tells which kind of dialog it was.
     bool poll(std::string& path, bool& save);
     void cancel();
 
@@ -46,7 +46,7 @@ private:
     std::string output_;
 };
 #elif defined(_WIN32)
-// Modal. Empty if cancelled. `owner` is the parent HWND.
+// Modal. Empty if canceled. `owner` is the parent HWND.
 std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& options);
 #endif
 

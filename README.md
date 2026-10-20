@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4) and the parameters, state and CLAP glue (step 5) are extracted. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4), the parameters, state and CLAP glue (step 5) and the immediate-mode UI core (step 6, its acceptance gate in `docs/UI_GATE.md`) are extracted. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.
@@ -26,14 +26,14 @@ target; a plugin links the targets it lists and nothing else.
 
 | Target | Contents | Depends on |
 | --- | --- | --- |
-| `spux_core` (header-only) | Deterministic math, constants, PCG32, control tick, smoothing policies, denormal guard (built); SPSC rings (later) | nothing |
+| `spux_core` (header-only) | Deterministic math, constants, PCG32, control tick, smoothing policies, denormal guard, the telemetry rings `TelemetryRing<Frame>` and `SampleRing` (built) | nothing |
 | `spux_dsp` (header-only) | DSP building blocks: one-pole, SVF, biquad, DC block, half-band and oversampler, BLEP (and the pt2 BSD-3 table), delay lines, saturators with ADAA and solvers, noise, drift (built); tuning helpers (later) | `spux_core` |
 | `spux_params` (header-only) | `ParamInfo`, laws and host mapping, X-macro helpers, `ParamTable` (id and key lookup, checks), value text and parsing, atomic `ParamStore`, `EditQueue` with a gesture reserve (built) | `spux_core` |
 | `spux_state` (header-only) | Chunked state container (magic per plugin, version, CRC-32, unknown and damaged chunks skipped), byte reader and writer, parameter chunk, migration hook, text preset files (key=value, locale-free numbers) (built) | `spux_core` |
 | `spux_clap` (header-only) | Thin CLAP glue: `spux::clap::Plugin<Derived>` (CRTP) offers the params, state, audio and note ports, GUI and timer extensions the plugin class implements; helpers for parameter info, events, the edit queue and streams; a one-class factory (built) | `spux_params`, `spux_state`, clap |
 | `spux_midi` (header-only) | Standard MIDI file reader (raw events, tempo map, timed and paired notes) and writer (tracks with tick priorities) | `spux_core` |
 | `spux_platform` | Native child window (Win32, X11, later Cocoa) with input events and a tick timer | OS only |
-| `spux_ui_core` | Immediate-mode `Gui`, `IRenderer`, layout helpers, editor shell, telemetry views | `spux_platform`, `spux_params` |
+| `spux_ui_core` | Immediate-mode `Gui` (`Gui<Style>` over `GuiCore`), `IRenderer`, the CPU layer cache, painter interfaces and `Theme`, `EditorHost` with optional extensions, layout helpers, the editor shell, telemetry consumers (built) | `spux_platform`, `spux_params` |
 | `spux_ui_retro` | Retro style and the pixel renderer, bitmap fonts | `spux_ui_core` |
 | `spux_ui_classic` | (built so far: `Graphics`, `Font`, `FileDialog`, `ClassicDraw`, atlas font data) Classic style, the supersampled CPU renderer with shading helpers, atlas fonts | `spux_ui_core` |
 | `spux_ui_modern` | (built so far: the GL function table and context, `spux::gl`) Modern style, GPU renderer (OpenGL 3.3), SDF font atlas, software fallback | `spux_ui_core` |
@@ -42,7 +42,7 @@ target; a plugin links the targets it lists and nothing else.
 | `spux_testing_allocguard` | Replaces the global `operator new` to catch allocations on the audio thread. Test executables only | nothing |
 | `spux_testing_clap` | CLAP smoke host: loads a built `.clap` like a DAW and runs the shared checks. Test executables only (`spux_clap_smoke` is the command line tool) | clap, X11 on Linux |
 
-Commercial-only code (licence checks and similar) lives in the private `spux-commercial` library, which
+Commercial-only code (license checks and similar) lives in the private `spux-commercial` library, which
 depends on spux, never the other way round.
 
 ## Testing and packaging helpers
@@ -64,12 +64,13 @@ spux is a git submodule at `extern/spux`, pinned to a release tag. spux itself o
 clap, clap-wrapper and doctest.
 
 ```cmake
+set(MYPLUGIN_UI "RETRO" CACHE STRING "RETRO, CLASSIC, MODERN or NONE")
+set(SPUX_UI_FLAVOR ${MYPLUGIN_UI})      # before adding spux: Retro builds spux's UI code for size
 if(SPUX_SOURCE_DIR)                      # -DSPUX_SOURCE_DIR=/path/to/local/spux while developing
   add_subdirectory(${SPUX_SOURCE_DIR} spux)
 else()
   add_subdirectory(extern/spux)
 endif()
-set(MYPLUGIN_UI "RETRO" CACHE STRING "RETRO, CLASSIC, MODERN or NONE")
 target_link_libraries(myplugin_core PRIVATE spux_dsp spux_params spux_state)
 target_link_libraries(myplugin PRIVATE spux_clap spux_ui_${MYPLUGIN_UI_LOWER})
 spux_target_flags(myplugin)              # determinism and warning flags, hidden visibility
@@ -86,10 +87,11 @@ cmake --build build --config Release --target spux_size_canary_report
 ```
 
 Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY`, `SPUX_BUILD_SMOKE_TOOL`, `SPUX_BUILD_BENCH` (all on only in a top-level build; `build/spux_bench` times spux math against libm, results in `docs/BENCH.md`), `SPUX_BUILD_VST3`
-(makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`.
+(makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`, `SPUX_UI_FLAVOR` and `SPUX_UI_OPTIMIZE` (`AUTO`: spux's UI code for size in a
+Retro build, for speed otherwise; guidelines 4.9).
 
-## Licence
+## License
 
-MIT. Third-party code inside spux keeps its own licence in its own folder (the BSD-3 BLEP table from
+MIT. Third-party code inside spux keeps its own license in its own folder (the BSD-3 BLEP table from
 pt2-clone in `include/spux/dsp/pt2/`, later the OFL font Inter); `THIRD_PARTY_LICENSES.md` lists what a
 shipped plugin must include.

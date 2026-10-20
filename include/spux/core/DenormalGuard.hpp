@@ -4,8 +4,6 @@
 // nor its exception masks reach the DSP (R3).
 //
 // x86 and x64: MXCSR with FTZ and DAZ. ARM64: FPCR with FZ. Elsewhere it does nothing.
-// From Lumeoid `dsp/simd.hpp` (Plumeflow's guard only added FTZ and DAZ and kept the other bits; the
-// result is the same under any host that leaves rounding and masks at their defaults).
 #pragma once
 
 #include <cstdint>

@@ -1,4 +1,4 @@
-// Win32 child window (ported from the Acidus GuiWindow Win32 section). The window lives on the host's
+// Win32 child window. The window lives on the host's
 // UI thread and uses its message loop, so no thread of our own. NOT YET COMPILED OR RUN: this
 // machine has no Windows toolchain; the first CI run on windows-latest is the check.
 //
@@ -110,7 +110,7 @@ public:
         bmi.bmiHeader.biPlanes = 1;
         bmi.bmiHeader.biBitCount = 32;
         bmi.bmiHeader.biCompression = BI_RGB;
-        // The whole frame, as Acidus does: the meaning of the source y of a partial blit from a top-down
+        // The whole frame: the meaning of the source y of a partial blit from a top-down
         // DIB is easy to get wrong, and a full-frame blit of a panel this size is cheap.
         SetDIBitsToDevice(hdc, 0, 0, static_cast<DWORD>(width), static_cast<DWORD>(height), 0, 0, 0,
                           static_cast<UINT>(height), argb, &bmi, DIB_RGB_COLORS);

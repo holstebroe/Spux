@@ -1,5 +1,5 @@
 // Saturator policies, first-order antiderivative anti-aliasing (ADAA) and the implicit solvers of
-// zero-delay feedback loops, in the style of Gritbaal's `TanhSaturator` and `NewtonSolver`: the shape and
+// zero-delay feedback loops: the shape and
 // the solver are template parameters of the block that uses them, stated by concepts.
 //
 // A Saturator provides value(x) and deriv(x) for float and double; an AdaaSaturator also provides
@@ -10,11 +10,11 @@
 // lowers the total alias power by about 5.5 dB, 4x oversampling by 32 to 44 dB, and ADAA on top of 4x by
 // 0.2 dB (smooth shapes) to 12 dB (hard clip). Adaa1 delays the signal by half a sample.
 //
-//   TanhSaturator           tanh (fastTanhF, abs. error < 1e-6); antiderivative log cosh (Plumeflow `logCosh`).
-//   AsymmetricTanhSaturator tanh for x >= 0, 1.3 tanh(0.7 x) below (Gritbaal's diode-clipper asymmetry).
+//   TanhSaturator           tanh (fastTanhF, abs. error < 1e-6); antiderivative log cosh.
+//   AsymmetricTanhSaturator tanh for x >= 0, 1.3 tanh(0.7 x) below (a diode-clipper asymmetry).
 //   HardClipSaturator       clamp to [-1, 1].
-//   PadeSaturator           x (27 + x^2) / (27 + 9 x^2), +-1 from |x| = 3 (Tannhauser `tanhFast`).
-// Gritbaal used std::tanh; with these the values differ by about 1e-7 (S4: spux math, as fast or faster).
+//   PadeSaturator           x (27 + x^2) / (27 + 9 x^2), +-1 from |x| = 3.
+// The shapes use spux math; they differ from std::tanh by about 1e-7.
 #pragma once
 
 #include <concepts>
@@ -118,8 +118,7 @@ struct PadeSaturator {
 };
 
 // First-order ADAA: y = (F(x) - F(x1)) / (x - x1), and value((x + x1) / 2) when |x - x1| < Epsilon (the
-// difference quotient loses accuracy there). From Plumeflow `DriveStage::adaa` (Epsilon 5e-3); the
-// state is double.
+// difference quotient loses accuracy there). The state is double.
 template <class S, std::floating_point T = float, double Epsilon = 5e-3>
     requires AdaaSaturator<S, T> && (Epsilon > 0.0)
 class Adaa1 {
@@ -147,7 +146,7 @@ private:
     double x1_ = 0.0, f1_ = 0.0;
 };
 
-// Solvers of the implicit feedback equation y + G S(k y) = f0 (Gritbaal).
+// Solvers of the implicit feedback equation y + G S(k y) = f0.
 template <class P, class T>
 concept ImplicitSolver = std::floating_point<T> && requires(T f0, T G, T k, T guess) {
     { P::solve(f0, G, k, guess) } -> std::same_as<T>;

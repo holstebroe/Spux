@@ -1,4 +1,4 @@
-# Packaging helpers (decision P10). They replace the DeployClap.cmake copies in the plugin repositories and
+# Packaging helpers. They replace the DeployClap.cmake copies in the plugin repositories and
 # add a zip through CPack and a hook for an installer script. Include once; the root CMakeLists does.
 #
 #   spux_deploy_clap(<clap-target> [NAME <custom-target>])
@@ -9,7 +9,7 @@
 #                [EXTRA_FILES <file>...] [VENDOR <v>] [GENERATORS ZIP])
 #       install() rules and the CPack settings for a release zip, built with `cpack -C Release` (or the
 #       `package` target): <name>-<version>-<system>-<arch>.zip holding clap/, vst3/ and the extra files
-#       (licence, readme). VST3_PATHS are bundle directories, generator expressions allowed (for
+#       (license, readme). VST3_PATHS are bundle directories, generator expressions allowed (for
 #       clap-wrapper: $<TARGET_BUNDLE_DIR:...>); each is copied into vst3/ under its own name. Call it once, from the top-level CMakeLists, after the
 #       plugin targets exist: CPack is one per project.
 #

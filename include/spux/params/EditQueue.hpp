@@ -1,4 +1,4 @@
-// Parameter edits made in the editor on their way to the host (from Plumeflow `plugin/EditQueue`). The
+// Parameter edits made in the editor on their way to the host. The
 // editor writes the value into the ParamStore (the sound follows at once) and queues the change here;
 // the audio thread (process) or the host's flush turns the queue into gesture-begin, value and
 // gesture-end events, so the host records automation and undo (spux/clap/ClapHelpers.hpp, drainEdits).
@@ -46,7 +46,7 @@ public:
     }
 
     // A begin keeps one slot for its end; a begin that does not fit should drop its end too, so the
-    // host never sees an unbalanced gesture (Plumeflow's Gui does this).
+    // host never sees an unbalanced gesture (spux's Gui does this).
     bool pushBegin(std::uint32_t index) { return tryPush({ParamEdit::Kind::Begin, index, 0.0}, 1); }
     bool pushValue(std::uint32_t index, double host) {
         return tryPush({ParamEdit::Kind::Value, index, host}, kGestureReserve);

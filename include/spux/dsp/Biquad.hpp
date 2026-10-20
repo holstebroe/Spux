@@ -1,6 +1,5 @@
 // Biquad in transposed direct form II with the RBJ cookbook designs (Bristow-Johnson, "Audio EQ
-// Cookbook"). Designs are computed in double with spux math and stored as T; Tannhauser's `Biquad` is
-// Biquad<double> with designLowpass.
+// Cookbook"). Designs are computed in double with spux math and stored as T.
 //
 // Law (all designs): w = 2 pi fc / fs with fc / fs clamped to [1e-5, 0.49], alpha = sin w / (2 Q),
 // A = 10^(dB / 40) for peaking and shelves (shelf slope S = 1); coefficients normalized by a0.
@@ -44,7 +43,7 @@ inline BiquadCoeffs designHighpass(double fc, double q, double fs) {
     const double alpha = sw / (2.0 * q);
     return detail::normalize((1.0 + cw) * 0.5, -(1.0 + cw), (1.0 + cw) * 0.5, 1.0 + alpha, -2.0 * cw, 1.0 - alpha);
 }
-// Band-pass with 0 dB at the centre (constant peak gain).
+// Band-pass with 0 dB at the center (constant peak gain).
 inline BiquadCoeffs designBandpass(double fc, double q, double fs) {
     const auto [cw, sw] = detail::rbjAngles(fc, fs);
     const double alpha = sw / (2.0 * q);

@@ -1,9 +1,8 @@
 #pragma once
 
 // Analysis metrics for plugin tests: zero-phase filters, FFT and power spectra, third-octave band
-// levels and Schroeder decay times (EDT, T20, T30). Moved unchanged from Tearwash (analysis/Metrics.hpp,
-// room-acoustic tests of the reverb). Offline only; allocates freely and uses libm (R2 is for the audio
-// path only).
+// levels and Schroeder decay times (EDT, T20, T30), for room-acoustic tests of reverbs. Offline only; allocates freely
+// and uses libm (R2 is for the audio path only).
 
 #include <algorithm>
 #include <cmath>
@@ -11,6 +10,8 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+
+#include "spux/dsp/Fft.hpp"
 
 namespace spux::inline v1::testing {
 
@@ -78,28 +79,7 @@ inline std::vector<double> bandpass(const std::vector<double>& x, double lo, dou
 
 // --- FFT ------------------------------------------------------------------------------------
 
-inline void fft(std::vector<std::complex<double>>& a) {
-    const size_t n = a.size();
-    for (size_t i = 1, j = 0; i < n; ++i) {
-        size_t bit = n >> 1;
-        for (; j & bit; bit >>= 1)
-            j ^= bit;
-        j ^= bit;
-        if (i < j)
-            std::swap(a[i], a[j]);
-    }
-    for (size_t len = 2; len <= n; len <<= 1) {
-        const std::complex<double> wl = std::polar(1.0, -2.0 * kMPi / double(len));
-        for (size_t i = 0; i < n; i += len) {
-            std::complex<double> w(1.0);
-            for (size_t k = 0; k < len / 2; ++k, w *= wl) {
-                const auto u = a[i + k], v = a[i + k + len / 2] * w;
-                a[i + k] = u + v;
-                a[i + k + len / 2] = u - v;
-            }
-        }
-    }
-}
+using spux::fft; // spux/dsp/Fft.hpp
 
 // Power spectrum of x[a, b) with a Hann window, zero-padded to >= pad samples. Bin k is k·fs/N.
 inline std::vector<double> powerSpectrum(const std::vector<double>& x, size_t a, size_t b, size_t pad = 0) {
@@ -131,10 +111,10 @@ inline const std::vector<double>& thirdOctaveBands() {
 }
 
 // Band levels (dB, mean power density) of a power spectrum over third-octave bands.
-inline std::vector<double> bandLevels(const std::vector<double>& p, double fs, const std::vector<double>& centres) {
+inline std::vector<double> bandLevels(const std::vector<double>& p, double fs, const std::vector<double>& centers) {
     const size_t n = (p.size() - 1) * 2;
     std::vector<double> out;
-    for (double fc : centres) {
+    for (double fc : centers) {
         const double lo = fc / std::pow(2.0, 1.0 / 6.0), hi = fc * std::pow(2.0, 1.0 / 6.0);
         // Mean power per bin, so a flat (white) response reads flat across bands.
         double e = 0;

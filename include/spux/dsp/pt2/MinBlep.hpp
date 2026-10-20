@@ -1,11 +1,11 @@
-// Minimum-phase BLEP of pt2-clone (BSD-3-Clause, (c) Olav Sorensen; BLEP synthesis by aciddose), from
-// Paulascape `core/blep`. This folder keeps its own licence (LICENSE here, THIRD_PARTY_LICENSES.md at
+// Minimum-phase BLEP of pt2-clone (BSD-3-Clause, (c) Olav Sorensen; BLEP synthesis by aciddose).
+// This folder keeps its own license (LICENSE here, THIRD_PARTY_LICENSES.md at
 // the root); a plugin that uses this header ships that notice.
 //
 // Law: 16 zero crossings, a table oversampled 16 times, linear interpolation between table points; a
 // step inserts a correction of 16 samples (BLEP_NS) into a 32-sample ring. Usage, per output sample:
 // on a discontinuity call add(offset, oldValue - newValue), offset = samples since the step in [0, 1), then
-// out = run(naive). Paulascape's public `samplesLeft` and `lastValue` are the accessors below.
+// out = run(naive).
 #pragma once
 
 #include <array>
@@ -97,7 +97,7 @@ public:
         lastValue_ = T(0);
     }
 
-    // offset: time from the step to this output sample, in samples [0, 1) (Paulascape passes phase / delta);
+    // offset: time from the step to this output sample, in samples [0, 1) (phase / delta for an oscillator);
     // amplitude = old value - new value.
     void add(T offset, T amplitude) {
         T f = offset * T(kBlepStep);

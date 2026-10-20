@@ -1,4 +1,4 @@
-// Golden hash helpers (S5, section 3 of the guidelines): FNV-1a 64 over sample, pixel or byte data, and a
+// Golden hash helpers (section 3 of the guidelines): FNV-1a 64 over sample, pixel or byte data, and a
 // golden file that keeps one hash per case for each platform and compiler. A changed hash is a change
 // detector, not a failure: regenerate the file in the same commit as the change and note it in the
 // changelog.
@@ -22,7 +22,7 @@
 namespace spux::inline v1::testing {
 
 inline constexpr std::uint64_t kFnvOffsetBasis = 14695981039346656037ull;
-// The Classic drawing golden (moved from Tearwash, Tannhauser and Acidus) was made with an offset basis that
+// The Classic drawing golden was made with an offset basis that
 // lost its last digit. It is still a deterministic hash, so the golden stays valid with this basis; new
 // goldens use the standard one.
 inline constexpr std::uint64_t kFnvLegacyBasis = 1469598103934665603ull;

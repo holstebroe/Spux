@@ -1,4 +1,4 @@
-// Thin CLAP glue (decision P1, guidelines section 6): a CRTP base that fills `clap_plugin_t`, forwards
+// Thin CLAP glue (guidelines section 6): a CRTP base that fills `clap_plugin_t`, forwards
 // every call to the plugin class, and offers the extensions the plugin class implements. Not a
 // framework: it owns no parameters, state or threads, and the plugin can implement any extension itself.
 //
@@ -63,7 +63,7 @@ constexpr const char* platformWindowApi() { return CLAP_WINDOW_API_WIN32; }
 inline constexpr bool kHasPlatformWindowApi = true;
 constexpr const char* platformWindowApi() { return CLAP_WINDOW_API_X11; }
 #else
-inline constexpr bool kHasPlatformWindowApi = false; // macOS: Cocoa is not in spux_platform yet (U14)
+inline constexpr bool kHasPlatformWindowApi = false; // macOS: Cocoa is not in spux_platform yet
 constexpr const char* platformWindowApi() { return ""; }
 #endif
 

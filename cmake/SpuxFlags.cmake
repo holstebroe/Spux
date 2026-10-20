@@ -23,7 +23,7 @@ function(spux_target_flags target)
                                              -ffunction-sections -fdata-sections)
   endif()
 
-  # Hidden visibility [L13]; a plugin exports its entry point explicitly (CLAP_EXPORT).
+  # Hidden visibility; a plugin exports its entry point explicitly (CLAP_EXPORT).
   set_target_properties(${target} PROPERTIES CXX_VISIBILITY_PRESET hidden C_VISIBILITY_PRESET hidden
                                               VISIBILITY_INLINES_HIDDEN ON)
 

@@ -6,8 +6,7 @@ namespace spux::inline v1::ui::classic {
 static uint8_t g_font5x7[128][7];
 static bool g_fontInitialized = false;
 
-// Classic 5x7 font (ASCII 32-95), column-major, bit 0 = top row. Same
-// glyphs as the Syrebas panel.
+// Classic 5x7 font (ASCII 32-95), column-major, bit 0 = top row.
 static const uint8_t g_classicColumns[64][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // ' ' (32)
     {0x00, 0x00, 0x5f, 0x00, 0x00}, // '!'

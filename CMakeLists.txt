@@ -21,6 +21,12 @@ option(SPUX_WITH_X11 "Linux: build the X11 window and GLX context. OFF for headl
 option(SPUX_BUILD_SMOKE_TOOL "Build spux_clap_smoke, the command line CLAP smoke host" ${_spux_dev})
 option(SPUX_BUILD_BENCH "Build spux_bench (math against libm, DSP block timings; meaningful in Release)" ${_spux_dev})
 option(SPUX_BUILD_VST3 "Make clap-wrapper's make_clapfirst_plugins available (downloads the VST3 SDK)" OFF)
+# How spux's UI code is optimized (DESIGN_GUIDELINES 4, item 9). SIZE: -Os (MSVC /O1); SPEED: the build type's
+# flags. AUTO picks SIZE when the plugin builds the Retro flavor and SPEED otherwise; the plugin tells spux its
+# flavor with SPUX_UI_FLAVOR (set it before add_subdirectory, or on the command line).
+set(SPUX_UI_FLAVOR "" CACHE STRING "The plugin's UI flavor: RETRO, CLASSIC, MODERN or NONE (for SPUX_UI_OPTIMIZE=AUTO)")
+set(SPUX_UI_OPTIMIZE "AUTO" CACHE STRING "Optimize spux's UI code for SIZE or SPEED; AUTO: SIZE for Retro, SPEED otherwise")
+set_property(CACHE SPUX_UI_OPTIMIZE PROPERTY STRINGS AUTO SIZE SPEED)
 
 # The plugin chooses its language level; spux needs C++20 at least. The top-level build sets it.
 if(_spux_dev)
@@ -38,7 +44,7 @@ include(${SPUX_ROOT}/cmake/SpuxFlags.cmake)
 include(${SPUX_ROOT}/cmake/SpuxPackaging.cmake)
 include(${SPUX_ROOT}/cmake/SpuxTesting.cmake)
 
-# Third party (spux owns the versions, L6): clap, clap-wrapper (author's fork, L7), doctest.
+# Third party (spux owns the versions): clap, clap-wrapper (author's fork), doctest.
 if(NOT TARGET clap)
   add_subdirectory(${SPUX_ROOT}/third_party/clap ${CMAKE_CURRENT_BINARY_DIR}/third_party/clap EXCLUDE_FROM_ALL)
 endif()
@@ -69,10 +75,9 @@ spux_module(spux_params DEPENDS spux_core)
 spux_module(spux_state DEPENDS spux_core)
 spux_module(spux_clap DEPENDS spux_params spux_state clap)
 spux_module(spux_midi DEPENDS spux_core)
-spux_module(spux_ui_core DEPENDS spux_platform spux_params)
 spux_module(spux_ui_retro DEPENDS spux_ui_core)
 spux_module(spux_presetbrowser DEPENDS spux_ui_core spux_state)
-spux_module(spux_testing DEPENDS spux_core spux_doctest)    # header-only: WAV, loudness, metrics, hashes, null test
+spux_module(spux_testing DEPENDS spux_core spux_dsp spux_doctest)    # header-only: WAV, loudness, metrics, hashes, null test
 
 # spux_testing_allocguard: replaces the global operator new/delete to catch allocations on the audio thread.
 # Test executables only, never a plugin (the replacement is process-wide).
@@ -104,6 +109,43 @@ if(SPUX_BUILD_SMOKE_TOOL)
   spux_target_flags(spux_clap_smoke)
 endif()
 
+# Applies SPUX_UI_OPTIMIZE to a UI target (not in Debug builds).
+function(spux_ui_optimize target)
+  string(TOUPPER "${SPUX_UI_OPTIMIZE}" mode)
+  string(TOUPPER "${SPUX_UI_FLAVOR}" flavor)
+  if(mode STREQUAL "AUTO")
+    if(flavor STREQUAL "RETRO")
+      set(mode SIZE)
+    else()
+      set(mode SPEED)
+    endif()
+  endif()
+  if(mode STREQUAL "SIZE")
+    if(MSVC)
+      target_compile_options(${target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O1>)
+    else()
+      target_compile_options(${target} PRIVATE $<$<NOT:$<CONFIG:Debug>>:-Os>)
+    endif()
+  elseif(NOT mode STREQUAL "SPEED")
+    message(FATAL_ERROR "SPUX_UI_OPTIMIZE must be AUTO, SIZE or SPEED, not '${SPUX_UI_OPTIMIZE}'")
+  endif()
+endfunction()
+
+# spux_ui_core: immediate-mode Gui, IRenderer, the CPU layer cache, painter interfaces, Theme, EditorHost,
+# the editor shell and the telemetry consumers. STATIC: a plugin pays only for the objects it references.
+add_library(spux_ui_core STATIC
+  ${SPUX_ROOT}/src/ui/core/CpuLayers.cpp
+  ${SPUX_ROOT}/src/ui/core/Gui.cpp
+  ${SPUX_ROOT}/src/ui/core/Editor.cpp
+  ${SPUX_ROOT}/src/ui/core/Live.cpp)
+add_library(spux::spux_ui_core ALIAS spux_ui_core)
+target_include_directories(spux_ui_core PUBLIC ${SPUX_ROOT}/include)
+target_compile_features(spux_ui_core PUBLIC cxx_std_20)
+target_link_libraries(spux_ui_core PUBLIC spux_platform spux_params spux_dsp)
+set_target_properties(spux_ui_core PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
+spux_target_flags(spux_ui_core)
+spux_ui_optimize(spux_ui_core)
+
 # spux_ui_classic: Classic drawing code (Graphics, Font, FileDialog, ClassicDraw), the first module with
 # sources, so it is a STATIC library. CPU drawing only. The font data headers (DisplayFont.hpp,
 # LabelFont.hpp) are headers a plugin includes where it needs them; nothing else is compiled in.
@@ -118,6 +160,7 @@ target_compile_features(spux_ui_classic PUBLIC cxx_std_20)
 target_link_libraries(spux_ui_classic PUBLIC spux_ui_core)
 set_target_properties(spux_ui_classic PROPERTIES POSITION_INDEPENDENT_CODE ON)
 spux_target_flags(spux_ui_classic)
+spux_ui_optimize(spux_ui_classic)
 
 # spux_platform: native child window (X11, Win32, none elsewhere). Sources, so STATIC; it is not part of
 # `all` of a plugin that never links it. The OS libraries are public because a plugin links the window
@@ -142,6 +185,7 @@ elseif(WIN32)
   target_link_libraries(spux_platform PUBLIC user32 gdi32)
 endif()
 spux_target_flags(spux_platform)
+spux_ui_optimize(spux_platform)
 
 # spux_ui_modern: so far the GL parts only (function table loaded at run time, context per window; GPU
 # renderer, shaders and style follow in step 7). OpenGL is opened at run time on Linux and Windows.
@@ -159,6 +203,7 @@ if(WIN32)
 endif()
 set_target_properties(spux_ui_modern PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
 spux_target_flags(spux_ui_modern)
+spux_ui_optimize(spux_ui_modern)
 
 if(SPUX_BUILD_BENCH)
   add_executable(spux_bench ${SPUX_ROOT}/bench/SpuxBench.cpp)
