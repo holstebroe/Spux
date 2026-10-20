@@ -2,7 +2,8 @@
 
 The gate of DESIGN_GUIDELINES section 7 (decision U7): port one Tannhauser panel and one Acidus panel to the
 immediate-mode API and compare with today's retained versions. **Result: lines and CPU pass, the Retro
-binary size fails.** U7 stays conditional until the author decides.
+binary size fails.** The author accepted the size cost: U7 is decided (immediate mode), and U16 builds
+spux's UI code for size in Retro plugins.
 
 | Measure | Pass | Acidus | Tannhauser | |
 | --- | --- | --- | --- | --- |
@@ -117,10 +118,8 @@ For a plugin of Acidus's size (160 KB), any shared editor shell costs more than 
 written compares with hand-written code rather than with the fallback (a spux retained tree), which is not
 built.
 
-## Open for the author
+## The author's decisions (2026-10-20)
 
-1. The size criterion: accept the measured cost (Retro Acidus +33 % tuned, Tannhauser Classic +7.6 %), change
-   the criterion (for example: against a spux retained tree, or a fixed budget in KB), or take the fallback.
-2. Compile the spux UI targets with `-Os`? Decided (U16): for size in a simple Retro plugin, for speed in a
-   large one; `SPUX_UI_OPTIMIZE`, `AUTO` by flavor.
-3. Cascading popups (Tannhauser's preset menu) as part of `Gui::popup`, or the plugin's own view?
+1. Size criterion: the measured cost is accepted for simpler, easier to change page code; U7 is decided.
+2. spux's UI code for size in a simple Retro plugin, for speed in a large one (U16, `SPUX_UI_OPTIMIZE`).
+3. Cascading popups (Tannhauser's preset menu) become part of spux's popup (U9).

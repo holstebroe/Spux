@@ -131,7 +131,7 @@ plugin-specific views and page code.
    needs a reader for the old chunks); Tannhauser, Acidus, Kikset and Gritbaal move their `ParamInfo` in their
    own steps; the telemetry ring and Rodee's `StateChunk` are not looked at yet.
 6. `spux_ui_core` from Plumeflow's `Gui`; run the immediate-mode acceptance gate on one Tannhauser and
-   one Acidus panel. **Done in spux** (2026-10-20); the gate's result waits for the author's decision (U7).
+   one Acidus panel. **Done in spux** (2026-10-20); after the gate the author decided U7 (immediate mode) and U16.
    `spux_ui_core` (STATIC): `Geometry`, `IRenderer` (Plumeflow's, the effect calls with plain defaults,
    `drawTrace`/`drawMeter` no longer pure), `Layers` (`LayerCache`, `CpuLayers`: background, widgets and
    display layers, dirty rectangles, box-filter resolve), `Theme` (colours, metrics, interaction feel, font
@@ -146,7 +146,7 @@ plugin-specific views and page code.
    `tools/gate_report.sh` measures them; numbers and method in `docs/UI_GATE.md`. No plugin repository was
    changed. Left: the flavors' painters and renderers (step 7, from Acidus's skins, Tannhauser's panel
    renderer and Plumeflow's look); Plumeflow switches in step 8; the GPU path in the editor shell, window
-   scaling, cascading popups (Tannhauser's preset menu) and the shared views (`ui/Views`).
+   scaling, cascading submenus in spux's popup (U9, for Tannhauser's preset menu) and the shared views (`ui/Views`).
 7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow.
 8. Plumeflow and Lumeoid move onto spux (Lumeoid's GPU UI starts on spux directly).
 

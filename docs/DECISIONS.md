@@ -67,9 +67,9 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 | U4 | **The plugin decides which flavors it supports.** spux forces none; a missing painter is a compile error only in a plugin that selects that flavor. | Decided | Replaces "Retro is always available". |
 | U5 | **Modern falls back to the Modern style on the software renderer**, not to Classic. | Decided | |
 | U6 | CI builds each plugin's native flavor on every push and the full matrix nightly. | Decided | |
-| U7 | **Immediate-mode widget API with retained-style caches**, provided it passes the acceptance gate (guidelines, "Immediate mode"). Otherwise: a retained widget tree behind the same painter interfaces. | Decided (conditional) | |
+| U7 | **Immediate-mode widget API with retained-style caches.** The retained widget tree behind the same painter interfaces was the fallback and is not needed. | Decided | 2026-10-20 after the acceptance gate (docs/UI_GATE.md): simpler page code and faster frames than the retained panels; the size cost (Acidus Retro about +33 % with U16, Tannhauser Classic +7.6 %) accepted by the author. |
 | U8 | **Painters per widget and flavor**; a flavor's look is a `Theme` **data struct** (colours, metrics, fonts). | Decided | |
-| U9 | **Editing helpers** in the core: value entry, Tab focus, tooltips, popups, double-click reset, fine adjust. | Decided | Plumeflow's `Gui` is the baseline. |
+| U9 | **Editing helpers** in the core: value entry, Tab focus, tooltips, popups, double-click reset, fine adjust. | Decided | Plumeflow's `Gui` is the baseline. Cascading submenus (Tannhauser's preset menu) go into spux's own popup, the simple option: a plugin cannot draw its own overlays (2026-10-20). |
 | U10 | **Shared preset browser** as an optional target; plugins may write their own. | Decided | |
 | U11 | Scaling: Retro whole steps; Classic in steps up to a cap; Modern **free resize at a fixed aspect ratio**. | Decided | |
 | U12 | Fonts: Retro bitmap; Classic pre-rasterized atlas; Modern **SDF atlas baked at editor open** from an embedded TTF subset (stb_truetype). | Decided | Smaller binary than a pre-baked atlas (about 34 KB TTF vs 1 MB atlas). |
@@ -193,3 +193,6 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 - 2026-10-20: **U16 added** (by the author): the optimization of UI code follows the plugin's kind, size for a simple Retro
   plugin, speed for a large one. spux's UI targets (`spux_ui_core`, `spux_platform`, `spux_ui_classic`, `spux_ui_modern`) take
   `SPUX_UI_OPTIMIZE` (`AUTO` picks `SIZE` for `SPUX_UI_FLAVOR=RETRO`). The gate measured the trade (docs/UI_GATE.md).
+- 2026-10-20: **U7 decided** (by the author, after the gate in docs/UI_GATE.md): immediate mode, accepting its size cost for
+  page code that is simpler to read and change and frames that are faster than the retained panels'. **U9 extended**
+  (by the author): cascading submenus become part of spux's popup (kept simple: one popup API, no plugin overlays).

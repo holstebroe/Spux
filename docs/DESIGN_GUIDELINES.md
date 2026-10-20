@@ -261,7 +261,8 @@ How `spux_ui_core` does it (`spux/ui/Gui.hpp`, `Layers.hpp`, `Editor.hpp`):
 - `Editor<Style>` takes the logical size and the plugin's `RootView` (background, frame, a content
   version for what changes outside the parameters, an animation flag, a tick hook).
 
-**Acceptance gate.** Immediate mode is adopted only if it is not noticeably more expensive than retained
+**Acceptance gate** (run 2026-10-20, docs/UI_GATE.md; U7 decided for immediate mode, size cost accepted).
+Immediate mode is adopted only if it is not noticeably more expensive than retained
 mode and its layout code is as simple or simpler. The test: port one panel of Tannhauser and one of
 Acidus, then compare with today's retained version:
 
