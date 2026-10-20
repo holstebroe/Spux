@@ -92,3 +92,9 @@ foreach(t ui_modern_test gpu_renderer_test)
   target_include_directories(${t} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_definitions(${t} PRIVATE SPUX_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 endforeach()
+
+# spux_ui_classic: the shaded renderer and ClassicStyle (ui_classic_style_test). Golden frames are quarter-size
+# portable pixmaps in tests/golden/, compared by structural similarity.
+spux_add_test(ui_classic_style_test spux_ui_classic)
+target_include_directories(ui_classic_style_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(ui_classic_style_test PRIVATE SPUX_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}")

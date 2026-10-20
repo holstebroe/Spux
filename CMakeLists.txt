@@ -153,7 +153,9 @@ add_library(spux_ui_classic STATIC
   ${SPUX_ROOT}/src/ui/classic/Font.cpp
   ${SPUX_ROOT}/src/ui/classic/Graphics.cpp
   ${SPUX_ROOT}/src/ui/classic/FileDialog.cpp
-  ${SPUX_ROOT}/src/ui/classic/ClassicDraw.cpp)
+  ${SPUX_ROOT}/src/ui/classic/ClassicDraw.cpp
+  ${SPUX_ROOT}/src/ui/classic/ShadedRenderer.cpp
+  ${SPUX_ROOT}/src/ui/classic/ClassicStyle.cpp)
 add_library(spux::spux_ui_classic ALIAS spux_ui_classic)
 target_include_directories(spux_ui_classic PUBLIC ${SPUX_ROOT}/include)
 target_compile_features(spux_ui_classic PUBLIC cxx_std_20)
