@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4), the parameters, state and CLAP glue (step 5) and the immediate-mode UI core (step 6, its acceptance gate in `docs/UI_GATE.md`) are extracted. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4), the parameters, state and CLAP glue (step 5) the immediate-mode UI core (step 6, its acceptance gate in `docs/UI_GATE.md`) and the Modern flavor (step 7: GPU and software renderers, `ModernStyle`, generic views) are extracted. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.
@@ -36,7 +36,7 @@ target; a plugin links the targets it lists and nothing else.
 | `spux_ui_core` | Immediate-mode `Gui` (`Gui<Style>` over `GuiCore`), `IRenderer`, the CPU layer cache, painter interfaces and `Theme`, `EditorHost` with optional extensions, layout helpers, the editor shell, telemetry consumers (built) | `spux_platform`, `spux_params` |
 | `spux_ui_retro` | Retro style and the pixel renderer, bitmap fonts | `spux_ui_core` |
 | `spux_ui_classic` | (built so far: `Graphics`, `Font`, `FileDialog`, `ClassicDraw`, atlas font data) Classic style, the supersampled CPU renderer with shading helpers, atlas fonts | `spux_ui_core` |
-| `spux_ui_modern` | (built so far: the GL function table and context, `spux::gl`) Modern style, GPU renderer (OpenGL 3.3), SDF font atlas, software fallback | `spux_ui_core` |
+| `spux_ui_modern` | The Modern flavor (built): the GL function table and context (`spux::gl`), `GpuRenderer` (OpenGL 3.3, bloom chain, embedded shaders), the Inter SDF font atlas, `SoftRenderer` (the same style on the CPU), `ModernStyle` with its `ModernConfig`, generic views (spectrum, traces, stereo meter, curve editor). Static, one object per part | `spux_ui_core` |
 | `spux_presetbrowser` | Optional shared preset browser | `spux_ui_core`, `spux_state` |
 | `spux_testing` (header-only) | WAV read and write, BS.1770 loudness, analysis metrics (filters, FFT, band levels, Schroeder decay), render-safety check, FNV golden hashes and golden files, reference-render null test | `spux_core`, doctest |
 | `spux_testing_allocguard` | Replaces the global `operator new` to catch allocations on the audio thread. Test executables only | nothing |
@@ -61,7 +61,7 @@ depends on spux, never the other way round.
 ## Using spux in a plugin
 
 spux is a git submodule at `extern/spux`, pinned to a release tag. spux itself owns the versions of
-clap, clap-wrapper and doctest.
+clap, clap-wrapper, doctest and stb_truetype.
 
 ```cmake
 set(MYPLUGIN_UI "RETRO" CACHE STRING "RETRO, CLASSIC, MODERN or NONE")
@@ -93,5 +93,5 @@ Retro build, for speed otherwise; guidelines 4.9).
 ## License
 
 MIT. Third-party code inside spux keeps its own license in its own folder (the BSD-3 BLEP table from
-pt2-clone in `include/spux/dsp/pt2/`, later the OFL font Inter); `THIRD_PARTY_LICENSES.md` lists what a
+pt2-clone in `include/spux/dsp/pt2/`, the OFL font Inter and stb_truetype in `third_party/`); `THIRD_PARTY_LICENSES.md` lists what a
 shipped plugin must include.

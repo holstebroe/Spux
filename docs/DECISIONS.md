@@ -202,3 +202,12 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   (`tests/gate/`) is marked temporary. No decision changed.
 - 2026-10-20: the UI gate code (`tests/gate/`, `tools/gate_report.sh`, `tools/gate_lines.py`) removed at the author's word,
   since the later moves do not need it; numbers and method stay in docs/UI_GATE.md, the code in history at 313587b.
+- 2026-10-20: migration step 7, the Modern flavor (`spux_ui_modern`). No decision changed. Choices within the guidelines:
+  the software fallback (U5) is a CPU renderer of its own on `CpuLayers`, not a software OpenGL: the fallback exists for
+  machines where OpenGL is missing or broken, spux loads GL at run time and takes no dependency for one, and a CPU
+  renderer also gives driver-independent output for headless golden frames and documentation screenshots. It draws
+  text from the same SDF atlas as the GPU (shared glyph shapes and advances) and leaves the effects plain. `ModernStyle`
+  is configured by a `ModernConfig` (data: the core `Theme` plus shapes, effects and control proportions), with the
+  painters as public members so a plugin can replace or derive one (U8). The GPU post chain and backdrop constants
+  became `GpuRenderer::Look` (defaults unchanged). The GPU path in the editor shell and window scaling (U11) are not
+  built yet; `Editor<ModernStyle>` runs on `SoftRenderer`.

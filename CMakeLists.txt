@@ -187,15 +187,30 @@ endif()
 spux_target_flags(spux_platform)
 spux_ui_optimize(spux_platform)
 
-# spux_ui_modern: so far the GL parts only (function table loaded at run time, context per window; GPU
-# renderer, shaders and style follow in step 7). OpenGL is opened at run time on Linux and Windows.
+# spux_ui_modern: the Modern flavor. The GL function table and context (loaded at run time), the GPU renderer
+# with its shaders and the distance-field font atlas, the software renderer (the same style on machines
+# without a usable GPU), ModernStyle (painters configured by a ModernConfig) and the generic views. STATIC,
+# one object per part, so a plugin links only what it references; the font data is its own object.
+# OpenGL is opened at run time on Linux and Windows.
+include(${SPUX_ROOT}/cmake/SpuxEmbedShaders.cmake)
+spux_embed_shaders(_spux_shader_source ${SPUX_ROOT}/src/ui/modern/shaders
+                   ${CMAKE_CURRENT_BINARY_DIR}/spux_generated/ShaderSources.cpp)
 add_library(spux_ui_modern STATIC
   ${SPUX_ROOT}/src/gl/GlApi.cpp
   ${SPUX_ROOT}/src/gl/GlContext_glx.cpp
   ${SPUX_ROOT}/src/gl/GlContext_wgl.cpp
-  ${SPUX_ROOT}/src/gl/GlContext_none.cpp)
+  ${SPUX_ROOT}/src/gl/GlContext_none.cpp
+  ${SPUX_ROOT}/src/ui/modern/FontAtlas.cpp
+  ${SPUX_ROOT}/src/ui/modern/InterFont.cpp
+  ${SPUX_ROOT}/src/ui/modern/GpuRenderer.cpp
+  ${SPUX_ROOT}/src/ui/modern/SoftRenderer.cpp
+  ${SPUX_ROOT}/src/ui/modern/ModernStyle.cpp
+  ${SPUX_ROOT}/src/ui/modern/ModernViews.cpp
+  ${_spux_shader_source})
 add_library(spux::spux_ui_modern ALIAS spux_ui_modern)
 target_include_directories(spux_ui_modern PUBLIC ${SPUX_ROOT}/include)
+target_include_directories(spux_ui_modern PRIVATE ${SPUX_ROOT}/src/ui/modern)
+target_include_directories(spux_ui_modern SYSTEM PRIVATE ${SPUX_ROOT}/third_party)
 target_compile_features(spux_ui_modern PUBLIC cxx_std_20)
 target_link_libraries(spux_ui_modern PUBLIC spux_ui_core)
 if(WIN32)

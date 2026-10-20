@@ -306,12 +306,32 @@ spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per wid
 
 - OpenGL 3.3 core through a runtime-loaded function table: no GL headers or libraries at build time, no
   glad, one table and one context per editor.
-- All GPU objects are created when the editor opens and freed when it closes; nothing while closed. A
-  quality governor lowers bloom and detail when frame time is over budget.
+- All GPU objects are created when the editor opens and freed when it closes; nothing while closed.
+  `GpuRenderer::Quality` (bloom levels and downscale, grain, animated backdrop) and `gpuMs()` are what a
+  quality governor needs; `Look` sets the post chain (bloom threshold and strength, grain, vignette, the
+  backdrop's pools and dust). The renderer's own defaults are the Modern look.
 - Shaders are self-contained fragment shaders, so a Metal or WebGPU backend later is a port of the
-  renderer only.
+  renderer only. They are embedded at configure time (`spux_embed_shaders`).
 - Text is an SDF atlas baked at editor open from an embedded TTF subset (Inter, OFL). Ship the font
-  license.
+  license. The atlas is immutable once built: a `SoftRenderer` can share one.
+- **The fallback is the same style on `SoftRenderer`** [U5]: a CPU renderer on `CpuLayers` (so `Gui` skips
+  unchanged widgets and the editor presents dirty rectangles) with analytic shape edges, the same Inter
+  glyphs thresholded per pixel, and additive blend, arcs, glow and radial gradients. Plain: no bloom, no
+  emission, no shadows, no grain, a static backdrop. Supersampling is its quality option (1 to 4, default 2).
+  It needs no GL at all, and its output does not depend on a driver, so it also renders documentation
+  screenshots and the headless golden frames. The GPU blends in linear light, so translucent white overlays
+  look brighter there than on the CPU; the layout is the same.
+- **`ModernStyle` is configured by data.** `ModernStyle(ModernConfig)` takes the core `Theme` (colors, text
+  sizes, interaction feel) plus shapes (radii, strokes, shadows), effects (glow on or off, emission and halo
+  scale) and the proportions of the knob, switch, slider and popup. `configure()` swaps the look at run
+  time. A plugin that needs more writes a painter, per widget call or per widget type, or derives from one
+  of `ModernStyle`'s. Painters take their sizes from the config and their colors from the `Theme` the Gui
+  hands them; a knob's dial, a slider's track and a popup's rows are laid out from the bounds alone, so
+  the interaction and the drawing always agree.
+- **Generic views** (`spux/ui/modern/ModernViews.hpp`): `drawSpectrum`, `drawTraces`, `drawStereoMeter`,
+  `drawCurveEditor`. They take data (band values, histories, levels, curve points), not a plugin's
+  telemetry; they are Gui views, so they stay correct under the CPU caches. What is specific to a plugin
+  (attractors, envelopes, filter responses, route tables) stays in the plugin.
 
 ### Telemetry [P7]
 

@@ -14,12 +14,14 @@ only in namespace and include guards, or not at all.
 | Native window | Plumeflow `gfx/NativeWindow*` (ported from Acidus); `GuiWindow` code in Acidus, Gritbaal, Syrebas, Tannhauser, Tearwash, Kikset, Paulascape | Plumeflow's version is the base; Cocoa missing. **Moved to `spux_platform` (step 3); Tearwash migrated.** |
 | GL context and function table | Plumeflow `gfx/GlApi`, `GlContext_{wgl,glx,none}` | Generic as is. **Moved to `spux_ui_modern` (step 3), namespace `spux::gl`.** |
 | Renderer interface | Plumeflow `ui/IRenderer` | Generic as is. **Moved to `spux_ui_core` (step 6)**, plus `layers()` for the CPU caches. |
-| GPU renderer, shaders, SDF fonts | Plumeflow `ui/GpuRenderer`, `ui/shaders`, `ui/FontAtlas`, `ui/InterFont`, `tools/make_fonts.py`, `cmake/EmbedShaders.cmake` | Generic as is. |
+| GPU renderer, shaders, SDF fonts | Plumeflow `ui/GpuRenderer`, `ui/shaders`, `ui/FontAtlas`, `ui/InterFont`, `tools/make_fonts.py`, `cmake/EmbedShaders.cmake` | Generic as is. **Moved to `spux_ui_modern` (step 7).** |
+| Software fallback | Plumeflow `ui/SoftRenderer`, `ui/Font` | **Rewritten as `spux::ui::modern::SoftRenderer` (step 7)** on `CpuLayers`, with the atlas font instead of the 5x7 bitmap font. |
+| Modern painters | The inline drawing in Plumeflow `ui/Gui.cpp` (knob, toggle, segmented, dropdown, stepper, slider, button, chip, panel, popup, tooltip, text field) | **`ModernStyle` with a `ModernConfig` (step 7).** |
 | Immediate-mode `Gui` | Plumeflow `ui/Gui` | Needs: painter split, parameter binding through spux, plugin-specific ids out (10 `plugin::P_*` uses), modulation as an optional interface. **Done in `spux_ui_core` (step 6).** Plumeflow's drawing becomes the Modern painters (step 7); its `displayText`, sync dimming, effect presets and route table stay in Plumeflow. |
 | Editor shell | Plumeflow `ui/Editor` | Logical size and root view become parameters. **Done (step 6)** for CPU renderers; the GPU path and window scaling come with Modern (step 7). |
 | Editor host | Plumeflow `ui/EditorHost` | Split into a core and optional extensions. **Done (step 6)**: core, `ModulationHost`, `PresetHost`, `StoreEditorHost<N>`. |
 | Edit queue, telemetry ring | Plumeflow `plugin/EditQueue`, `plugin/Telemetry` | Ring becomes a template on the frame type. **Edit queue moved to `spux_params` (step 5); Tearwash migrated.** **Telemetry ring done (step 6)**: `spux/core/TelemetryRing.hpp` (`TelemetryRing<Frame>`, `SampleRing`). |
-| Generic live views | Plumeflow `ui/Live`, `ui/Views` (spectrum, traces, meters, curve editor) | Attractor, envelope and filter views stay in Plumeflow. **Consumers moved (step 6)**: `Spectrum`, `LevelMeter`, `History` in `spux/ui/Live.hpp`; the views (`ui/Views`) with the Modern style in step 7. |
+| Generic live views | Plumeflow `ui/Live`, `ui/Views` (spectrum, traces, meters, curve editor) | Attractor, envelope and filter views stay in Plumeflow. **Consumers moved (step 6)**: `Spectrum`, `LevelMeter`, `History` in `spux/ui/Live.hpp`; **the generic views moved in step 7** (`spux/ui/modern/ModernViews.hpp`: spectrum, traces, stereo meter, curve editor). |
 | Parameters | `ParamInfo` in Tannhauser, Plumeflow, Lumeoid, Kikset, Gritbaal; X-macro in Plumeflow and Lumeoid | Plumeflow `params.def` + `ParamStore` as the base. **Moved to `spux_params` (step 5); Tearwash migrated.** |
 | State container | Lumeoid `LMN1`, Plumeflow `PLF1`, Rodee `StateChunk` | Lumeoid as the base. **Moved to `spux_state` (step 5); Tearwash migrated (`TWR1`).** |
 | PCG32 | Lumeoid, Plumeflow | Merge. **Merged into `spux_core` (step 4).** |
@@ -148,6 +150,24 @@ plugin-specific views and page code.
    renderer and Plumeflow's look); Plumeflow switches in step 8; the GPU path in the editor shell, window
    scaling, cascading submenus in spux's popup (U9, for Tannhauser's preset menu) and the shared views (`ui/Views`).
 7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow.
+   **Modern done in spux** (session 9, 2026-10-20), `spux_ui_modern` (STATIC, one object per part):
+   `GpuRenderer` (with `Look` for the post chain), `FontAtlas` and the Inter data (own object), the shaders
+   embedded by `cmake/SpuxEmbedShaders.cmake`, `tools/make_fonts.py`, `SoftRenderer` (supersample 1 to 4, shareable atlas),
+   `ModernStyle` with `ModernConfig` (`standard()`, `highContrast()`), and `drawSpectrum`, `drawTraces`,
+   `drawStereoMeter`, `drawCurveEditor`. Tests: `ui_modern_test` (software renderer primitives, every painter
+   inside its bounds and margin, popup and tooltip layout, interaction geometry, the config, a golden frame,
+   the editor shell with caches against an uncached frame) and `gpu_renderer_test` (the ported shape, text, bloom
+   and scale cases, painters on the GPU, a golden frame, GPU against software). Golden frames are of a showcase
+   page made for spux (`tests/golden/`, quarter size, structural similarity), not of Plumeflow's pages. Also added: `third_party/inter`,
+   `third_party/stb` (stb_truetype; spux owns it now), `History::copyTo`. **No plugin changed.** Size (stripped, GCC -O2 on x64 Linux,
+   with the standard library: a probe that draws eight widgets): the core `Gui` with a plain test style 109 KB; `ModernStyle` on
+   `SoftRenderer` 244 KB (+135 KB: atlas baking 28 KB, the font data 34 KB, painters 50 KB, the renderer 31 KB); with the GPU
+   renderer as well 310 KB (+200 KB over the core; the GPU renderer, GL context and shaders are about 65 KB). A plugin that does not link the
+   flavor pays nothing: every part is its own object in a static library.
+   Left: the GPU path in the editor shell (a window with a GL pixel format, the context, `beginFrame` and
+   swap, the quality governor, window scaling and the HiDPI factor; `Editor<ModernStyle>` runs today on
+   `SoftRenderer` through its renderer factory); Retro and Classic painters; cascading submenus in the popup; the
+   Win32 build of this code is unverified (no Windows toolchain here; CI is the check); Plumeflow's switch (step 8).
 8. Plumeflow and Lumeoid move onto spux (Lumeoid's GPU UI starts on spux directly).
 
 lexwash starts on spux from its first line.
@@ -211,3 +231,27 @@ from its own copy, is kept here.
   and pattern banks.
 - **UI core**: `Geometry`, `IRenderer`, `Gui`, `Editor`, `EditorHost` (its modulation extension is Plumeflow's
   matrix) and `Live` come from Plumeflow `ui/`; `EditQueue` gesture balancing follows Plumeflow's Gui.
+- **Modern UI**: `GpuRenderer`, `FontAtlas`, the shaders, `InterFont` (byte for byte, namespace only) and
+  `tools/make_fonts.py` come from Plumeflow `ui/` and `tools/`; `cmake/EmbedShaders.cmake` is
+  `spux_embed_shaders` (it takes the output file; the raw string delimiter is `SPX`). `SoftRenderer` replaces
+  Plumeflow's (bitmap font, no effects). `ModernStyle` is the drawing of Plumeflow's `Gui` (`knob`, `toggle`,
+  `segmented`, `dropdown`, `stepper`, `slider`, `button`, `chip`, `panel`, `popup`, `textField`, tooltip) and the views
+  are `ui/Views` (spectrum, traces, stereo meter, curve editor). What Plumeflow meets when it switches:
+  - Names: `Align::Centre` is `Center`; `Theme` (one struct with an `Accents` member) is the core `Theme` plus a
+    `ModernConfig`, and the section accents are `KnobOptions::accent` and the others, or `Gui::setAccent`;
+    `Theme::contrast()` is `ModernConfig::highContrast()`; `segmented` is `selector`, `chip` is a button with
+    `variant = kButtonChip`, a button's `active` is `ButtonOptions::on`.
+  - Looks that changed: a knob's dial geometry no longer depends on `large` (a large knob has heavier strokes and
+    larger text, the same dial: the interaction asks the painter without knowing the options); the slider label
+    sits in a column of `Slider::labelWidth` (72) instead of one measured from the text, and the track is inset
+    by the thumb radius so the thumb stays inside the bounds; popup rows, separators and disabled items are new,
+    and the highlight uses the theme's accent (the popup state carries no widget accent); the knob value text
+    and tooltip sizes come from `Theme::metrics`. The GPU post chain constants are `GpuRenderer::Look`, with
+    Plumeflow's values as the defaults, so GPU output is unchanged until a plugin sets them.
+  - Stays in Plumeflow: `displayText` (units and the sync note go in through `valueText` and `dimmed`), the
+    attractor, envelope, filter response, voices, signal flow and matrix views, the quality governor and the
+    editor's GPU glue (until spux's editor shell has the GPU path). The generic views take arrays and levels
+    instead of `Gui::live()`; the curve editor keeps its drag state in a `CurveEditorState` (Plumeflow used
+    function-local statics, which two editors would have shared).
+  - Tests: Plumeflow's `gpu_renderer_test` cases for shapes, text, bloom and scale are in spux's; its golden frames
+    are of its own pages and stay there, to be regenerated when it switches.
