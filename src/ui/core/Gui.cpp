@@ -138,6 +138,7 @@ std::uint64_t GuiCore::hashId(std::uint64_t v, std::uint64_t h) {
 
 GuiCore::GuiCore(EditorHost& host, const Theme& theme) : host_(host), theme_(&theme) {
     gestureOpen_.assign(host_.paramTable().size(), false);
+    gestureNest_.assign(host_.paramTable().size(), 0);
     keys_.reserve(32);
     focusables_.reserve(64);
     frameAreas_.reserve(128);
@@ -228,6 +229,8 @@ bool GuiCore::wantsFrame(double now) const {
 }
 
 void GuiCore::markSeen(std::uint64_t id) {
+    if (!checkOverlaps_) // the collision count is a debug diagnostic, off with the overlap check
+        return;
     if (std::find(frameIds_.begin(), frameIds_.end(), id) != frameIds_.end())
         ++collisions_;
     frameIds_.push_back(id);
@@ -508,6 +511,12 @@ double GuiCore::norm(std::uint32_t paramId) const {
 void GuiCore::beginAt(std::size_t i) {
     if (gestureOpen_.size() < host_.paramTable().size())
         gestureOpen_.resize(host_.paramTable().size(), false);
+    if (gestureNest_.size() < gestureOpen_.size())
+        gestureNest_.resize(gestureOpen_.size(), 0);
+    if (gestureOpen_[i]) { // nested in an open gesture (a wheel step during a drag): the host sees only the outer one
+        ++gestureNest_[i];
+        return;
+    }
     // keep one slot for the matching end; a begin that does not fit is dropped together with its end,
     // so the host never sees an unbalanced gesture
     gestureOpen_[i] = host_.pushEdit({params::ParamEdit::Kind::Begin, static_cast<std::uint32_t>(i), 0.0}, 1);
@@ -527,7 +536,11 @@ void GuiCore::valueAt(std::size_t i, double value) {
 
 void GuiCore::endAt(std::size_t i) {
     if (i >= gestureOpen_.size() || !gestureOpen_[i])
-        return; // its begin was dropped
+        return;                // its begin was dropped
+    if (gestureNest_[i] > 0) { // the end of a nested begin
+        --gestureNest_[i];
+        return;
+    }
     // values leave the gesture reserve free, so the end fits; if it still does not, it is retried at
     // every flush until the host has drained the queue
     if (!host_.pushEdit({params::ParamEdit::Kind::End, static_cast<std::uint32_t>(i), 0.0}, 0))
@@ -815,7 +828,7 @@ void GuiCore::knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& 
                 dragShift_ = shift_;
                 beginEdit(dp);
             }
-        } else if (dbl) {
+        } else if (dbl && !editingThis) {
             setPlainAt(idx, info.def);
             active_ = 0;
         } else if (!editingThis) {
@@ -860,6 +873,7 @@ void GuiCore::knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& 
         editText_ = formatAt(idx, plainAt(idx));
         focus_ = id;
     }
+    bool enteredNow = false; // the Enter that opens value entry is not also its commit
     if (focused(id) && editing_ != id) {
         for (const KeyEvent& k : keys_) {
             double dir = 0;
@@ -870,6 +884,7 @@ void GuiCore::knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& 
             if (k.key == KeyEvent::Key::Enter && o.valueEntry) {
                 editing_ = id;
                 editText_ = formatAt(idx, plainAt(idx));
+                enteredNow = true;
             }
             if (dir != 0) {
                 if (info.kind != ParamKind::Float)
@@ -887,6 +902,8 @@ void GuiCore::knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& 
         if (downEvent_ && !b.contains(Point{downX_, downY_}))
             editing_ = 0;
         for (const KeyEvent& k : keys_) {
+            if (enteredNow)
+                break;
             if (k.key == KeyEvent::Key::Char)
                 editText_ += k.text;
             else if (k.key == KeyEvent::Key::Backspace)

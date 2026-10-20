@@ -336,6 +336,7 @@ private:
     // edits
     bool editsQueued_ = false;
     std::vector<bool> gestureOpen_;          // by table index: the begin reached the queue
+    std::vector<std::uint8_t> gestureNest_;  // begins nested in an open gesture, whose ends are not sent
     std::vector<std::uint32_t> pendingEnds_; // gesture ends that did not fit, retried at every flush
 
     // caches

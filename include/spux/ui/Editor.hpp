@@ -15,6 +15,7 @@
 // CPU renderer draws at the logical size.
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -128,6 +129,7 @@ private:
     std::vector<std::uint32_t> pixels_;
     Rect lastDirty_;
     bool visible_ = false, first_ = true, input_ = false;
+    std::atomic<bool> forcePending_{false}; // a forced frame that found the editor busy, owed to the next tick
     std::uint32_t seenParams_ = 0;
     std::uint64_t seenContent_ = 0, seenBackground_ = 0;
     std::chrono::steady_clock::time_point start_;

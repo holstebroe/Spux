@@ -80,6 +80,7 @@ private:
     Options o_;
     std::vector<float> samples_, bands_;
     std::vector<std::complex<double>> fft_;
+    std::vector<double> window_; // Hann, computed once
 };
 
 // In-place radix-2 complex FFT; the size must be a power of two. Not for the audio thread.

@@ -122,8 +122,11 @@ void EditorCore::onKey(const KeyEvent& k) { key(k); }
 bool EditorCore::frame(bool force, double now) {
     // a tick never waits for the host's thread: it skips the frame while the editor is being changed
     std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
-    if (!lock.owns_lock())
+    if (!lock.owns_lock()) {
+        if (force)
+            forcePending_.store(true, std::memory_order_relaxed); // an expose must not be lost
         return false;
+    }
     return frameLocked(force, now < 0.0 ? clockNow() : now);
 }
 
@@ -141,8 +144,9 @@ bool EditorCore::frameLocked(bool force, double now) {
     const std::uint64_t content = root_.contentVersion();
     const std::uint64_t bgKey = root_.backgroundKey();
     const bool animating = root_.animating();
-    const bool needed = force || first_ || input_ || params != seenParams_ || content != seenContent_ ||
-                        bgKey != seenBackground_ || animating || gui_.wantsFrame(now);
+    const bool needed = force || forcePending_.exchange(false, std::memory_order_relaxed) || first_ || input_ ||
+                        params != seenParams_ || content != seenContent_ || bgKey != seenBackground_ || animating ||
+                        gui_.wantsFrame(now);
 
     // the tick rate follows activity: fast while the user works or something moves
     if (window_) {

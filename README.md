@@ -64,13 +64,13 @@ spux is a git submodule at `extern/spux`, pinned to a release tag. spux itself o
 clap, clap-wrapper and doctest.
 
 ```cmake
+set(MYPLUGIN_UI "RETRO" CACHE STRING "RETRO, CLASSIC, MODERN or NONE")
+set(SPUX_UI_FLAVOR ${MYPLUGIN_UI})      # before adding spux: Retro builds spux's UI code for size
 if(SPUX_SOURCE_DIR)                      # -DSPUX_SOURCE_DIR=/path/to/local/spux while developing
   add_subdirectory(${SPUX_SOURCE_DIR} spux)
 else()
   add_subdirectory(extern/spux)
 endif()
-set(MYPLUGIN_UI "RETRO" CACHE STRING "RETRO, CLASSIC, MODERN or NONE")
-set(SPUX_UI_FLAVOR ${MYPLUGIN_UI})      # before adding spux: Retro builds spux's UI code for size
 target_link_libraries(myplugin_core PRIVATE spux_dsp spux_params spux_state)
 target_link_libraries(myplugin PRIVATE spux_clap spux_ui_${MYPLUGIN_UI_LOWER})
 spux_target_flags(myplugin)              # determinism and warning flags, hidden visibility

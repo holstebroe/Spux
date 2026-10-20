@@ -36,11 +36,17 @@ void fft(std::vector<std::complex<double>>& a, bool inverse) {
 }
 
 Spectrum::Spectrum(const Options& o) : o_(o) {
-    o_.fftSize = std::max(64, o_.fftSize);
+    int n = 64; // the FFT needs a power of two
+    while (n < o_.fftSize && n < (1 << 20))
+        n <<= 1;
+    o_.fftSize = n;
     o_.bands = std::max(1, o_.bands);
     samples_.assign(static_cast<std::size_t>(o_.fftSize), 0.0f);
     bands_.assign(static_cast<std::size_t>(o_.bands), 0.0f);
     fft_.assign(static_cast<std::size_t>(o_.fftSize), {});
+    window_.resize(static_cast<std::size_t>(o_.fftSize));
+    for (int i = 0; i < o_.fftSize; ++i)
+        window_[static_cast<std::size_t>(i)] = 0.5 - 0.5 * std::cos(2.0 * kPi * i / (o_.fftSize - 1));
 }
 
 float Spectrum::frequencyAt(float t) const {
@@ -56,8 +62,8 @@ void Spectrum::analyse(bool have, double sampleRate, float dt) {
     }
     const int n = o_.fftSize;
     for (int i = 0; i < n; ++i) {
-        const double w = 0.5 - 0.5 * std::cos(2.0 * kPi * i / (n - 1));
-        fft_[static_cast<std::size_t>(i)] = {static_cast<double>(samples_[static_cast<std::size_t>(i)]) * w, 0.0};
+        const auto k = static_cast<std::size_t>(i);
+        fft_[k] = {static_cast<double>(samples_[k]) * window_[k], 0.0};
     }
     fft(fft_, false);
     const double sr = sampleRate > 1000.0 ? sampleRate : 48000.0;

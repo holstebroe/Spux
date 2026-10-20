@@ -24,8 +24,13 @@ template <class Frame, std::size_t Capacity = 128> class TelemetryRing {
 public:
     static constexpr std::size_t kCapacity = Capacity;
 
-    // Editor side: the writer runs only while a window shows the data.
-    void setEnabled(bool on) { enabled_.store(on, std::memory_order_relaxed); }
+    // Editor side: the writer runs only while a window shows the data. Switching on drops what an earlier
+    // window left unread; call it from the reading thread.
+    void setEnabled(bool on) {
+        if (on && !enabled())
+            tail_.store(head_.load(std::memory_order_acquire), std::memory_order_release);
+        enabled_.store(on, std::memory_order_relaxed);
+    }
     [[nodiscard]] bool enabled() const { return enabled_.load(std::memory_order_relaxed); }
 
     // --- audio thread ---
@@ -66,7 +71,12 @@ template <std::size_t Capacity = (1u << 14)> class SampleRing {
 public:
     static constexpr std::size_t kCapacity = Capacity;
 
-    void setEnabled(bool on) { enabled_.store(on, std::memory_order_relaxed); }
+    // Switching on starts a fresh window: samples written before it are not read (call it from the reading thread).
+    void setEnabled(bool on) {
+        if (on && !enabled())
+            start_.store(head_.load(std::memory_order_acquire), std::memory_order_relaxed);
+        enabled_.store(on, std::memory_order_relaxed);
+    }
     [[nodiscard]] bool enabled() const { return enabled_.load(std::memory_order_relaxed); }
 
     // --- audio thread: the mono sum of a stereo block (r may be null for mono) ---
@@ -84,7 +94,7 @@ public:
     // races the writer may see a few mixed samples: harmless for a display.
     bool read(float* dst, std::size_t n) const {
         const std::size_t w = head_.load(std::memory_order_acquire);
-        if (n > Capacity / 2 || w < n)
+        if (n > Capacity / 2 || w - start_.load(std::memory_order_relaxed) < n)
             return false;
         for (std::size_t i = 0; i < n; ++i)
             dst[i] = samples_[(w - n + i) & (Capacity - 1)].load(std::memory_order_relaxed);
@@ -95,7 +105,7 @@ public:
 private:
     std::atomic<bool> enabled_{false};
     std::array<std::atomic<float>, Capacity> samples_{};
-    std::atomic<std::size_t> head_{0};
+    std::atomic<std::size_t> head_{0}, start_{0};
 };
 
 } // namespace spux::inline v1
