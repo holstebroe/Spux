@@ -1,5 +1,5 @@
-// DC blocker: one-pole high-pass y = x - x1 + R y1 with R = 1 - 2 pi fc / fs (Plumeflow's filter and drive
-// stages use this law with fc = 8 Hz). R is derived from the cutoff and the rate (R4), never fixed.
+// DC blocker: one-pole high-pass y = x - x1 + R y1 with R = 1 - 2 pi fc / fs (fc = 8 Hz
+// suits filter and drive stages). R is derived from the cutoff and the rate (R4), never fixed.
 #pragma once
 
 #include <concepts>

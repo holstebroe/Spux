@@ -52,8 +52,8 @@ constexpr Rect bottomPart(const Rect& r, int at, int gap = 0) {
     return {r.x, y, r.w, r.bottom() > y ? r.bottom() - y : 0};
 }
 
-// A rect of size w x h centred in `r`, or centred on a point.
-constexpr Rect centred(const Rect& r, int w, int h) { return {r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h}; }
+// A rect of size w x h centerd in `r`, or centerd on a point.
+constexpr Rect centerd(const Rect& r, int w, int h) { return {r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h}; }
 constexpr Rect around(int cx, int cy, int w, int h) { return {cx - w / 2, cy - h / 2, w, h}; }
 
 // A cursor that hands out rects left to right (or top to bottom), for rows of mixed widths.

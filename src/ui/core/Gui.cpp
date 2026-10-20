@@ -608,7 +608,7 @@ bool GuiCore::view(std::uint64_t id, const Rect& area, std::uint64_t key) {
 Interaction GuiCore::interact(std::uint64_t idIn, const Rect& hit, float radius) {
     const std::uint64_t id = hashId(idIn, scope() ^ 0x9E3779B97F4A7C15ull);
     Interaction in;
-    const Point c = hit.centre();
+    const Point c = hit.center();
     auto inside = [&](float x, float y) {
         if (radius > 0.0f)
             return (x - c.x) * (x - c.x) + (y - c.y) * (y - c.y) <= radius * radius;
@@ -668,7 +668,7 @@ void GuiCore::text(const char* s, const Rect& area, Color c, float px, Align a, 
     if (!beginPaint(id, area, h.value()))
         return;
     const float x = a == Align::Left     ? static_cast<float>(area.x)
-                    : a == Align::Centre ? static_cast<float>(area.x) + static_cast<float>(area.w) * 0.5f
+                    : a == Align::Center ? static_cast<float>(area.x) + static_cast<float>(area.w) * 0.5f
                                          : static_cast<float>(area.right());
     r_->pushClip(area);
     r_->drawTextPx(s, x, static_cast<float>(area.y), c, px, a, w);
@@ -774,7 +774,7 @@ void GuiCore::knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& 
     const ParamInfo& info = host_.paramTable()[idx];
     const std::uint64_t id = widgetId(kKnob, paramId);
     const Rect dial = p.hitArea(b);
-    const Point centre = b.centre();
+    const Point center = b.center();
     const double n = normAt(idx);
 
     ModulationHost* mh = (info.flags & params::PF_MODULATABLE) ? host_.modulation() : nullptr;
@@ -799,7 +799,7 @@ void GuiCore::knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& 
 
     auto inHit = [&](float x, float y) {
         if (o.hitRadius > 0.0f)
-            return (x - centre.x) * (x - centre.x) + (y - centre.y) * (y - centre.y) <= o.hitRadius * o.hitRadius;
+            return (x - center.x) * (x - center.x) + (y - center.y) * (y - center.y) <= o.hitRadius * o.hitRadius;
         return dial.contains(Point{x, y}) || b.contains(Point{x, y});
     };
     const bool hot = !blocked_ && inHit(mx_, my_);
@@ -1058,11 +1058,11 @@ bool GuiCore::toggleImpl(std::uint32_t paramId, const Rect& b, const ToggleOptio
         if (press)
             focus_ = id;
         bool next = !on;
-        if (press && o.centreBand > 0) {
+        if (press && o.centerBand > 0) {
             const int rel = static_cast<int>(downY_) - (b.y + b.h / 2);
-            if (rel < -o.centreBand)
+            if (rel < -o.centerBand)
                 next = false;
-            else if (rel > o.centreBand)
+            else if (rel > o.centerBand)
                 next = true;
         }
         setPlainAt(idx, next ? info.max : info.min);

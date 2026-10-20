@@ -14,7 +14,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 | L5 | **Semver tags.** Major version for API breaks. | Decided | |
 | L6 | spux **owns the third-party versions** (clap, clap-wrapper, doctest, stb_truetype) as its own submodules. Plugins drop theirs. | Decided | |
 | L7 | clap-wrapper: **the author's fork** (`vst3-midi-out`) for now; switch to upstream once the changes are accepted there. | Decided | One place to change, because of L6. |
-| L8 | **MIT** licence. Third-party code keeps its licence in its own folder. | Decided | Check the VST3 SDK licence before the first commercial release. |
+| L8 | **MIT** license. Third-party code keeps its license in its own folder. | Decided | Check the VST3 SDK license before the first commercial release. |
 | L9 | Commercial-only code goes in a **private `spux-commercial`** library. Public plugins build without it (stub). | Decided | |
 | L10 | Design guidelines and a **CLAUDE.md** live in spux. Each plugin's CLAUDE.md gets a short "using spux" section. | Decided | |
 | L11 | Code style: `PascalCase` types and files, `camelCase` functions, `kConstants`, `member_`, lower-case namespaces, `.hpp`/`.cpp`, `#pragma once`, `.clang-format` (LLVM base, 4 spaces, 120 columns) checked in CI. | Proposed | Matches most existing repos. Lumeoid and Paulascape use `snake_case` files today. |
@@ -68,7 +68,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 | U5 | **Modern falls back to the Modern style on the software renderer**, not to Classic. | Decided | |
 | U6 | CI builds each plugin's native flavor on every push and the full matrix nightly. | Decided | |
 | U7 | **Immediate-mode widget API with retained-style caches.** The retained widget tree behind the same painter interfaces was the fallback and is not needed. | Decided | 2026-10-20 after the acceptance gate (docs/UI_GATE.md): simpler page code and faster frames than the retained panels; the size cost (Acidus Retro about +33 % with U16, Tannhauser Classic +7.6 %) accepted by the author. |
-| U8 | **Painters per widget and flavor**; a flavor's look is a `Theme` **data struct** (colours, metrics, fonts). | Decided | |
+| U8 | **Painters per widget and flavor**; a flavor's look is a `Theme` **data struct** (colors, metrics, fonts). | Decided | |
 | U9 | **Editing helpers** in the core: value entry, Tab focus, tooltips, popups, double-click reset, fine adjust. | Decided | Plumeflow's `Gui` is the baseline. Cascading submenus (Tannhauser's preset menu) go into spux's own popup, the simple option: a plugin cannot draw its own overlays (2026-10-20). |
 | U10 | **Shared preset browser** as an optional target; plugins may write their own. | Decided | |
 | U11 | Scaling: Retro whole steps; Classic in steps up to a cap; Modern **free resize at a fixed aspect ratio**. | Decided | |
@@ -125,7 +125,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 - 2026-10-20: migration step 4 (`spux_core`, `spux_dsp`). No decision changed. New choices within the guidelines:
   **one half-band design, Lumeoid's 5 + 5 all-pass sections** (-108 dB stopband against -95 dB for Plumeflow's
   4 + 4, about 25 % more CPU; docs/BENCH.md has the measurement and the reasons). The pt2-clone BLEP lives in
-  `include/spux/dsp/pt2/` with its BSD-3 licence; `THIRD_PARTY_LICENSES.md` exists now. Kernel golden hashes are
+  `include/spux/dsp/pt2/` with its BSD-3 license; `THIRD_PARTY_LICENSES.md` exists now. Kernel golden hashes are
   in `tests/kernels/portable.txt` (the blocks call no libm, so GCC and Clang on x64 agree); a toolchain that
   differs gets its own `tests/kernels/<platform>.txt`. Function names that would collide with `<cmath>` under
   `using namespace` were renamed: Plumeflow `exp2`, `tanh` are `exp2F`, `tanhF`; Lumeoid `tanhApprox` is
@@ -133,7 +133,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   default-constructed `Pcg32` has the PCG reference state (Lumeoid's), not Plumeflow's seed(0, 1); Lumeoid's
   `reseed` is `seed` and `Oversampler::prepare` is `setFactor`; Plumeflow's `DelayLine::push` is `write`, and
   its fractional reads interpolate from the newer sample (last-bit differences); `exp2F` maps NaN to 2^-126
-  instead of undefined behaviour; the OU setup uses expD (1e-11 cents); Plumeflow's `DenormalGuard` becomes
+  instead of undefined behavior; the OU setup uses expD (1e-11 cents); Plumeflow's `DenormalGuard` becomes
   Lumeoid's, which also sets round-to-nearest and masks exceptions; the BLEP tables are built with spux math
   (bit-identical to Plumeflow's tables here). Lumeoid's `sinD` comment claimed exactness to double precision;
   measured 6e-10 (its test checked 1e-9), now documented. S4 finding, open: `exp2F` and `dbToGainF` are slower
@@ -174,7 +174,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   (Plumeflow's enums all start at 0), `parseValue` refuses non-finite numbers, and `sanitizePlain` sends ±infinity to the
   default like Plumeflow's `sanitize` (Tearwash keeps clamping infinities to the range end in its own `twClamp`, so "-inf
   dB" stays the floor). Tearwash's state magic is `TWR1`, version 1 (by the author: Tearwash was unreleased, so the container starts the
-  numbering; its text state from before the container still loads, recognised by the missing magic).
+  numbering; its text state from before the container still loads, recognized by the missing magic).
 - 2026-10-20: **P4 changed** (by the author): user presets are human-readable text files keyed by parameter key, not
   the state container: they can be read, diffed, edited and mailed, and keys survive any table change that only
   appends. Factory presets stay compiled in, in the plugin's own compact form (Tearwash's are changes on top of a
@@ -196,3 +196,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 - 2026-10-20: **U7 decided** (by the author, after the gate in docs/UI_GATE.md): immediate mode, accepting its size cost for
   page code that is simpler to read and change and frames that are faster than the retained panels'. **U9 extended**
   (by the author): cascading submenus become part of spux's popup (kept simple: one popup API, no plugin overlays).
+- 2026-10-20: house style (by the author, PR review): US English everywhere; library comments document the library and
+  never name a plugin or cite a decision id (CLAUDE.md rules 14 and 15). The provenance notes moved from the headers to
+  docs/MIGRATION.md. `fft` moved from `spux_ui_core` and `spux_testing` (two copies) to `spux/dsp/Fft.hpp`. The UI gate
+  (`tests/gate/`) is marked temporary. No decision changed.

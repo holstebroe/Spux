@@ -2,17 +2,15 @@
 // first-order all-pass chains,
 //     H(z) = 0.5 (A0(z^2) + z^-1 A1(z^2)),
 // so neither direction adds a fixed delay to compensate (group delay is a few samples near the band
-// edge). Merged from Lumeoid `dsp/oversampler.hpp` (this design and structure) and Plumeflow
-// `dsp/Halfband.hpp` (a 4+4 design).
+// edge).
 //
 // Design: the closed-form elliptic polyphase half-band (Valenzuela and Constantinides, in the form of
 // Laurent de Soras' hiir), 5 + 5 all-pass sections (order 21), transition band 0.45 to 0.55 of the
 // low rate. Measured on the float implementation (tests/halfband_test.cpp, docs/BENCH.md): stopband
-// -108.2 dB, passband ripple below 1e-5 dB. Chosen over Plumeflow's 4 + 4 sections (-95.2 dB, about
-// 25 % cheaper): -95 dB images of a full-scale signal sit only 5 dB under the -90 dBFS null threshold
+// -108.2 dB, passband ripple below 1e-5 dB. Chosen over 4 + 4 sections (-95.2 dB, about 25 %
+// cheaper): -95 dB images of a full-scale signal sit only 5 dB under the -90 dBFS null threshold
 // and above 16-bit resolution, while -108 dB clears both and comes within 2 dB of the strict -110 dBFS
-// gate; the cost is a few ns per sample and stage (docs/BENCH.md, DECISIONS history 2026-10-20).
-// Lumeoid `Oversampler::prepare` is `setFactor` here.
+// gate; the cost is a few ns per sample and stage (docs/BENCH.md).
 //
 // Sample type T: float for one channel, or any type with + and * against T(float) (a SIMD lane type).
 #pragma once
@@ -75,8 +73,7 @@ private:
 };
 
 // Up- and downsampling by 1, 2, 4 or 8, chosen at run time without allocating: log2(factor) stages per
-// direction, each running at its own rate in time order. For T = float it is bit-identical to Lumeoid's
-// Oversampler.
+// direction, each running at its own rate in time order.
 template <class T = float> class Oversampler {
 public:
     static constexpr int kMaxFactor = 8;

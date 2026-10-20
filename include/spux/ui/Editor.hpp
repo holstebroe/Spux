@@ -1,4 +1,4 @@
-// The editor shell (from Plumeflow `ui/Editor`): a native child window, a renderer and the Gui, drawn
+// The editor shell: a native child window, a renderer and the Gui, drawn
 // only when something changed (guidelines 7, immediate mode cache 1). The plugin gives it the logical
 // size and a root view; the flavor gives it the renderer.
 //

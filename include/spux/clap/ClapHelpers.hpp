@@ -93,7 +93,7 @@ inline bool pushGesture(const clap_output_events_t* out, std::uint32_t time, cla
 }
 
 // Audio thread or flush: turns the editor's queued edits into gesture and value events at `time`
-// (Plumeflow's drainEdits). Indices are table indices; edits for an unknown index are dropped. Without
+// Indices are table indices; edits for an unknown index are dropped. Without
 // an output queue the edits are dropped too (the store has the values already).
 template <std::size_t C, std::size_t R>
 void drainEdits(params::BasicEditQueue<C, R>& queue, const params::ParamTable& table, const clap_output_events_t* out,

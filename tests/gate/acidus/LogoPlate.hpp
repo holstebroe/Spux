@@ -53,7 +53,6 @@ public:
     }
     // A key that changes whenever the animated region looks different.
     std::uint64_t key() const;
-    std::size_t bubbleCount() const { return bubbles_.size(); }
 
 private:
     struct Bubble {

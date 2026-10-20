@@ -189,7 +189,7 @@ TEST_CASE("toggles, two-position switches, selectors, sliders and steppers") {
     Rig f;
     const Rect tb{10, 10, 40, 60}, sb{60, 10, 90, 20}, vb{160, 10, 20, 100}, st{60, 40, 90, 20};
     auto page = [&](TGui& g) {
-        g.toggle(P_mono, tb, {.centreBand = 10});
+        g.toggle(P_mono, tb, {.centerBand = 10});
         g.selector(P_quality, sb, {.wheel = 1});
         g.slider(P_width, vb, {.vertical = true, .inverted = true, .dragPixels = 100.0f});
         g.stepper(P_transpose, st);
@@ -203,7 +203,7 @@ TEST_CASE("toggles, two-position switches, selectors, sliders and steppers") {
         f.gui.onMouseUp(x, y, MouseButton::Left);
         f.run(page);
     };
-    click(30, 40); // the centre band toggles
+    click(30, 40); // the center band toggles
     CHECK(f.host.plainOf(P_mono) == 1.0);
     click(30, 65); // below the band: on stays on
     CHECK(f.host.plainOf(P_mono) == 1.0);
@@ -586,7 +586,7 @@ TEST_CASE("layout helpers") {
     static_assert(rowCell(r, 4, 3, 4) == Rect{10 + 66 + 12, 20, 22, 50});
     static_assert(columnCell(r, 2, 1) == Rect{10, 45, 100, 25});
     static_assert(gridCell(r, 2, 2, 1, 1) == Rect{60, 45, 50, 25});
-    static_assert(centred(r, 20, 10) == Rect{50, 40, 20, 10});
+    static_assert(centerd(r, 20, 10) == Rect{50, 40, 20, 10});
     constexpr auto knobs = pitched<3>(5, 6, 40, 40, 66);
     static_assert(knobs[2] == Rect{137, 6, 40, 40});
     Flow fl(r, 2);

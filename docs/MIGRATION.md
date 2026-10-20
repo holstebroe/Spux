@@ -134,7 +134,7 @@ plugin-specific views and page code.
    one Acidus panel. **Done in spux** (2026-10-20); after the gate the author decided U7 (immediate mode) and U16.
    `spux_ui_core` (STATIC): `Geometry`, `IRenderer` (Plumeflow's, the effect calls with plain defaults,
    `drawTrace`/`drawMeter` no longer pure), `Layers` (`LayerCache`, `CpuLayers`: background, widgets and
-   display layers, dirty rectangles, box-filter resolve), `Theme` (colours, metrics, interaction feel, font
+   display layers, dirty rectangles, box-filter resolve), `Theme` (colors, metrics, interaction feel, font
    slots), `Painters` (state structs and one interface per widget), `EditorHost` (core, `ModulationHost`,
    `PresetHost`, `StoreEditorHost<N>`), `Gui` (`GuiCore` with Plumeflow's interaction, gestures, value
    entry, Tab focus, tooltips, popups, text field; `Gui<Style>` picks the painters), `Layout`, `Editor`
@@ -144,10 +144,70 @@ plugin-specific views and page code.
    **Acceptance gate**: `tests/gate/` builds each plugin twice from its own checkout (`-DSPUX_GATE_ACIDUS_DIR`,
    `-DSPUX_GATE_TANNHAUSER_DIR`), with its retained `GuiWindow` and with a port on `spux_ui_core`, and
    `tools/gate_report.sh` measures them; numbers and method in `docs/UI_GATE.md`. No plugin repository was
-   changed. Left: the flavors' painters and renderers (step 7, from Acidus's skins, Tannhauser's panel
+   changed. The gate is temporary: remove `tests/gate/` and `tools/gate_*` when step 7 starts. Left: the flavors' painters and renderers (step 7, from Acidus's skins, Tannhauser's panel
    renderer and Plumeflow's look); Plumeflow switches in step 8; the GPU path in the editor shell, window
    scaling, cascading submenus in spux's popup (U9, for Tannhauser's preset menu) and the shared views (`ui/Views`).
 7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow.
 8. Plumeflow and Lumeoid move onto spux (Lumeoid's GPU UI starts on spux directly).
 
 lexwash starts on spux from its first line.
+
+## Provenance and switch notes
+
+Library comments describe the library only; where code came from, and what a plugin meets when it switches
+from its own copy, is kept here.
+
+- **Math** (`core/Math.hpp`, decision S4): Lumeoid `dsp/math.hpp` (the double `...D` set, the [7/6] Pade tanh;
+  its header claimed double precision, its test checked 1e-9), Plumeflow `dsp/Math.hpp` (the float set fitted
+  by its `tools/fit_math.py`), Tannhauser's [3/2] Pade tanh. Renames: Plumeflow `exp2`, `tanh` are `exp2F`,
+  `fastTanhF`; Lumeoid `tanhApprox` is `tanhPade76`; Tannhauser `tanhFast` is `tanhPade32`. `fastTanhF` was
+  measured in Acidus's ladder (about 150 calls per sample, 18 % of the engine).
+- **Pcg32**: Lumeoid `core/pcg32.hpp` and Plumeflow `dsp/Pcg32.hpp`, same sequence. Lumeoid `reseed(seed,
+  stream)` is `seed(seed, stream)`. Plumeflow: the default constructor gives the PCG reference state, not
+  seed(0, 1), so a generator used before seeding starts elsewhere; everything else is unchanged.
+- **ControlTick, Ramp**: Lumeoid `Ramp`, `DoubleRamp` (bit-identical at N = 64); 64 is the tick of Lumeoid and
+  Plumeflow. **Smoothing** (S10): `onePoleCoeff` from Tannhauser (expD instead of std::exp); the linear ramp
+  is bit-identical to Lumeoid's on tick boundaries.
+- **DenormalGuard**: Lumeoid `dsp/simd.hpp`; Plumeflow's guard only set FTZ and DAZ (same result under hosts
+  that keep the default rounding and masks).
+- **TelemetryRing** (P7): Plumeflow `plugin/Telemetry`.
+- **DelayLine**: Lumeoid `fx::DelayLine` (its `read` is `readHermite`) and Plumeflow `DelayLine` (`push` is
+  `write`; it interpolated from the older sample, so fractional reads differ in the last bit).
+- **Halfband / Oversampler**: Lumeoid `dsp/oversampler.hpp` (design and structure) and Plumeflow
+  `dsp/Halfband.hpp` (4 + 4 sections, -95.2 dB). 5 + 5 was chosen so images clear the -110 dBFS strict gate
+  (DECISIONS history 2026-10-20). Lumeoid `Oversampler::prepare` is `setFactor`; float output is bit-identical
+  to Lumeoid's.
+- **OnePole**: same arithmetic as Lumeoid `fx::OnePole`, Tannhauser `OnePoleLp` and Plumeflow's tone filters.
+  **Svf**: Plumeflow `NoiseFilter`; Tannhauser's saturating SVF stays in Tannhauser. **DcBlock**: Plumeflow's
+  filter and drive blockers. **Biquad**: Tannhauser's `Biquad` is the same structure.
+- **Blep**: Plumeflow `dsp/Blep.hpp` (its spec 04; its osc_alias_test measured the choice); `Blep<4>` is
+  Tannhauser `blep4`; the table is built with spux math (Plumeflow used std::sin; last-bit difference).
+  **pt2 MinBlep**: by way of Paulascape `core/blep`; Paulascape's public `samplesLeft` and `lastValue` are
+  accessors.
+- **Saturator**: in the style of Gritbaal's `TanhSaturator` and `NewtonSolver` (Gritbaal used std::tanh; about
+  1e-7 apart). `TanhSaturator`'s antiderivative is Plumeflow `logCosh`, `AsymmetricTanhSaturator` is
+  Gritbaal's diode-clipper asymmetry, `PadeSaturator` is Tannhauser `tanhFast`, `Adaa1` is Plumeflow
+  `DriveStage::adaa`.
+- **Noise**: Plumeflow `NoiseSource`. **Drift**: Plumeflow `OuProcess` and `Drift` (setup() uses expD, Plumeflow
+  std::exp; Plumeflow maps its knob to 0..25 cents).
+- **Parameters** (P2): `ParamInfo`, `ParamText`, `ParamTable` from Plumeflow `plugin/Params` and `params.def`
+  (the flag names are Plumeflow's, so its table moves unchanged; the log law with an exact 0 is for its times);
+  `ParamStore` from `plugin/ParamStore`, `EditQueue` from `plugin/EditQueue`; `drainEdits` in `ClapHelpers`
+  is Plumeflow's.
+- **State** (P3, P4, P9, S7): `Container` and `Bytes` from Lumeoid's `LMN1` (`state/container`), including the
+  PARM layout; Tearwash's text state has no magic and keeps its own legacy reader. `TextPreset` is Tearwash's
+  preset file format.
+- **MIDI**: `MidiFile` merges Paulascape (`midi_file_reader.hpp`), Lumeoid (`tools/midi_file.cpp`) and
+  Plumeflow (`tools/MidiFile.hpp`); `MidiWriter` merges Acidus (`sequencer/MidiExport.cpp`) and Paulascape
+  (`export/midi_export.cpp`).
+- **Testing**: `Metrics` moved unchanged from Tearwash (`analysis/Metrics.hpp`); `Loudness` merges Tannhauser
+  (`tests/Loudness.hpp`) and Plumeflow (`tools/Loudness.hpp`); `Wav` PCM 16 is Kikset's layout; the legacy FNV
+  basis in `Hash` is the Classic drawing golden of Tearwash, Tannhauser and Acidus; Acidus runs the null test at
+  -110 dBFS / its sound tolerances and uses `formatNullReport` for its per-patch report.
+- **Platform**: `NativeWindow` (X11, Win32) ported from Acidus `GuiWindow`; Win32 blits the whole frame as
+  Acidus does; Cocoa is still open (U14).
+- **Classic UI**: `ClassicDraw` is the drawing shared by Acidus, Tannhauser and Tearwash; the extruded panel is
+  Acidus's; the thin 5x7 label font is the Syrebas panel font; `FileDialog` serves Acidus's calibration files
+  and pattern banks.
+- **UI core**: `Geometry`, `IRenderer`, `Gui`, `Editor`, `EditorHost` (its modulation extension is Plumeflow's
+  matrix) and `Live` come from Plumeflow `ui/`; `EditQueue` gesture balancing follows Plumeflow's Gui.

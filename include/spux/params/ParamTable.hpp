@@ -1,6 +1,6 @@
-// The parameter table and the X-macro helpers (decision P2), from Plumeflow `params.def` + `Params`.
+// The parameter table and the X-macro helpers.
 //
-// The plugin's `.def` file has one row per parameter, Plumeflow's columns plus module and smoothing:
+// The plugin's `.def` file has one row per parameter:
 //
 //   SPUX_PARAM(id, key, name, kind, min, max, law, default, flags, labels, module, smoothing)
 //     kind       Float | Int | Bool | Enum   (Enum: labels split on '|', index 0 at min)

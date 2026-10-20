@@ -3,9 +3,8 @@
 // of adding. The default priorities put note-offs before everything, meta events and controllers next,
 // then note-ons, then pressure, so a note that ends where another starts never swallows it.
 //
-// Merged from Acidus (sequencer/MidiExport.cpp: a format 0 clip with a name, 4/4 and pressure) and
-// Paulascape (export/midi_export.cpp: a conductor track and channel tracks with a tempo map). What
-// decides which notes to write stays in the plugin.
+// Format 0 (one clip with a name, 4/4 and pressure) or format 1 (a conductor track and channel tracks
+// with a tempo map). What decides which notes to write stays in the plugin.
 #pragma once
 
 #include <algorithm>
@@ -63,7 +62,7 @@ public:
     void program(std::uint32_t tick, int channel, int number, int prio = priority::kMeta) {
         add(tick, prio, {status(0xC0, channel), data(number)});
     }
-    // value 0..16383, 8192 is the centre.
+    // value 0..16383, 8192 is the center.
     void pitchBend(std::uint32_t tick, int channel, int value, int prio = priority::kNoteOff) {
         add(tick, prio, {status(0xE0, channel), data(value & 127), data((value >> 7) & 127)});
     }

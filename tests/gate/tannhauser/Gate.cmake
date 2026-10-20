@@ -1,5 +1,5 @@
 # Acceptance gate, Tannhauser (included by tests/gate/CMakeLists.txt). Tannhauser has one look, the Classic
-# panel (its `modern/` folder is Classic, U1); there is no Retro build to measure. Flags as in Tannhauser's
+# panel (its `modern/` folder is Classic); there is no Retro build to measure. Flags as in Tannhauser's
 # CMakeLists.txt: -Os for the GUI and CLAP glue, link-time optimization, hidden visibility for the module.
 set(T ${SPUX_GATE_TANNHAUSER_DIR})
 add_library(tannhauser_gate_core OBJECT

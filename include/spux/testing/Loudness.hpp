@@ -2,8 +2,7 @@
 // callers render at 48 kHz), momentary loudness (400 ms windows, 100 ms hop), gated integrated loudness
 // and the sample peak. Offline only; allocates freely.
 //
-// Merged from Tannhauser (tests/Loudness.hpp: max momentary loudness, the preset-gain fit) and Plumeflow
-// (tools/Loudness.hpp: integrated loudness). A plugin's preset phrases and gain fit stay in the plugin.
+// A plugin's preset phrases and gain fit stay in the plugin.
 #pragma once
 
 #include <algorithm>

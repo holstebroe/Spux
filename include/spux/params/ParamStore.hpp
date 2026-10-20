@@ -1,4 +1,4 @@
-// Host-facing parameter values, lock-free (from Plumeflow `plugin/ParamStore`). One atomic double per
+// Host-facing parameter values, lock-free. One atomic double per
 // parameter in the host domain (ParamInfo.hpp), indexed like the table. Written by the host's threads,
 // the audio thread and the editor, read by all of them; every access is relaxed: a parameter value
 // carries no other data with it. The version counter goes up on every write, so an editor redraws only

@@ -1,9 +1,7 @@
-// Deterministic math (R2, R3, decision S4): fixed formulas with no libm call, so a result depends only on
+// Deterministic math (R2, R3): fixed formulas with no libm call, so a result depends only on
 // the build, never on the platform's math library. Opt-in: libm is the default in the audio path (its
 // differences between platforms are inaudible); use these where spux_bench shows a gain that matters, where
-// constexpr is needed, or where the same bits on every platform are wanted. Merged from Lumeoid
-// `dsp/math.hpp` (the double-precision `...D` set, the [7/6] Pade tanh) and Plumeflow `dsp/Math.hpp` (the
-// float set fitted on Chebyshev nodes by its tools/fit_math.py), plus Tannhauser's [3/2] Pade tanh.
+// constexpr is needed, or where the same bits on every platform are wanted.
 //
 // Two precision tiers:
 //   - double (`expD`, `exp2D`, `logD`, `log2D` to about 1e-14 relative; `sinD`, `cosD` to 6e-10 absolute;
@@ -14,12 +12,9 @@
 // Every function is a fixed sequence of IEEE operations, constexpr where C++20 allows it. The measured
 // errors are checked by tests/math_test.cpp and the speed against libm by spux_bench.
 //
-// Bit compatibility: each function performs the same operations in the same order as the original it
-// came from, so a plugin that switches gets identical results (checked against the originals when they
-// were merged). The only differences: floor is done by integer conversion instead of std::floor (same
-// result), NaN input to `exp2F` gives 2^-126 instead of undefined behaviour, and the renamed functions
-// (Plumeflow `exp2`, `tanh` are `exp2F`, `fastTanhF`; Lumeoid `tanhApprox` is `tanhPade76`; Tannhauser
-// `tanhFast` is `tanhPade32`), so `using namespace` never collides with <cmath>.
+// Floor is done by integer conversion instead of std::floor (same result), NaN input to `exp2F` gives
+// 2^-126 instead of undefined behavior, and no name equals a <cmath> name, so `using namespace` never
+// collides with it. The float set is fitted on Chebyshev nodes.
 #pragma once
 
 #include <array>
@@ -50,7 +45,7 @@ inline constexpr float kPiF = 3.14159265358979323846f;
     return i - static_cast<float>(i > x); // branchless: a random sign would mispredict half the time
 }
 
-// --- Double precision (Lumeoid) ------------------------------------------------------------------
+// --- Double precision ----------------------------------------------------------------------------
 
 // e^x. Range reduction to |r| <= ln2/2, then a degree-13 Taylor polynomial (relative error below 1e-15).
 // Saturates at e^700; returns 0 below -700.
@@ -109,7 +104,7 @@ inline constexpr float kPiF = 3.14159265358979323846f;
 [[nodiscard]] constexpr double log2D(double x) { return logD(x) * kLog2E; }
 
 // sin(x) for any finite x: reduce to [-pi, pi], then a degree-19 Taylor series (absolute error below 6e-10,
-// at the ends of the interval; Lumeoid's header said exact to double precision, its test checked 1e-9).
+// at the ends of the interval).
 [[nodiscard]] constexpr double sinD(double x) {
     const double turns = x / kTwoPi;
     const double shifted = turns - static_cast<double>(static_cast<std::int64_t>(turns + (turns >= 0 ? 0.5 : -0.5)));
@@ -129,7 +124,7 @@ inline constexpr float kPiF = 3.14159265358979323846f;
 // tan(x) for |x| < pi/2 (relative error below 3e-8 up to 1.55).
 [[nodiscard]] constexpr double tanD(double x) { return sinD(x) / cosD(x); }
 
-// --- Float, per sample (Plumeflow) ------------------------------------------------------------
+// --- Float, per sample --------------------------------------------------------------------------
 
 // 2^x, relative error < 2e-7 for |x| < 126; clamped to [-126, 126] (NaN gives 2^-126).
 [[nodiscard]] constexpr float exp2F(float x) {
@@ -178,7 +173,7 @@ inline constexpr float kPiF = 3.14159265358979323846f;
 }
 
 // tanh through exp2F, for hot loops: 1.6x (glibc) to 1.8x (MSVC) faster than std::tanh (docs/BENCH.md); in
-// Acidus's ladder, about 150 calls per sample, that is 18 % of the engine. Absolute error below 1.2e-7 (libm:
+// a ladder filter with about 150 calls per sample, that is 18 % of the engine. Absolute error below 1.2e-7 (libm:
 // about 1e-7), exactly +-1 beyond |x| = 9; not odd, and fastTanhF(0) = -6e-8 (exp2F(0) is 1 - 1e-7).
 [[nodiscard]] constexpr float fastTanhF(float x) {
     if (x > 9.0f)
@@ -267,7 +262,7 @@ inline constexpr std::array<double, 9> kLog1pUnit = {0.9999992249459301,   -0.49
 // --- Rational tanh shapes ------------------------------------------------------------------------
 
 // tanh(x) by the [7/6] Pade approximant on |x| < 4.97, saturating beyond; absolute error below 1e-4
-// over the whole real line (Lumeoid `tanhApprox`). For T = float it is bit-identical to the original.
+// over the whole real line.
 template <std::floating_point T> [[nodiscard]] constexpr T tanhPade76(T x) {
     constexpr T kLimit = T(4.97f);
     constexpr T kSaturation = T(1.0f - 9.6e-5f);
@@ -281,7 +276,7 @@ template <std::floating_point T> [[nodiscard]] constexpr T tanhPade76(T x) {
     return num / den;
 }
 
-// The [3/2] Pade soft clipper x (27 + x^2) / (27 + 9 x^2), exactly +-1 from |x| = 3 (Tannhauser `tanhFast`).
+// The [3/2] Pade soft clipper x (27 + x^2) / (27 + 9 x^2), exactly +-1 from |x| = 3.
 // Not an approximation of tanh to any tolerance: a shape of its own (error up to 0.02 near |x| = 1.5).
 template <std::floating_point T> [[nodiscard]] constexpr T tanhPade32(T x) {
     if (x >= T(3))

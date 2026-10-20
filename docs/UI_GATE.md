@@ -5,6 +5,10 @@ immediate-mode API and compare with today's retained versions. **Result: lines a
 binary size fails.** The author accepted the size cost: U7 is decided (immediate mode), and U16 builds
 spux's UI code for size in Retro plugins.
 
+**Temporary.** `tests/gate/`, `tools/gate_report.sh` and `tools/gate_lines.py` name and port two concrete
+plugins only to take these measurements. They are removed once the plugins move onto `spux_ui_core`
+(MIGRATION step 7), or earlier at the author's word; this page and the PR history keep the numbers.
+
 | Measure | Pass | Acidus | Tannhauser | |
 | --- | --- | --- | --- | --- |
 | Lines of layout and widget code | same or fewer | 201 vs 301 (0.67) | 419 vs 529 (0.79) | pass |

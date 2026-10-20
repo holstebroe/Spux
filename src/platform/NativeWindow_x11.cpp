@@ -1,4 +1,4 @@
-// X11 child window (ported from the Acidus GuiWindow X11 section). Own Display connection per window,
+// X11 child window. Own Display connection per window,
 // so several plugin instances in one host do not interfere; every Xlib call is made under a mutex.
 #if defined(SPUX_HAS_X11)
 #include <X11/Xlib.h>

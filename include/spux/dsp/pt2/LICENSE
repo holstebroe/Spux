@@ -1,7 +1,6 @@
 The minimum-phase BLEP table and the BLEP routine in this folder come from pt2-clone
-(https://github.com/8bitbubsy/pt2-clone, src/pt2_blep.c; BLEP synthesis by aciddose), by way of
-Paulascape. They are distributed under the BSD 3-Clause License below, not under the MIT licence of
-the rest of spux.
+(https://github.com/8bitbubsy/pt2-clone, src/pt2_blep.c; BLEP synthesis by aciddose). They are distributed under the BSD 3-Clause License
+below, not under the MIT license of the rest of spux.
 
 BSD 3-Clause License
 

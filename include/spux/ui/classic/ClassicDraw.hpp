@@ -1,8 +1,7 @@
 #ifndef SPUX_UI_CLASSIC_DRAW_HPP
 #define SPUX_UI_CLASSIC_DRAW_HPP
 
-// Drawing helpers of the Classic flavor (code-shaded hardware look). Formerly `modern/ModernDraw`
-// in Acidus, Tannhauser and Tearwash.
+// Drawing helpers of the Classic flavor (code-shaded hardware look).
 //
 // The panels paint the look into a 2x supersampled buffer and
 // box-filter it down. These helpers shade at that buffer resolution
@@ -75,14 +74,14 @@ struct Material {
 };
 Color shadeLit(const Material& m, Vec3 n);
 
-// A surface tilted `tilt` radians away from the viewer towards (ux, uy).
+// A surface tilted `tilt` radians away from the viewer toward (ux, uy).
 inline Vec3 tiltedNormal(float ux, float uy, float tilt) {
     const float s = std::sin(tilt);
     return {ux * s, uy * s, std::cos(tilt)};
 }
 
-// Calls f(lx, ly) for every buffer pixel whose centre lies in the logical
-// box, and blends the colour it returns (alpha 0 = skip).
+// Calls f(lx, ly) for every buffer pixel whose center lies in the logical
+// box, and blends the color it returns (alpha 0 = skip).
 template <class F> void shadeBox(Graphics& g, float x0, float y0, float x1, float y1, F&& f) {
     const int s = g.getScale();
     const int bx0 = std::max(0, static_cast<int>(std::floor(x0 * s)));
@@ -102,7 +101,7 @@ template <class F> void shadeBox(Graphics& g, float x0, float y0, float x1, floa
 // Anti-aliased line with round caps, `width` logical pixels wide.
 void drawLineAA(Graphics& g, float x0, float y0, float x1, float y1, float width, uint32_t argb);
 
-// Signed distance to a rounded rectangle centred at the origin, half size
+// Signed distance to a rounded rectangle centerd at the origin, half size
 // (hx, hy), corner radius r: negative inside.
 inline float sdRoundRect(float x, float y, float hx, float hy, float r) {
     const float qx = std::fabs(x) - hx + r, qy = std::fabs(y) - hy + r;
@@ -149,7 +148,7 @@ const Color kPaint{0.785f, 0.790f, 0.775f}; // aged silver paint
 
 // Fills the whole buffer with the worn silver panel: brushed grain, grime,
 // stains, rubbed paint, scratches and chips. `trims` adds the darker
-// extrusions along the top and bottom edges (the Acidus panel).
+// extrusions along the top and bottom edges.
 void paintWornPanel(Graphics& g, int width, int height, bool trims);
 
 } // namespace spux::inline v1::ui::classic

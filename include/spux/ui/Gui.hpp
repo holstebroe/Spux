@@ -1,4 +1,4 @@
-// Immediate-mode widgets (decision U7, guidelines 7 "Immediate mode"; from Plumeflow `ui/Gui`).
+// Immediate-mode widgets (guidelines 7 "Immediate mode").
 //
 // The plugin writes page functions that run every frame:
 //
@@ -18,7 +18,7 @@
 //                with a `theme` and one painter member per widget it supports (`knob`, `slider`,
 //                `toggle`, `selector`, `button`, `dropdown`, `stepper`, `panel`, `textField`, and
 //                optionally `popup` and `tooltip`). A widget whose painter the style lacks fails to
-//                compile where a page calls it, and nowhere else (decision U4).
+//                compile where a page calls it, and nowhere else.
 //
 // Caches (with a renderer that has layers() and caching on): a widget whose painter state hashes the
 // same as last frame, in the same place, is not drawn; one that changed is drawn over a restored copy
@@ -63,7 +63,7 @@ struct KnobOptions {
     bool valueEntry = true;               // right-click or Enter types a value
     float dragPixels = 0.0f;              // drag for the full range; 0: the theme's
     double wheelStep = -1.0;              // normalized step per notch; < 0: the theme's; 0: no wheel
-    float hitRadius = 0.0f;               // > 0: a press must land this close to the centre of the bounds
+    float hitRadius = 0.0f;               // > 0: a press must land this close to the center of the bounds
     const KnobPainter* painter = nullptr; // null: the style's
 };
 
@@ -83,9 +83,9 @@ struct SliderOptions {
 struct ToggleOptions {
     const char* label = nullptr;
     Color accent = 0;
-    // > 0: a two-position switch. A press more than this many pixels above the centre sets off, below
-    // the centre sets on, inside the band toggles. 0: any press toggles.
-    int centreBand = 0;
+    // > 0: a two-position switch. A press more than this many pixels above the center sets off, below
+    // the center sets on, inside the band toggles. 0: any press toggles.
+    int centerBand = 0;
     bool wheel = true; // a notch up sets on, down sets off
     const TogglePainter* painter = nullptr;
 };
@@ -186,10 +186,10 @@ public:
     // A custom view: true when the caller must draw `area` now (its key changed, or no caches); the
     // background under it is restored. Draw through r(), inside `area`.
     bool view(std::uint64_t id, const Rect& area, std::uint64_t key);
-    // A custom interactive area; `radius` > 0 makes the hit a circle around the area's centre.
+    // A custom interactive area; `radius` > 0 makes the hit a circle around the area's center.
     Interaction interact(std::uint64_t id, const Rect& hit, float radius = 0.0f);
     // A draggable round handle whose drag is one gesture of `gestureParam` (kNoParamId: none).
-    Interaction handle(const char* id, Point centre, float radius, std::uint32_t gestureParam = kNoParamId);
+    Interaction handle(const char* id, Point center, float radius, std::uint32_t gestureParam = kNoParamId);
     // Text inside `area` (cached by content). For printed labels use the background.
     void text(const char* s, const Rect& area, Color c, float px, Align a = Align::Left,
               FontWeight w = FontWeight::Regular);

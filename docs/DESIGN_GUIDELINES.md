@@ -42,7 +42,7 @@ These are the rules for building spux and for using it in a plugin. The reasons 
 | Principle | How spux applies it |
 | --- | --- |
 | Single responsibility | Window, layout, interaction and drawing are separate parts. A DSP block does one job. |
-| Open/closed | New behaviour is a new class, policy, widget or painter. Shipped behaviour is not edited in ways that change sound (section 3). |
+| Open/closed | New behavior is a new class, policy, widget or painter. Shipped behavior is not edited in ways that change sound (section 3). |
 | Liskov substitution | Every renderer honours `IRenderer`; effect calls have plain defaults, so any renderer can stand in. Every painter draws inside its widget's bounds. |
 | Interface segregation | Small interfaces: one painter per widget type, an editor-host core plus optional extensions (modulation, presets). |
 | Dependency inversion | DSP depends on nothing. Widgets depend on an abstract parameter binding, not on CLAP. Plugins depend on spux interfaces, spux never on plugins. |
@@ -98,7 +98,7 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
    Bit-exactness is not required: a one-ulp change moves Acidus's ladder by -70 to -90 dBFS and its
    harmonics by about 0.003 dB.
 4. **State version.** Every plugin state carries a version field and a migration hook [S7, P9], so a
-   later converter can restore old behaviour or rescue old data.
+   later converter can restore old behavior or rescue old data.
 
 ## 4. Build rules: only what is used
 
@@ -214,7 +214,7 @@ plugin          Page functions, its own views, its EditorHost implementation
 gradients, clipping, text) that every renderer implements, and the **effect extensions** (glow,
 emission, blend mode, arcs, shadows, glass panels, strips, fill-under, pixel-size text, animated
 background) with plain default implementations. Renderers override what they can; plugin code never
-checks which renderer it runs on. Coordinates are logical pixels; colours are straight-alpha ARGB.
+checks which renderer it runs on. Coordinates are logical pixels; colors are straight-alpha ARGB.
 
 ### Immediate mode [U7]
 
@@ -284,7 +284,7 @@ are unaffected.
   geometry questions the interaction needs (a knob's depth handle, a selector's cells, a popup's rows).
 - A flavor implements the painters it supports. A plugin that uses a widget its flavor lacks fails to
   compile; no other plugin is affected.
-- A flavor's look is a `Theme` data struct: colours, metrics (text sizes, minimum widget sizes), fonts.
+- A flavor's look is a `Theme` data struct: colors, metrics (text sizes, minimum widget sizes), fonts.
   A plugin can supply its own theme values.
 - Every painter draws inside the bounds it is given (plus the declared margin), so incremental redraws
   stay clean.
@@ -311,7 +311,7 @@ spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per wid
 - Shaders are self-contained fragment shaders, so a Metal or WebGPU backend later is a port of the
   renderer only.
 - Text is an SDF atlas baked at editor open from an embedded TTF subset (Inter, OFL). Ship the font
-  licence.
+  license.
 
 ### Telemetry [P7]
 
@@ -353,9 +353,9 @@ LLVM base, 4-space indent, 120 columns, checked in CI. Comments say why, not wha
 
 ## 11. Licensing and private code
 
-- spux is MIT. Third-party code keeps its licence in its own folder and is listed in
+- spux is MIT. Third-party code keeps its license in its own folder and is listed in
   `THIRD_PARTY_LICENSES.md` with what a shipped binary must include.
-- Commercial-only code (licence keys, copy protection) lives in the private `spux-commercial`, which
+- Commercial-only code (license keys, copy protection) lives in the private `spux-commercial`, which
   depends on spux. Public plugins build with a stub [L9].
 
 ## 12. Changing spux from a plugin

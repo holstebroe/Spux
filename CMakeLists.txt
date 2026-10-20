@@ -44,7 +44,7 @@ include(${SPUX_ROOT}/cmake/SpuxFlags.cmake)
 include(${SPUX_ROOT}/cmake/SpuxPackaging.cmake)
 include(${SPUX_ROOT}/cmake/SpuxTesting.cmake)
 
-# Third party (spux owns the versions, L6): clap, clap-wrapper (author's fork, L7), doctest.
+# Third party (spux owns the versions): clap, clap-wrapper (author's fork), doctest.
 if(NOT TARGET clap)
   add_subdirectory(${SPUX_ROOT}/third_party/clap ${CMAKE_CURRENT_BINARY_DIR}/third_party/clap EXCLUDE_FROM_ALL)
 endif()
@@ -77,7 +77,7 @@ spux_module(spux_clap DEPENDS spux_params spux_state clap)
 spux_module(spux_midi DEPENDS spux_core)
 spux_module(spux_ui_retro DEPENDS spux_ui_core)
 spux_module(spux_presetbrowser DEPENDS spux_ui_core spux_state)
-spux_module(spux_testing DEPENDS spux_core spux_doctest)    # header-only: WAV, loudness, metrics, hashes, null test
+spux_module(spux_testing DEPENDS spux_core spux_dsp spux_doctest)    # header-only: WAV, loudness, metrics, hashes, null test
 
 # spux_testing_allocguard: replaces the global operator new/delete to catch allocations on the audio thread.
 # Test executables only, never a plugin (the replacement is process-wide).
@@ -141,7 +141,7 @@ add_library(spux_ui_core STATIC
 add_library(spux::spux_ui_core ALIAS spux_ui_core)
 target_include_directories(spux_ui_core PUBLIC ${SPUX_ROOT}/include)
 target_compile_features(spux_ui_core PUBLIC cxx_std_20)
-target_link_libraries(spux_ui_core PUBLIC spux_platform spux_params)
+target_link_libraries(spux_ui_core PUBLIC spux_platform spux_params spux_dsp)
 set_target_properties(spux_ui_core PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
 spux_target_flags(spux_ui_core)
 spux_ui_optimize(spux_ui_core)

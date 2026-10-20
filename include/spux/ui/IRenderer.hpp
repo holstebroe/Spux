@@ -1,7 +1,7 @@
-// The renderer interface every flavor implements (guidelines 7, "Renderer contract"; from Plumeflow
-// `ui/IRenderer`). Two parts: the basics every renderer implements, and the effect extensions with
+// The renderer interface every flavor implements (guidelines 7, "Renderer contract").
+// Two parts: the basics every renderer implements, and the effect extensions with
 // plain default implementations, so any renderer can stand in for any other (Liskov). Plugin code never
-// asks which renderer it runs on. Coordinates are logical pixels, colours straight-alpha ARGB.
+// asks which renderer it runs on. Coordinates are logical pixels, colors straight-alpha ARGB.
 //
 // A CPU renderer that keeps its pixels between frames offers layers() (Layers.hpp): the background
 // cache and the per-widget skip with a dirty region. A renderer that redraws everything every frame
@@ -40,8 +40,8 @@ public:
 
     virtual void drawLine(Point a, Point b, Color c, float thickness = 1.0f) = 0;
     virtual void drawPolyline(const Point* pts, int count, Color c, float thickness = 1.0f) = 0;
-    virtual void fillCircle(Point centre, float radius, Color c) = 0;
-    virtual void strokeCircle(Point centre, float radius, Color c, float thickness = 1.0f) = 0;
+    virtual void fillCircle(Point center, float radius, Color c) = 0;
+    virtual void strokeCircle(Point center, float radius, Color c, float thickness = 1.0f) = 0;
 
     // Text in the renderer's label font; scale multiplies the glyph size.
     virtual void drawText(const char* text, int x, int y, Color c, int scale = 1) = 0;
@@ -56,25 +56,25 @@ public:
     [[nodiscard]] virtual bool isGpu() const { return false; }
     // The animated backdrop; plain: a flat gradient. `time` in seconds.
     virtual void drawBackground(Color a, Color b, float /*time*/) { fillGradientRect({0, 0, width(), height()}, a, b); }
-    // Blend mode and emission for what is drawn next. Emission above 1 makes colours glow through the bloom.
+    // Blend mode and emission for what is drawn next. Emission above 1 makes colors glow through the bloom.
     virtual void setBlend(Blend) {}
     virtual void setEmission(float) {}
     // Arc of a ring between angles a0 < a1 (radians, 0 = 3 o'clock, clockwise on screen), round caps.
-    virtual void drawArc(Point centre, float radius, float a0, float a1, Color c, float thickness) {
+    virtual void drawArc(Point center, float radius, float a0, float a1, Color c, float thickness) {
         constexpr int kSteps = 48;
         Point pts[kSteps + 1];
         for (int i = 0; i <= kSteps; ++i) {
             const float a = a0 + (a1 - a0) * static_cast<float>(i) / kSteps;
-            pts[i] = {centre.x + std::cos(a) * radius, centre.y + std::sin(a) * radius};
+            pts[i] = {center.x + std::cos(a) * radius, center.y + std::sin(a) * radius};
         }
         drawPolyline(pts, kSteps + 1, c, thickness);
     }
-    // A soft round blob: `c` at the centre fading to nothing at `radius`.
-    virtual void drawGlow(Point centre, float radius, Color c) {
-        fillCircle(centre, radius * 0.5f, withAlpha(c, 0.25f));
+    // A soft round blob: `c` at the center fading to nothing at `radius`.
+    virtual void drawGlow(Point center, float radius, Color c) {
+        fillCircle(center, radius * 0.5f, withAlpha(c, 0.25f));
     }
-    virtual void fillRadialGradient(Point centre, float radius, Color inner, Color /*outer*/) {
-        fillCircle(centre, radius, inner);
+    virtual void fillRadialGradient(Point center, float radius, Color inner, Color /*outer*/) {
+        fillCircle(center, radius, inner);
     }
     // A soft shadow under a rounded rectangle; plain: none.
     virtual void drawShadow(const Rect&, float /*radius*/, float /*spread*/, Color) {}
@@ -83,7 +83,7 @@ public:
         fillRoundRect(r, radius, tint);
         strokeRect(r, withAlpha(0xFFFFFFFFu, 0.12f), 1.0f);
     }
-    // Polyline with a colour and a width per point (fading trails, traces); plain: segments.
+    // Polyline with a color and a width per point (fading trails, traces); plain: segments.
     virtual void drawStrip(const Point* pts, const Color* colors, const float* widths, int count) {
         for (int i = 0; i + 1 < count; ++i)
             drawLine(pts[i], pts[i + 1], colors[i], widths[i]);
@@ -103,7 +103,7 @@ public:
         const int sc = bitmapScale(px);
         const int w = textWidth(text, sc);
         const float left = align == Align::Left     ? x
-                           : align == Align::Centre ? x - static_cast<float>(w) * 0.5f
+                           : align == Align::Center ? x - static_cast<float>(w) * 0.5f
                                                     : x - static_cast<float>(w);
         drawText(text, static_cast<int>(left), static_cast<int>(y), c, sc);
     }

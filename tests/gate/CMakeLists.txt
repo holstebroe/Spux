@@ -1,4 +1,7 @@
-# The immediate-mode acceptance gate (DESIGN_GUIDELINES section 7, decision U7). Built only when the plugin
+# TEMPORARY, to be removed: the immediate-mode acceptance gate (docs/UI_GATE.md). It ports two concrete
+# plugin panels to measure spux_ui_core against their retained editors; the decision it served is made, and
+# the whole folder (with tools/gate_report.sh and tools/gate_lines.py) goes once the plugins move onto
+# spux_ui_core (docs/MIGRATION.md step 7). Nothing in the library depends on it. Built only when the plugin
 # checkouts are given; the plugins' code stays in their repositories and is compiled from there:
 #
 #   cmake -S . -B build-gate -DCMAKE_BUILD_TYPE=Release \

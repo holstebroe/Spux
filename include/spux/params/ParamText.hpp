@@ -1,4 +1,4 @@
-// Value text and parsing (plain values), from Plumeflow `plugin/Params`. A plugin with its own units
+// Value text and parsing (plain values). A plugin with its own units
 // formats its parameters itself and falls back to these for the rest (the CLAP glue calls the plugin).
 //
 //   Enum   the label                         parse: the exact label, or a number

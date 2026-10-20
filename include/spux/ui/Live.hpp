@@ -1,4 +1,4 @@
-// Generic consumers of telemetry for live views (guidelines 7 "Telemetry"; from Plumeflow `ui/Live`).
+// Generic consumers of telemetry for live views (guidelines 7 "Telemetry").
 // They run on the editor's thread only, once per frame. What is specific to a plugin (its sources,
 // attractor trails, voices) stays in the plugin and feeds these.
 //
@@ -67,7 +67,7 @@ public:
     // One update from the newest samples; `active` false lets the bands fall (nothing is playing).
     template <std::size_t C> void update(const SampleRing<C>& ring, double sampleRate, float dt, bool active = true) {
         const bool have = active && ring.read(samples_.data(), samples_.size());
-        analyse(have, sampleRate, dt);
+        analyze(have, sampleRate, dt);
     }
     // 0..1 per band.
     [[nodiscard]] const std::vector<float>& bands() const { return bands_; }
@@ -75,15 +75,12 @@ public:
     [[nodiscard]] float frequencyAt(float t) const;
 
 private:
-    void analyse(bool have, double sampleRate, float dt);
+    void analyze(bool have, double sampleRate, float dt);
 
     Options o_;
     std::vector<float> samples_, bands_;
     std::vector<std::complex<double>> fft_;
     std::vector<double> window_; // Hann, computed once
 };
-
-// In-place radix-2 complex FFT; the size must be a power of two. Not for the audio thread.
-void fft(std::vector<std::complex<double>>& a, bool inverse);
 
 } // namespace spux::inline v1::ui

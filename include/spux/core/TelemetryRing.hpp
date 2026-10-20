@@ -1,4 +1,4 @@
-// Audio-to-GUI telemetry (decision P7; from Plumeflow `plugin/Telemetry`): lock-free single-producer,
+// Audio-to-GUI telemetry: lock-free single-producer,
 // single-consumer rings. The audio thread only writes, and only while an editor shows it (enabled); the
 // GUI only reads. Nothing here allocates or locks after construction, so the audio side is real-time
 // safe (R1). The frame type is the plugin's (voices, sources, peaks ...); it must be trivially copyable.

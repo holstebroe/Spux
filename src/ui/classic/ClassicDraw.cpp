@@ -230,7 +230,7 @@ void paintWornPanel(Graphics& g, int width, int height, bool trims) {
             const float x = lx + 0.5f;
             Color c = kPaint;
             float shade = 1.f;
-            // Big soft patches of grime, heavier towards the edges.
+            // Big soft patches of grime, heavier toward the edges.
             const float edge = std::min(std::min(y, height - y) / 40.f, 1.f);
             const float grime = smoothstep(0.45f, 0.85f, fbm(x / 70.f, y / 45.f, 9)) * 0.55f + (1.f - edge) * 0.35f;
             c = mix(c, grimeTint, 0.24f * grime);

@@ -1,9 +1,9 @@
-// Human-readable user preset files (decision P4): a header line, then `key=value` lines, keyed by the
+// Human-readable user preset files: a header line, then `key=value` lines, keyed by the
 // stable parameter key (never the id), so a file can be read, diffed and edited by hand.
 //
-//   # Tearwash preset v1
-//   name=SP Teardrops In Neon Rain
-//   program=GRAND HALL
+//   # MyReverb preset v1
+//   name=Long Hall
+//   program=HALL
 //   decay=0.8073888172
 //
 // Reading: lines are trimmed; blank lines and lines starting with '#' are comments, except that the first
@@ -29,7 +29,7 @@
 namespace spux::inline v1::state {
 
 struct TextPreset {
-    std::string format;                                       // "Tearwash preset"; empty when the file has no header
+    std::string format;                                       // "MyReverb preset"; empty when the file has no header
     std::uint32_t version = 0;                                // from the header; 0 when there is none
     std::vector<std::pair<std::string, std::string>> entries; // in file order
 

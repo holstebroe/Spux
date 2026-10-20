@@ -42,7 +42,7 @@ target; a plugin links the targets it lists and nothing else.
 | `spux_testing_allocguard` | Replaces the global `operator new` to catch allocations on the audio thread. Test executables only | nothing |
 | `spux_testing_clap` | CLAP smoke host: loads a built `.clap` like a DAW and runs the shared checks. Test executables only (`spux_clap_smoke` is the command line tool) | clap, X11 on Linux |
 
-Commercial-only code (licence checks and similar) lives in the private `spux-commercial` library, which
+Commercial-only code (license checks and similar) lives in the private `spux-commercial` library, which
 depends on spux, never the other way round.
 
 ## Testing and packaging helpers
@@ -91,8 +91,8 @@ Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY`, `SPUX_BUILD_SMOKE_TOOL`, `SPUX
 Retro build, for speed otherwise; guidelines 4.9), and for the immediate-mode
 acceptance gate `SPUX_GATE_ACIDUS_DIR` / `SPUX_GATE_TANNHAUSER_DIR` (plugin checkouts; `docs/UI_GATE.md`).
 
-## Licence
+## License
 
-MIT. Third-party code inside spux keeps its own licence in its own folder (the BSD-3 BLEP table from
+MIT. Third-party code inside spux keeps its own license in its own folder (the BSD-3 BLEP table from
 pt2-clone in `include/spux/dsp/pt2/`, later the OFL font Inter); `THIRD_PARTY_LICENSES.md` lists what a
 shipped plugin must include.

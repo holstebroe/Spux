@@ -1,4 +1,4 @@
-// Noise sources driven by PCG32 (R3), from Plumeflow `NoiseSource`. The generator is seeded by the
+// Noise sources driven by PCG32 (R3). The generator is seeded by the
 // plugin (Pcg32::derive from the patch seed, voice and note), never from time.
 //
 //   WhiteNoise  uniform in [-1, 1) (RMS 0.577).

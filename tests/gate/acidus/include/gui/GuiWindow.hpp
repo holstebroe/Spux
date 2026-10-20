@@ -52,7 +52,6 @@ public:
     void renderFrame();
     void advanceAnimation(double dt);
     void setAnimationFrozen(bool frozen);
-    size_t getBubbleCount() const;
 
     void handleMouseDown(int x, int y, bool isShift = false);
     void handleMouseDrag(int x, int y, bool isShift = false);

@@ -1,7 +1,6 @@
-// Native child window for the editor (spec 11), ported from the Acidus windowing glue
-// (src/gui/GuiWindow.cpp: X11 and Win32 sections). It owns a window inside the host's parent window,
+// Native child window for the editor (X11 and Win32). It owns a window inside the host's parent window,
 // turns native input into WindowEvents and blits ARGB pixels to it. It knows nothing about the UI:
-// a software-rendered frame is presented as pixels, a GPU frame (WP8) will present through its own
+// a software-rendered frame is presented as pixels, a GPU frame will present through its own
 // context. One instance per editor; nothing is shared between instances.
 #pragma once
 #include <cstdint>

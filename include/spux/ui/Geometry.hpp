@@ -1,5 +1,5 @@
-// Colours and geometry of the UI (from Plumeflow `ui/IRenderer`). Coordinates are logical pixels;
-// colours are 0xAARRGGBB with straight alpha.
+// Colors and geometry of the UI. Coordinates are logical pixels;
+// colors are 0xAARRGGBB with straight alpha.
 #pragma once
 
 #include <cstdint>
@@ -53,7 +53,7 @@ struct Rect {
         const int py = p.y < 0.0f ? -1 - static_cast<int>(-p.y) : static_cast<int>(p.y);
         return contains(px, py);
     }
-    [[nodiscard]] constexpr Point centre() const {
+    [[nodiscard]] constexpr Point center() const {
         return {static_cast<float>(x) + static_cast<float>(w) * 0.5f,
                 static_cast<float>(y) + static_cast<float>(h) * 0.5f};
     }
@@ -85,7 +85,7 @@ struct Rect {
 };
 
 enum class Blend { Alpha, Add };
-enum class Align { Left, Centre, Right };
+enum class Align { Left, Center, Right };
 enum class FontWeight { Regular, Bold };
 
 } // namespace spux::inline v1::ui

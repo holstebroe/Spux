@@ -1,4 +1,4 @@
-// A plain Style for the spux_ui_core tests: every painter draws boxes inside its bounds, with colours
+// A plain Style for the spux_ui_core tests: every painter draws boxes inside its bounds, with colors
 // that tell its state apart (hot, active, focused, value). Translucent fills make a double draw visible.
 #pragma once
 

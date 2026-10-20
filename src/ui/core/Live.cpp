@@ -1,38 +1,14 @@
 #include "spux/ui/Live.hpp"
 
+#include "spux/dsp/Fft.hpp"
+
 #include <algorithm>
 #include <cmath>
-#include <utility>
 
 namespace spux::inline v1::ui {
 
 namespace {
 constexpr double kPi = 3.14159265358979323846;
-}
-
-void fft(std::vector<std::complex<double>>& a, bool inverse) {
-    const std::size_t n = a.size();
-    for (std::size_t i = 1, j = 0; i < n; ++i) {
-        std::size_t bit = n >> 1;
-        for (; j & bit; bit >>= 1)
-            j ^= bit;
-        j ^= bit;
-        if (i < j)
-            std::swap(a[i], a[j]);
-    }
-    for (std::size_t len = 2; len <= n; len <<= 1) {
-        const double ang = 2.0 * kPi / static_cast<double>(len) * (inverse ? 1 : -1);
-        const std::complex<double> wl(std::cos(ang), std::sin(ang));
-        for (std::size_t i = 0; i < n; i += len) {
-            std::complex<double> w(1);
-            for (std::size_t k = 0; k < len / 2; ++k) {
-                const auto u = a[i + k], v = a[i + k + len / 2] * w;
-                a[i + k] = u + v;
-                a[i + k + len / 2] = u - v;
-                w *= wl;
-            }
-        }
-    }
 }
 
 Spectrum::Spectrum(const Options& o) : o_(o) {
@@ -53,7 +29,7 @@ float Spectrum::frequencyAt(float t) const {
     return o_.lowHz * std::pow(o_.highHz / o_.lowHz, std::clamp(t, 0.0f, 1.0f));
 }
 
-void Spectrum::analyse(bool have, double sampleRate, float dt) {
+void Spectrum::analyze(bool have, double sampleRate, float dt) {
     const float fall = std::exp(-dt * o_.releasePerSecond);
     if (!have) {
         for (float& b : bands_)
@@ -65,7 +41,7 @@ void Spectrum::analyse(bool have, double sampleRate, float dt) {
         const auto k = static_cast<std::size_t>(i);
         fft_[k] = {static_cast<double>(samples_[k]) * window_[k], 0.0};
     }
-    fft(fft_, false);
+    spux::fft(fft_);
     const double sr = sampleRate > 1000.0 ? sampleRate : 48000.0;
     const double binHz = sr / n;
     for (int b = 0; b < o_.bands; ++b) {

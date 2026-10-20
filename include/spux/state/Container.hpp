@@ -1,9 +1,9 @@
-// The chunked state container (decisions P3, S7, P9), from Lumeoid's `LMN1` (state/container).
+// The chunked state container.
 //
-//   magic    4 bytes, chosen by the plugin ("LMN1", "PLF1", ...)
-//   version  uint32, the plugin's state version (the plugin decides what a version means, P9)
+//   magic    4 bytes, chosen by the plugin ("ABC1", ...)
+//   version  uint32, the plugin's state version (the plugin decides what a version means)
 //   chunks   id (4 bytes), length (uint32), CRC-32 of the payload (uint32), payload
-// Little-endian. Host state, user presets and factory presets can all be this one container (P4).
+// Little-endian. Host state, user presets and factory presets can all be this one container.
 //
 // Reading never trusts a length or a count: a chunk whose length runs past the end ends the read (and
 // counts as damaged), a chunk whose CRC does not match is skipped and counted as damaged, a chunk the
@@ -11,8 +11,8 @@
 // breaking older readers. The plugin's chunk handler decides what is known and what is damaged.
 //
 // Migration: the version read is the plugin's input to migrate() (one step per released version), so a
-// later converter can restore old behaviour or rescue old data. A state from before the container
-// (Tearwash's text state) has no magic: hasMagic() is false and the plugin runs its own legacy reader.
+// later converter can restore old behavior or rescue old data. A state from before the container
+// (a plain text state, say) has no magic: hasMagic() is false and the plugin runs its own legacy reader.
 #pragma once
 
 #include <cstddef>
@@ -137,7 +137,7 @@ std::uint32_t migrate(Data& data, std::uint32_t fromVersion, std::span<const Mig
     return v;
 }
 
-// The parameter chunk "PARM" (Lumeoid's layout): uint32 count, then count pairs of uint32 id and
+// The parameter chunk "PARM": uint32 count, then count pairs of uint32 id and
 // float64 value. Values are the plugin's choice of domain (plain values recommended: they survive a
 // change of host mapping). Readers ignore ids they do not know and keep defaults for missing ones.
 inline constexpr FourCC kParamChunk{"PARM"};

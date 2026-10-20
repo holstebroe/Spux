@@ -1,7 +1,7 @@
-// Reference-render null test (S5, S6, guidelines section 3). A plugin renders a curated case (patch plus
+// Reference-render null test (guidelines section 3). A plugin renders a curated case (patch plus
 // note sequence, a few seconds), and this compares the render with the stored float WAV in the plugin
 // repository: subtract, report the peak and RMS of the difference, and fail above the threshold. The
-// threshold is a parameter: -90 dBFS peak for a normal plugin, -110 dBFS for Acidus, -infinity for a
+// threshold is a parameter: -90 dBFS peak for a normal plugin, -110 dBFS for a strict one, -infinity for a
 // bit-exact check.
 //
 //   NullOptions opt;
@@ -15,7 +15,7 @@
 // SPUX_UPDATE_REFERENCES=1 (or NullOptions::update). The report then lists what each case changed by.
 // A case without a stored reference fails; it never passes silently.
 //
-// Sound tolerances (S5, S6): the peak difference detects any change, down to one ulp, but on a sensitive
+// Sound tolerances: the peak difference detects any change, down to one ulp, but on a sensitive
 // patch (a resonant ladder) a one-ulp change of a libm function already moves the output by -70 to
 // -90 dBFS, inaudibly. To accept such changes and still catch real mistakes, set the tolerances on what
 // is heard: maxSpectralDb (the worst short-time spectrum difference, dB) and maxEnvelopeDb (the worst
@@ -325,7 +325,7 @@ inline std::string nullMessage(const NullResult& r) {
     return s;
 }
 
-// A table, one row per case: the per-patch report Acidus's strict gate asks for.
+// A table, one row per case: the per-patch report of a strict gate.
 inline std::string formatNullReport(const std::vector<NullResult>& results, const NullOptions& options) {
     std::string s = "null test, threshold " + detail::db(options.peakThresholdDb) + " dBFS peak";
     if (options.rmsThresholdDb)

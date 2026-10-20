@@ -1,4 +1,4 @@
-// Allocation guard (R1, P8): the test executable replaces the global operator new and delete. While an
+// Allocation guard (R1): the test executable replaces the global operator new and delete. While an
 // AudioThreadScope is alive on a thread, any allocation on that thread is a violation.
 //
 // Link `spux_testing_allocguard` into test executables only. Replacing operator new is process-wide by

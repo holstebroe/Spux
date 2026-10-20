@@ -20,7 +20,7 @@ public:
     // The glyph table was authored 7 columns wide (letters like M/N/W/J use
     // column index 6); a 5-wide font here would silently crop their right side.
     static Font defaultPanelFont();
-    // Thin classic 5x7 glyphs (the Syrebas panel font): the default label font.
+    // Thin classic 5x7 glyphs: the default label font.
     static Font classic5x7();
 
 private:

@@ -209,7 +209,7 @@ struct Knob {
     clap_id id;
     const char* label;
     int x;
-    uint32_t cap; // centre cap colour, 0: none
+    uint32_t cap; // center cap color, 0: none
 };
 constexpr Knob kKnobs[] = {
     {PARAM_CUTOFF, "CUT OFF FREQ", 120, 0},    {PARAM_RESONANCE, "RESONANCE", 186, 0},
@@ -235,7 +235,7 @@ public:
     }
 
     void frame(G& g) override {
-        g.toggle(PARAM_WAVEFORM, around(kSwitchX, kRowY, 45, 81), {.centreBand = 10, .wheel = false});
+        g.toggle(PARAM_WAVEFORM, around(kSwitchX, kRowY, 45, 81), {.centerBand = 10, .wheel = false});
         for (const Knob& k : kKnobs)
             g.knob(k.id, around(k.x, kRowY, 60, 60), {.accent = k.cap, .wheelStep = 0.0, .hitRadius = 30.0f});
 
@@ -347,7 +347,7 @@ private:
 
 Theme acidusTheme() {
     Theme t;
-    t.colors.accent = 0; // a knob without a cap colour
+    t.colors.accent = 0; // a knob without a cap color
     t.colors.background = 0xFFDBDFE1;
     t.feel.dragPixels = 80.0f; // 0.0125 of the range per pixel
     t.feel.fine = 0.2f;        // shift: 0.0025
@@ -431,7 +431,6 @@ const std::vector<uint32_t>& GuiWindow::getPixelBuffer() const {
 }
 void GuiWindow::advanceAnimation(double dt) { impl_->panel.logo().advance(dt, impl_->editor.gui().norm(PARAM_CUTOFF)); }
 void GuiWindow::setAnimationFrozen(bool frozen) { impl_->panel.setFrozen(frozen); }
-size_t GuiWindow::getBubbleCount() const { return impl_->panel.logo().bubbleCount(); }
 
 void GuiWindow::handleMouseDown(int x, int y, bool shift) {
     impl_->editor.mouseDown(static_cast<float>(x), static_cast<float>(y), MouseButton::Left, shift);

@@ -1,6 +1,6 @@
-// A flavor's look as data (decision U8): colours, metrics and font slots, plus the interaction feel the
+// A flavor's look as data: colors, metrics and font slots, plus the interaction feel the
 // widgets share. A flavor provides its default Theme; a plugin can supply its own values. Painters read
-// the colours and metrics; Gui reads the interaction metrics. Nothing here is code.
+// the colors and metrics; Gui reads the interaction metrics. Nothing here is code.
 #pragma once
 
 #include "spux/ui/Geometry.hpp"

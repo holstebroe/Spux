@@ -1,20 +1,20 @@
-// Band-limited step residuals (BLEP) of orders 2, 4, 16 and 32, from Plumeflow `dsp/Blep.hpp` (spec 04;
-// its osc_alias_test measured the choice). The minimum-phase pt2-clone table is separate, under its own
-// licence, in spux/dsp/pt2/MinBlep.hpp.
+// Band-limited step residuals (BLEP) of orders 2, 4, 16 and 32. The
+// minimum-phase pt2-clone table is separate, under its own
+// license, in spux/dsp/pt2/MinBlep.hpp.
 //
 // residual(x) is the band-limited step minus the ideal step, with x the signed distance in samples from
 // the discontinuity (positive after it). Add jump * residual(x) to the naive waveform at every sample
 // with |x| < kWidth. The residual is zero outside (-kWidth, kWidth).
 //
 //   Blep<2>   2-sample PolyBLEP (triangle kernel).
-//   Blep<4>   4-sample PolyBLEP (cubic B-spline kernel); the same kernel as Tannhauser `blep4`.
+//   Blep<4>   4-sample PolyBLEP (cubic B-spline kernel).
 //   Blep<16>  a 16-sample table kernel: Kaiser-windowed sinc (beta 7, cutoff 0.36 of the sampling rate)
 //             of unit area, integrated into a step, 64 points per sample, linear interpolation.
 //   Blep<32>  the same kernel stretched for 2x rates (cutoff 0.18), so a 32-sample kernel at twice the
 //             host rate band-limits like the 16-sample one at the host rate.
 //
 // The tables are built once when the binary loads (dynamic initialization of an immutable object, never
-// on the audio thread) with spux math (Plumeflow used std::sin; the table differs in the last bit).
+// on the audio thread) with spux math.
 #pragma once
 
 #include <algorithm>

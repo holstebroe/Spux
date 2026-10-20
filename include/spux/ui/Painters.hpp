@@ -1,4 +1,4 @@
-// Painter interfaces, one per widget type (decision U8, guidelines 7 "Painters and themes").
+// Painter interfaces, one per widget type (guidelines 7 "Painters and themes").
 //
 // Gui does the interaction; a painter only draws. It receives the renderer, the widget's bounds and a
 // state struct (value, hot, active, focused, modulation, label, ...) and draws inside the bounds plus
@@ -54,7 +54,7 @@ struct KnobState : WidgetState {
     bool editing = false;       // typed value entry: show editText instead of the value
     const char* editText = "";
     bool caret = false;   // the entry caret is visible this frame
-    bool bipolar = false; // the arc starts at the centre
+    bool bipolar = false; // the arc starts at the center
     bool large = false;
     bool dimmed = false; // shown but overridden (a tempo-synced rate)
     bool showValue = true;

@@ -1,5 +1,5 @@
-// What the editor needs from the plugin around it (guidelines 7, "Editor host"; from Plumeflow
-// `ui/EditorHost`). The core is parameters (spux_params: table, host values, version, edit queue),
+// What the editor needs from the plugin around it (guidelines 7, "Editor host").
+// The core is parameters (spux_params: table, host values, version, edit queue),
 // the flush request, telemetry switching and the UI state; everything else is an optional extension
 // a plugin offers only when it has it (modulation display, preset access). Widgets never see CLAP.
 //
@@ -25,7 +25,7 @@ struct UiState {
     float scale = 1.0f;
 };
 
-// Optional: the live modulation of parameters and the armed-source depth handle (Plumeflow's matrix).
+// Optional: the live modulation of parameters and the armed-source depth handle (a modulation matrix).
 class ModulationHost {
 public:
     struct Display {
@@ -48,7 +48,7 @@ public:
     [[nodiscard]] virtual float depthDragPixels() const { return 120.0f; }
 };
 
-// Optional: presets, for a preset browser (U10) or the plugin's own page code.
+// Optional: presets, for a preset browser or the plugin's own page code.
 class PresetHost {
 public:
     struct Entry {

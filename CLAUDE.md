@@ -3,7 +3,7 @@
 spux (Signal Processing & User eXperience) is a shared C++20 library for the author's audio plugins
 (CLAP, VST3 through clap-wrapper): DSP building blocks, parameters and state, CLAP glue, windowing and
 an editor UI in three flavors (Retro, Classic, Modern). No third-party DSP or GUI frameworks (no JUCE).
-MIT licence.
+MIT license.
 
 ## Where things are
 
@@ -48,6 +48,13 @@ MIT licence.
     copy, or when two copies are identical.
 12. Commercial-only code belongs in the private `spux-commercial`, never here.
 13. Commits small and focused; keep `docs/` in step with the code in the same commit.
+14. **US English** everywhere: identifiers, comments, docs and commit messages (color, center, behavior,
+    license, analyze, canceled).
+15. **Comments document the library, not how it was made.** Code and build files never name a concrete
+    plugin or cite a decision id (L1, U7, ...), a plugin's spec or a work package. Where code came from and
+    what a plugin meets when it switches goes in `docs/MIGRATION.md` ("Provenance and switch notes"); why
+    it was decided goes in `docs/DECISIONS.md`. Guideline rule ids (R1 to R6) and section pointers are fine.
+    Tests may name the code they pin compatibility with; `tests/gate/` is temporary.
 
 ## Build
 

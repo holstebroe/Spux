@@ -1,4 +1,4 @@
-// Platforms without a native window implementation yet (Cocoa is the open one, as in Acidus), and Linux
+// Platforms without a native window implementation yet (Cocoa is the open one), and Linux
 // builds with SPUX_WITH_X11=OFF: the plugin runs without an editor there.
 #if !defined(_WIN32) && !defined(SPUX_HAS_X11)
 #include "spux/platform/NativeWindow.hpp"

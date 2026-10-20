@@ -1,4 +1,4 @@
-// Parameter description and laws (decision P2, guidelines section 6). From Plumeflow `plugin/Params`.
+// Parameter description and laws (guidelines section 6).
 //
 // A plugin lists its parameters once, in an X-macro `.def` file (ParamTable.hpp has the macros); each
 // row becomes a ParamInfo. Ids and keys are stable: never renumber an id or rename a key, only append.
@@ -10,12 +10,12 @@
 //               or Db law (perceptually even automation), the plain value otherwise. PF_HOST_PLAIN keeps
 //               the plain value for any parameter (a plugin whose released automation is in dB).
 //
-// Laws count as sound (S1): the host stores normalized automation, so a changed law changes old
+// Laws count as sound: the host stores normalized automation, so a changed law changes old
 // projects. A different law is a new ParamLaw value; the existing ones never change their curve.
 //   Linear   n = (v - min) / (max - min)
 //   Log      n = ln(v / min) / ln(max / min)                                   (min > 0)
 //   LogZero  0 at the bottom, a linear knee to 0.01 (plain) over the first 1 % of the control, then
-//            logarithmic from 0.01 to max (Plumeflow's times that reach exactly 0)
+//            logarithmic from 0.01 to max (times that reach exactly 0)
 //   Db       linear in dB, like Linear; the host sees it normalized
 #pragma once
 
@@ -32,7 +32,7 @@ namespace spux::inline v1::params {
 enum class ParamKind : std::uint8_t { Float, Int, Bool, Enum };
 enum class ParamLaw : std::uint8_t { Linear, Log, LogZero, Db };
 
-// Flags column of the .def file. The names are Plumeflow's, so its table moves unchanged.
+// Flags column of the .def file.
 enum ParamFlags : std::uint32_t {
     PF_AUTO = 1,        // automatable
     PF_MODULATABLE = 2, // a modulation destination (host modulation, CLAP_PARAM_IS_MODULATABLE)
