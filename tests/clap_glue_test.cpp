@@ -188,7 +188,7 @@ TEST_CASE("the extensions a plugin implements, forwarded") {
     const auto* params = ext<clap_plugin_params_t>(p, CLAP_EXT_PARAMS);
     REQUIRE(params != nullptr);
     CHECK(params->count(p) == 8);
-    clap_param_info_t info;
+    clap_param_info_t info{};
     REQUIRE(params->get_info(p, 0, &info));
     CHECK(info.id == 1002);
     CHECK(std::string(info.name) == "Quality");

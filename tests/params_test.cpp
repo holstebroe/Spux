@@ -139,7 +139,7 @@ TEST_CASE("value text and parsing") {
     CHECK(!parseValue(kTable[7], "nan", v));
     CHECK(!parseValue(kTable[7], nullptr, v));
     CHECK(enumCount(kTable[0]) == 3);
-    CHECK(enumLabel(kTable[0], 1) == "Normal");
+    CHECK(std::string(enumLabel(kTable[0], 1)) == "Normal");
     CHECK(enumLabel(kTable[0], 3).empty());
 }
 
