@@ -7,8 +7,8 @@ best of 20 runs over 65536 random inputs; they depend on the machine, so compare
 ## 2026-10-20, migration step 4
 
 Linux x86-64, GCC 13.3, glibc, CMake Release (`-O3 -DNDEBUG`), `-ffp-contract=off`, on a
-cloud VM ("Intel Xeon Processor @ 2.10GHz", 4 cores). Windows (MSVC CRT) not measured yet: CI runs
-`spux_bench --quick` there; record it at the first Windows session.
+cloud VM ("Intel Xeon Processor @ 2.10GHz", 4 cores). The Windows numbers (MSVC, UCRT) are in the
+next section.
 
 ### Math (ns per call; speed-up = libm / spux)
 
@@ -49,18 +49,44 @@ cloud VM ("Intel Xeon Processor @ 2.10GHz", 4 cores). Windows (MSVC CRT) not mea
 | Smoothed<OnePole> next             |    3.10 |       - |     - |
 
 
+### Windows: MSVC (VS 2026, /O2 /fp:precise), UCRT, GitHub windows-latest runner, `spux_bench --quick`
+
+| function | spux | libm | x |
+| --- | ---: | ---: | ---: |
+| exp2F (std::exp2 float) | 5.31 | 2.78 | 0.52 |
+| tanhF (std::tanh float) | 7.43 | 13.29 | 1.79 |
+| tanhPade76 (std::tanh float) | 5.66 | 13.25 | 2.34 |
+| tanhPade32 (std::tanh float) | 7.13 | 13.24 | 1.86 |
+| sinTurns (std::sin float) | 16.92 | 15.19 | 0.90 |
+| tanRad (std::tan float) | 7.44 | 7.82 | 1.05 |
+| log2Approx (std::log2 float) | 2.16 | 3.71 | 1.72 |
+| atanApprox (std::atan float) | 8.35 | 11.26 | 1.35 |
+| logCosh (log(cosh) double) | 13.79 | 25.91 | 1.88 |
+| dbToGainF (std::pow float) | 5.38 | 12.86 | 2.39 |
+| expD (std::exp) | 38.72 | 4.40 | 0.11 |
+| exp2D (std::exp2) | 37.80 | 4.04 | 0.11 |
+| logD (std::log) | 47.76 | 5.04 | 0.11 |
+| sinD (std::sin) | 21.02 | 13.43 | 0.64 |
+| tanD (std::tan) | 43.72 | 12.68 | 0.29 |
+
+Blocks (ns per host-rate sample): OnePoleTpt 3.70, Svf 7.40, Biquad 3.70, DelayLine Hermite 7.25,
+Oversampler x2 / x4 / x8 23.7 / 61.2 / 184.7, Adaa1 tanh 21.4, Oversampler x4 + Adaa1 tanh 159.0,
+Blep<16> 7.22, PinkNoise 4.78, Smoothed<OnePole> 5.55. The MSVC build also passes the kernel test against
+`tests/kernels/portable.txt`: the blocks give the same bits as GCC and Clang.
+
 ### Reading
 
 - **Faster than glibc** in the audio path: `tanhF` (1.6x), the Pade tanh shapes (2.6 to 3.6x),
   `tanRad` (2.7x), `atanApprox` (1.6x), `log2Approx` (1.2x), `logCosh` (1.3x). These replace libm
   as S4 asks (Acidus, Gritbaal, Syrebas and Kikset call `std::tanh` per sample today).
 - **On par**: `sinTurns` (0.95 to 1.02 between runs) and `sinD` (1.1x).
-- **Slower than glibc: `exp2F` (0.3x) and `dbToGainF` (0.6x, it calls `exp2F`).** glibc's `exp2f` is
+- **Slower than glibc: `exp2F` (0.3x) and `dbToGainF` (0.6x against `std::pow`, it calls `exp2F`).** glibc's `exp2f` is
   a table plus a short double polynomial (about 3 ns); `exp2F` is Plumeflow's degree-5 Horner chain,
   bound by its latency. Speeding it up would change its results (a different polynomial or order of
   evaluation), so it is unchanged and the question is open (MIGRATION.md, step 4): by S4 a plugin keeps
   libm's `exp2f` where `exp2F` would be slower, or accepts the cost for platform-independent output.
-  MSVC's CRT has no fast `exp2f`; measure there before deciding.
+  On Windows (the v1 platform) `exp2F` is also slower than the UCRT's `exp2f` (0.5x), but `dbToGainF`
+  beats `std::pow` (2.4x).
 - **The double set is slower than libm** (`expD` 7x, `exp2D` 12x, `logD` 10x, `tanD` 2x): series with
   fixed term counts from Lumeoid. They are meant for coefficients at control rate (once per tick or
   per parameter change), where a few tens of ns do not matter, and they make coefficients identical on
