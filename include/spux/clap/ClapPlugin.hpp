@@ -187,7 +187,7 @@ template <class D> struct GuiExt {
     static constexpr clap_plugin_gui_t table = {
         [](const clap_plugin_t* p, const char* api, bool floating) -> bool {
             return guarded(false, [&] {
-                D& d = *self<D>(p);
+                [[maybe_unused]] D& d = *self<D>(p);
                 if constexpr (requires { d.guiIsApiSupported(api, floating); })
                     return static_cast<bool>(d.guiIsApiSupported(api, floating));
                 else
@@ -199,11 +199,11 @@ template <class D> struct GuiExt {
             if (api == nullptr || floating == nullptr)
                 return false;
             return guarded(false, [&] {
-                D& d = *self<D>(p);
+                [[maybe_unused]] D& d = *self<D>(p);
                 if constexpr (requires { d.guiGetPreferredApi(api, floating); })
                     return static_cast<bool>(d.guiGetPreferredApi(api, floating));
                 else {
-                    if (!kHasPlatformWindowApi)
+                    if constexpr (!kHasPlatformWindowApi)
                         return false;
                     *api = platformWindowApi();
                     *floating = false;
@@ -215,9 +215,9 @@ template <class D> struct GuiExt {
             return guarded(false, [&] { return static_cast<bool>(self<D>(p)->guiCreate(api, floating)); });
         },
         [](const clap_plugin_t* p) { guardedVoid([&] { self<D>(p)->guiDestroy(); }); },
-        [](const clap_plugin_t* p, double scale) -> bool {
+        [](const clap_plugin_t* p, [[maybe_unused]] double scale) -> bool {
             return guarded(false, [&] {
-                D& d = *self<D>(p);
+                [[maybe_unused]] D& d = *self<D>(p);
                 if constexpr (requires { d.guiSetScale(scale); })
                     return static_cast<bool>(d.guiSetScale(scale));
                 else
@@ -230,7 +230,7 @@ template <class D> struct GuiExt {
         },
         [](const clap_plugin_t* p) -> bool {
             return guarded(false, [&] {
-                D& d = *self<D>(p);
+                [[maybe_unused]] D& d = *self<D>(p);
                 if constexpr (requires { d.guiCanResize(); })
                     return static_cast<bool>(d.guiCanResize());
                 else
@@ -239,7 +239,7 @@ template <class D> struct GuiExt {
         },
         [](const clap_plugin_t* p, clap_gui_resize_hints_t* hints) -> bool {
             return hints != nullptr && guarded(false, [&] {
-                       D& d = *self<D>(p);
+                       [[maybe_unused]] D& d = *self<D>(p);
                        if constexpr (requires { d.guiGetResizeHints(hints); })
                            return static_cast<bool>(d.guiGetResizeHints(hints));
                        else
@@ -250,7 +250,7 @@ template <class D> struct GuiExt {
             if (w == nullptr || h == nullptr)
                 return false;
             return guarded(false, [&] {
-                D& d = *self<D>(p);
+                [[maybe_unused]] D& d = *self<D>(p);
                 if constexpr (requires { d.guiAdjustSize(w, h); })
                     return static_cast<bool>(d.guiAdjustSize(w, h));
                 else
@@ -259,7 +259,7 @@ template <class D> struct GuiExt {
         },
         [](const clap_plugin_t* p, std::uint32_t w, std::uint32_t h) -> bool {
             return guarded(false, [&] {
-                D& d = *self<D>(p);
+                [[maybe_unused]] D& d = *self<D>(p);
                 if constexpr (requires { d.guiSetSize(w, h); })
                     return static_cast<bool>(d.guiSetSize(w, h));
                 else {
@@ -272,18 +272,18 @@ template <class D> struct GuiExt {
             return window != nullptr &&
                    guarded(false, [&] { return static_cast<bool>(self<D>(p)->guiSetParent(window)); });
         },
-        [](const clap_plugin_t* p, const clap_window_t* window) -> bool {
+        [](const clap_plugin_t* p, [[maybe_unused]] const clap_window_t* window) -> bool {
             return guarded(false, [&] {
-                D& d = *self<D>(p);
+                [[maybe_unused]] D& d = *self<D>(p);
                 if constexpr (requires { d.guiSetTransient(window); })
                     return static_cast<bool>(d.guiSetTransient(window));
                 else
                     return false; // embedded windows only
             });
         },
-        [](const clap_plugin_t* p, const char* title) {
+        [](const clap_plugin_t* p, [[maybe_unused]] const char* title) {
             guardedVoid([&] {
-                D& d = *self<D>(p);
+                [[maybe_unused]] D& d = *self<D>(p);
                 if constexpr (requires { d.guiSuggestTitle(title); })
                     d.guiSuggestTitle(title);
             });

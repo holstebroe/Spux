@@ -72,8 +72,7 @@ public:
 
 private:
     std::array<ParamEdit, kCapacity> ring_{};
-    alignas(64) std::atomic<std::size_t> head_{0};
-    alignas(64) std::atomic<std::size_t> tail_{0};
+    std::atomic<std::size_t> head_{0}, tail_{0};
 };
 
 using EditQueue = BasicEditQueue<>;

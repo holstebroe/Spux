@@ -14,7 +14,7 @@
 //
 //   using namespace spux::params;                       // for the flags column
 //   inline constexpr ParamInfo kParamInfos[] = {
-//   #define SPUX_PARAM(...) SPUX_PARAM_INFO(__VA_ARGS__)
+//   #define SPUX_PARAM SPUX_PARAM_INFO
 //   #include "MyParams.def"
 //   #undef SPUX_PARAM
 //   };
@@ -22,13 +22,13 @@
 //   static_assert(kParams.valid());
 //
 //   enum ParamId : std::uint32_t {                     // P_cutoff = 3001, ...
-//   #define SPUX_PARAM(...) SPUX_PARAM_ENUM(__VA_ARGS__)
+//   #define SPUX_PARAM SPUX_PARAM_ENUM
 //   #include "MyParams.def"
 //   #undef SPUX_PARAM
 //   };
 //
 //   struct Smoothers {                                 // one spux::Smoothed<policy> member per key
-//   #define SPUX_PARAM(...) SPUX_PARAM_SMOOTHER(__VA_ARGS__)
+//   #define SPUX_PARAM SPUX_PARAM_SMOOTHER
 //   #include "MyParams.def"
 //   #undef SPUX_PARAM
 //   };
@@ -46,7 +46,15 @@
 #include "spux/core/Smoothing.hpp"
 #include "spux/params/ParamInfo.hpp"
 
-#define SPUX_PARAM_INFO(id, key, name, kind, mn, mx, law, df, flags, labels, module, smoothing)                        \
+// Define SPUX_PARAM as an alias of a helper (`#define SPUX_PARAM SPUX_PARAM_INFO`): the row's arguments are
+// then split once, by the helper itself, on every preprocessor. A forwarding `#define SPUX_PARAM(...)
+// SPUX_PARAM_INFO(__VA_ARGS__)` works too: MSVC's traditional preprocessor passes a forwarded __VA_ARGS__ on as
+// one argument, and the helpers expand it once more before splitting it.
+#define SPUX_PP_EXPAND(x) x
+#define SPUX_PARAM_INFO(...) SPUX_PP_EXPAND(SPUX_PARAM_INFO_(__VA_ARGS__))
+#define SPUX_PARAM_ENUM(...) SPUX_PP_EXPAND(SPUX_PARAM_ENUM_(__VA_ARGS__))
+#define SPUX_PARAM_SMOOTHER(...) SPUX_PP_EXPAND(SPUX_PARAM_SMOOTHER_(__VA_ARGS__))
+#define SPUX_PARAM_INFO_(id, key, name, kind, mn, mx, law, df, flags, labels, module, smoothing)                       \
     ::spux::params::ParamInfo{(id),                                                                                    \
                               #key,                                                                                    \
                               (name),                                                                                  \
@@ -58,9 +66,9 @@
                               static_cast<std::uint32_t>(flags),                                                       \
                               (labels),                                                                                \
                               (module)},
-#define SPUX_PARAM_ENUM(id, key, ...) P_##key = (id),
+#define SPUX_PARAM_ENUM_(id, key, ...) P_##key = (id),
 #define SPUX_PARAM_COUNT_ONE(...) +1
-#define SPUX_PARAM_SMOOTHER(id, key, name, kind, mn, mx, law, df, flags, labels, module, smoothing)                    \
+#define SPUX_PARAM_SMOOTHER_(id, key, name, kind, mn, mx, law, df, flags, labels, module, smoothing)                   \
     ::spux::Smoothed<smoothing, float> key{};
 
 namespace spux::inline v1::params {

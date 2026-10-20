@@ -147,7 +147,7 @@ smooths by itself.
   `SPUX_PARAM(id, key, name, kind, min, max, law, default, flags, labels, module, smoothing)` (Plumeflow's
   columns plus module and smoothing policy; `spux/params/ParamTable.hpp`). Never renumber ids or rename
   keys; only append. The plugin expands the rows where it wants them (`SPUX_PARAM_INFO`, `_ENUM`,
-  `_COUNT_ONE`, `_SMOOTHER`) and checks its table with `static_assert(table.valid())`. spux provides the
+  `_COUNT_ONE`, `_SMOOTHER`; `#define SPUX_PARAM SPUX_PARAM_INFO`, which every preprocessor splits alike) and checks its table with `static_assert(table.valid())`. spux provides the
   laws (Linear, Log, LogZero, Db), value text and parsing, id and key lookup, the atomic `ParamStore` and
   the SPSC `EditQueue` (values leave slots reserved for gesture begin and end).
 - **Host values** are normalized for Float parameters with a non-linear law and plain otherwise

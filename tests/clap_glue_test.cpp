@@ -193,12 +193,13 @@ TEST_CASE("the extensions a plugin implements, forwarded") {
     CHECK(info.id == 1002);
     CHECK(std::string(info.name) == "Quality");
     CHECK(std::string(info.module) == "Global");
-    CHECK(info.flags == (CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_ENUM));
+    CHECK(info.flags ==
+          static_cast<std::uint32_t>(CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_ENUM));
     CHECK((info.min_value == 0 && info.max_value == 2 && info.default_value == 1));
     REQUIRE(params->get_info(p, 4, &info)); // dB: the host sees 0..1
     CHECK((info.min_value == 0 && info.max_value == 1));
     CHECK(info.default_value == doctest::Approx(0.8));
-    CHECK(info.flags == (CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_MODULATABLE));
+    CHECK(info.flags == static_cast<std::uint32_t>(CLAP_PARAM_IS_AUTOMATABLE | CLAP_PARAM_IS_MODULATABLE));
     CHECK(!params->get_info(p, 8, &info));
     CHECK(!params->get_info(p, 0, nullptr));
 
