@@ -557,8 +557,7 @@ void ModernTooltip::paint(IRenderer& r, const Rect& b, const TooltipState& s) co
     const bool body = s.text && *s.text;
     const float room = f(b.w) - 24.0f;
     r.drawTextPx(fitText(r, s.title, t.metrics.valuePx + 0.5f, room, FontWeight::Bold).c_str(), f(b.x) + 12.0f,
-                 f(b.y) + (body ? 9.0f : 8.0f), t.colors.text, t.metrics.valuePx + 0.5f, Align::Left,
-                 FontWeight::Bold);
+                 f(b.y) + (body ? 9.0f : 8.0f), t.colors.text, t.metrics.valuePx + 0.5f, Align::Left, FontWeight::Bold);
     if (body)
         r.drawTextPx(fitText(r, s.text, t.metrics.valuePx, room).c_str(), f(b.x) + 12.0f,
                      f(b.y) + tooltipBodyY(t.metrics), t.colors.textDim, t.metrics.valuePx);

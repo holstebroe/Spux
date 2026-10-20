@@ -361,11 +361,11 @@ TEST_CASE("UTF-8 decoding: one '?' per malformed sequence, four-byte forms are w
     };
     CHECK(decode("a\xC3\xA9\xE2\x80\xA6") == std::vector<std::uint32_t>{'a', 0xE9, 0x2026});
     CHECK(decode("\xF0\x9F\x98\x80") == std::vector<std::uint32_t>{0x1F600});
-    CHECK(decode("\xF0\x9F\x98") == std::vector<std::uint32_t>{'?'});          // truncated
-    CHECK(decode("\x80\x80x") == std::vector<std::uint32_t>{'?', 'x'});         // stray continuations
-    CHECK(decode("\xC0\x80") == std::vector<std::uint32_t>{'?'});               // overlong
-    CHECK(decode("\xED\xA0\x80") == std::vector<std::uint32_t>{'?'});          // surrogate
-    CHECK(decode("\xF4\x90\x80\x80") == std::vector<std::uint32_t>{'?'});     // beyond U+10FFFF
+    CHECK(decode("\xF0\x9F\x98") == std::vector<std::uint32_t>{'?'});     // truncated
+    CHECK(decode("\x80\x80x") == std::vector<std::uint32_t>{'?', 'x'});   // stray continuations
+    CHECK(decode("\xC0\x80") == std::vector<std::uint32_t>{'?'});         // overlong
+    CHECK(decode("\xED\xA0\x80") == std::vector<std::uint32_t>{'?'});     // surrogate
+    CHECK(decode("\xF4\x90\x80\x80") == std::vector<std::uint32_t>{'?'}); // beyond U+10FFFF
 }
 
 TEST_CASE("the knob's hit area and depth handle follow its geometry") {
