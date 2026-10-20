@@ -24,6 +24,13 @@ spux_add_test(render_safety_test)
 spux_add_test(null_test)
 spux_add_test(midi_test spux_midi)
 
+# spux_params, spux_state, spux_clap (header-only). The test parameter table is tests/params/.
+spux_add_test(params_test spux_params)
+spux_add_test(state_test spux_state)
+spux_add_test(clap_glue_test spux_clap)
+target_include_directories(params_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(clap_glue_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 # spux_core and spux_dsp (header-only). The kernel test reads and, with SPUX_UPDATE_GOLDEN=1, writes
 # tests/kernels/ in the source tree.
 foreach(t math_test pcg32_test smoothing_test filters_test halfband_test blep_test saturator_test noise_drift_test

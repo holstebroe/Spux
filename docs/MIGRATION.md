@@ -18,10 +18,10 @@ only in namespace and include guards, or not at all.
 | Immediate-mode `Gui` | Plumeflow `ui/Gui` | Needs: painter split, parameter binding through spux, plugin-specific ids out (10 `plugin::P_*` uses), modulation as an optional interface. |
 | Editor shell | Plumeflow `ui/Editor` | Logical size and root view become parameters. |
 | Editor host | Plumeflow `ui/EditorHost` | Split into a core and optional extensions. |
-| Edit queue, telemetry ring | Plumeflow `plugin/EditQueue`, `plugin/Telemetry` | Ring becomes a template on the frame type. |
+| Edit queue, telemetry ring | Plumeflow `plugin/EditQueue`, `plugin/Telemetry` | Ring becomes a template on the frame type. **Edit queue moved to `spux_params` (step 5); Tearwash migrated.** Telemetry ring not yet. |
 | Generic live views | Plumeflow `ui/Live`, `ui/Views` (spectrum, traces, meters, curve editor) | Attractor, envelope and filter views stay in Plumeflow. |
-| Parameters | `ParamInfo` in Tannhauser, Plumeflow, Lumeoid, Kikset, Gritbaal; X-macro in Plumeflow and Lumeoid | Plumeflow `params.def` + `ParamStore` as the base. |
-| State container | Lumeoid `LMN1`, Plumeflow `PLF1`, Rodee `StateChunk` | Lumeoid as the base. |
+| Parameters | `ParamInfo` in Tannhauser, Plumeflow, Lumeoid, Kikset, Gritbaal; X-macro in Plumeflow and Lumeoid | Plumeflow `params.def` + `ParamStore` as the base. **Moved to `spux_params` (step 5); Tearwash migrated.** |
+| State container | Lumeoid `LMN1`, Plumeflow `PLF1`, Rodee `StateChunk` | Lumeoid as the base. **Moved to `spux_state` (step 5); Tearwash migrated (`TWR1`).** |
 | PCG32 | Lumeoid, Plumeflow | Merge. **Merged into `spux_core` (step 4).** |
 | Math approximations | Lumeoid `dsp/math`, Plumeflow `dsp/Math`, Tannhauser `tanhFast` | Merge; replace `std::tanh` in Acidus, Gritbaal, Syrebas, Kikset. **Merged into `spux_core` (step 4)**; the libm replacement happens in each plugin's step. |
 | Half-band oversampler | Plumeflow (4+4 all-pass sections), Lumeoid (5+5) | Merge into one design. **Done (step 4): Lumeoid's 5+5, by measurement (docs/BENCH.md).** |
@@ -104,7 +104,32 @@ plugin-specific views and page code.
    take `fastTanhF` (about 18 % of the engine; passes those tolerances) if the CPU is ever needed. No generic filter
    block matches Acidus's forms (its one-poles, notch and coupling sections stay). Report: Acidus
    `docs/SPUX_STRICT_GATE_2026-10-20.md`.
-5. `spux_params`, `spux_state`, `spux_clap`.
+5. `spux_params`, `spux_state`, `spux_clap`. **Done in spux and Tearwash** (2026-10-20), all three header-only.
+   `spux_params`: `ParamInfo` with Plumeflow's kinds, laws, flags and host mapping (plus `PF_HOST_PLAIN`), the
+   X-macro helpers for a `.def` with Plumeflow's columns plus module and smoothing policy (`SPUX_PARAM_INFO`,
+   `_ENUM`, `_COUNT_ONE`, `_SMOOTHER`), `ParamTable` (constexpr id and key lookup, `valid()`), `formatValue` and
+   `parseValue`, `sanitizePlain`, `ParamStore<N>` (atomic host values and a version counter) and
+   `BasicEditQueue` / `EditQueue` (`pushBegin`, `pushValue`, `pushEnd` with the gesture reserve, `freeSlots`).
+   `spux_state`: `ByteWriter`, `ByteReader` (bounds-checked), `crc32`, `FourCC`, `ContainerWriter`,
+   `readContainer` with the plugin's chunk handler, `hasMagic`, the `PARM` chunk (`paramPayload`,
+   `readParamPayload`), `migrate()` with `Migration` steps, and the text preset format for user preset files
+   (`TextPreset`, `parseTextPreset`, `writeTextPreset`, `formatNumber`, `parseNumber`; P4 as changed that day). `spux_clap`: `Plugin<Derived>` (lifecycle defaults,
+   extensions offered by concept: params, state, audio and note ports, GUI with the platform window API and
+   fixed-size defaults, timer; guarded calls; host helpers for flush, rescan, dirty state and timers),
+   `SingleFactory<P>`, and helpers (`fillParamInfo`, `hostValueToText`, `asParamValue`, `pushParamValue`,
+   `pushGesture`, `drainEdits`, `writeAll`, `readAll`). Tests: `params_test`, `state_test`, `clap_glue_test`.
+   Checked against the originals: Plumeflow's laws, host mapping, value text and parsing are bit-identical over its
+   whole table (262 parameters, 524 000 values each); the container and `PARM` chunk are byte-identical to
+   Lumeoid's `LMN1` writer and read what it writes (200 random states).
+   **Tearwash** (pilot): `TwParams.def`, values in a `ParamStore`, GUI and preset edits through an `EditQueue` (a
+   producer mutex serializes its GUI and main threads), `TearwashClap` on `spux::clap::Plugin`, host state in the
+   container `TWR1` version 1 (`PARM`, `PRST`); the text state `tearwash 1` from before it loads through a legacy
+   reader (no magic). Its `.twpreset` reader and writer use spux's text preset code (files unchanged). `tearwash_state_test` loads states, a user preset, and the parameter info and value
+   text recorded with the previous Tearwash (861300d), and a frozen version 1 container state. Audio output (every third
+   preset with host automation) and the panel snapshot are bit-identical to before. Left: Plumeflow and Lumeoid
+   switch in step 8 (Plumeflow's `.def` gets the module and smoothing columns; its `PLF1` has no CRC, so its switch
+   needs a reader for the old chunks); Tannhauser, Acidus, Kikset and Gritbaal move their `ParamInfo` in their
+   own steps; the telemetry ring and Rodee's `StateChunk` are not looked at yet.
 6. `spux_ui_core` from Plumeflow's `Gui`; run the immediate-mode acceptance gate on one Tannhauser and
    one Acidus panel.
 7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow.
