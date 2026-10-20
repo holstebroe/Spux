@@ -60,6 +60,11 @@ ctest --test-dir build -C Release --output-on-failure
 After DSP changes run the DSP tests and `spux_bench` (Release). After UI changes run the GUI tests
 (golden frames, software and offscreen GPU).
 
+UI code optimization (guidelines 4.9): a simple Retro plugin compiles its UI for size, a large plugin
+(many controls, Classic or Modern) for speed. spux's UI targets follow `SPUX_UI_OPTIMIZE`
+(`AUTO`: `SIZE` when `SPUX_UI_FLAVOR=RETRO`, `SPEED` otherwise); a plugin sets `SPUX_UI_FLAVOR` to its
+flavor before adding spux.
+
 ## For plugin repositories
 
 Add this section to each plugin's CLAUDE.md:
@@ -67,8 +72,9 @@ Add this section to each plugin's CLAUDE.md:
 > **Using spux.** Shared code lives in spux (`extern/spux`, pinned to a tag). Change shared code in spux
 > (develop with `-DSPUX_SOURCE_DIR=...`), release a tag, then bump the submodule here and run this
 > plugin's null test against its reference renders. Accept differences by regenerating the references
-> in the same commit as the pointer bump. This plugin's UI flavor: `<flavor>`. Character code stays in
-> this repository.
+> in the same commit as the pointer bump. This plugin's UI flavor: `<flavor>` (set `SPUX_UI_FLAVOR` to it
+> before adding spux: a simple Retro plugin builds its UI for size, a large one for speed). Character code
+> stays in this repository.
 
 For Acidus add: "Strict gate: every spux bump runs `reference_conformance_test` and the null test within
 its sound tolerances; report every difference per patch to the author before accepting."

@@ -115,6 +115,15 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
 7. **A size canary**: CI builds a minimal Retro test plugin and tracks its stripped size.
 8. spux owns clap, clap-wrapper and doctest [L6]. A plugin's CMake adds spux and nothing else
    third-party for these.
+9. **UI code: size or speed, by the plugin's kind** [U16]. UI code never runs on the audio thread, so its
+   optimization is a choice: a simple plugin built in the Retro flavor (a handful of controls, a small binary
+   is the point) compiles its UI for size (`-Os`, MSVC `/O1`); a plugin that is large in concept and in its
+   number of controls, or draws a Classic or Modern panel, keeps the build's speed flags. spux's UI targets
+   follow `SPUX_UI_OPTIMIZE` (`AUTO`, `SIZE`, `SPEED`); `AUTO`, the default, picks `SIZE` for
+   `SPUX_UI_FLAVOR=RETRO` and `SPEED` otherwise. A plugin sets `SPUX_UI_FLAVOR` to its `<PLUGIN>_UI` before
+   adding spux, and compiles its own GUI files the same way. Measured on Acidus (docs/UI_GATE.md): `-Os`
+   saves about 60 KB and costs about 20 % more UI instructions per frame, still far below the retained
+   version it replaced.
 
 ## 5. DSP building blocks
 

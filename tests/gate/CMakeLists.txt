@@ -15,14 +15,9 @@
 
 add_custom_target(spux_gate)
 
-# Size experiments (the report says which were on): link with section garbage collection, as
-# spux_target_flags does for a plugin; build spux's UI code for size, as the plugins build their own GUI.
+# Size experiment: link with section garbage collection, as spux_target_flags does for a plugin. spux's own UI
+# code follows SPUX_UI_OPTIMIZE (configure with -DSPUX_UI_OPTIMIZE=SIZE or SPEED to compare).
 option(SPUX_GATE_GC_SECTIONS "Gate modules: link with --gc-sections (both variants)" OFF)
-option(SPUX_GATE_UI_OS "Gate: compile spux_ui_core and spux_platform with -Os" OFF)
-if(SPUX_GATE_UI_OS)
-  target_compile_options(spux_ui_core PRIVATE -Os)
-  target_compile_options(spux_platform PRIVATE -Os)
-endif()
 set(_gate ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(CheckIPOSupported)

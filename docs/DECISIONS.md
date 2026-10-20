@@ -76,6 +76,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 | U13 | GPU: **OpenGL 3.3 core** with a **runtime-loaded function table** (no glad), one context per editor, nothing process-global. | Decided | As built in Plumeflow. Metal or WebGPU later behind the same renderer. |
 | U14 | Platforms: **Windows first**, Linux in CI, macOS later (Cocoa window and CGL context still to write). | Decided | |
 | U15 | Accessibility (screen readers). | Open | Not needed now. Immediate mode can emit a widget list per frame if it becomes needed. |
+| U16 | **UI code optimization follows the plugin's kind**: a simple Retro plugin builds its UI (spux's and its own) for size, a plugin large in concept and number of controls (Classic, Modern) for speed. `SPUX_UI_OPTIMIZE` (`AUTO` by flavor, `SIZE`, `SPEED`). | Decided | 2026-10-20, after the gate (docs/UI_GATE.md): `-Os` saves about 60 KB on Acidus for about 20 % more UI instructions, still below the retained version. Guidelines 4.9. |
 
 ## Migration
 
@@ -189,3 +190,6 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   handle, a selector's cells, a popup's rows); the editor shell's root view reports a content version, an animation flag
   and a tick hook besides drawing; the telemetry ring is in `spux_core` (the audio side needs no UI target). Parameter id
   0 is valid: "no parameter" is `kNoParamId`.
+- 2026-10-20: **U16 added** (by the author): the optimization of UI code follows the plugin's kind, size for a simple Retro
+  plugin, speed for a large one. spux's UI targets (`spux_ui_core`, `spux_platform`, `spux_ui_classic`, `spux_ui_modern`) take
+  `SPUX_UI_OPTIMIZE` (`AUTO` picks `SIZE` for `SPUX_UI_FLAVOR=RETRO`). The gate measured the trade (docs/UI_GATE.md).

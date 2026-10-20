@@ -97,8 +97,13 @@ unrolled (the generic loop cost 45 % of an idle Acidus frame).
 | Tannhauser Classic, as today / tuned | 485 600 | 575 784 / 522 536 | +19 % / +7.6 % |
 
 "Tuned" is what a plugin on spux would do: `spux_target_flags` links with `--gc-sections` (Acidus does not
-today), and the spux UI targets compiled for size as both plugins compile their own GUI. The second is not
-a spux option yet (the gate sets it with `SPUX_GATE_UI_OS`).
+today), and the spux UI targets compiled for size as both plugins compile their own GUI. The second is now
+spux's default for a Retro build (`SPUX_UI_OPTIMIZE=AUTO` with `SPUX_UI_FLAVOR=RETRO`, decision U16).
+
+Speed of the size build (Acidus, instructions per frame, port at `-O3` / port at `-Os` / retained): Retro idle
+3.99 M / 4.82 M / 5.45 M, Retro knob drag 6.8 M / 8.9 M / 49.2 M, Classic idle 4.03 M / 4.85 M / 5.47 M, Classic
+knob drag 9.96 M / 11.96 M / 34.0 M. Building for size costs about 20 % of the port's UI time and stays below
+the retained version in every case.
 
 Where the Acidus Retro bytes go (tuned build, symbols): the port's own code (page, painters, binding, logo
 plate) is 25 KB against the retained window's 22 KB. The rest is spux: the native window (`spux_platform`,
@@ -116,6 +121,6 @@ built.
 
 1. The size criterion: accept the measured cost (Retro Acidus +33 % tuned, Tannhauser Classic +7.6 %), change
    the criterion (for example: against a spux retained tree, or a fixed budget in KB), or take the fallback.
-2. Compile the spux UI targets with `-Os` by default (as the plugins compile their GUI)? It saves 30 to
-   60 KB per plugin and costs nothing that matters at UI frame rates.
+2. Compile the spux UI targets with `-Os`? Decided (U16): for size in a simple Retro plugin, for speed in a
+   large one; `SPUX_UI_OPTIMIZE`, `AUTO` by flavor.
 3. Cascading popups (Tannhauser's preset menu) as part of `Gui::popup`, or the plugin's own view?

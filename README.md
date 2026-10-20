@@ -70,6 +70,7 @@ else()
   add_subdirectory(extern/spux)
 endif()
 set(MYPLUGIN_UI "RETRO" CACHE STRING "RETRO, CLASSIC, MODERN or NONE")
+set(SPUX_UI_FLAVOR ${MYPLUGIN_UI})      # before adding spux: Retro builds spux's UI code for size
 target_link_libraries(myplugin_core PRIVATE spux_dsp spux_params spux_state)
 target_link_libraries(myplugin PRIVATE spux_clap spux_ui_${MYPLUGIN_UI_LOWER})
 spux_target_flags(myplugin)              # determinism and warning flags, hidden visibility
@@ -86,7 +87,8 @@ cmake --build build --config Release --target spux_size_canary_report
 ```
 
 Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY`, `SPUX_BUILD_SMOKE_TOOL`, `SPUX_BUILD_BENCH` (all on only in a top-level build; `build/spux_bench` times spux math against libm, results in `docs/BENCH.md`), `SPUX_BUILD_VST3`
-(makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`, and for the immediate-mode
+(makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`, `SPUX_UI_FLAVOR` and `SPUX_UI_OPTIMIZE` (`AUTO`: spux's UI code for size in a
+Retro build, for speed otherwise; guidelines 4.9), and for the immediate-mode
 acceptance gate `SPUX_GATE_ACIDUS_DIR` / `SPUX_GATE_TANNHAUSER_DIR` (plugin checkouts; `docs/UI_GATE.md`).
 
 ## Licence
