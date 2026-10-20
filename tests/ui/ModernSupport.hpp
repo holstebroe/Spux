@@ -125,6 +125,18 @@ inline void showcaseWidgets(MGui& g, const ModernStyle& style, ShowData& d) {
     drawCurveEditor(style, g, "curve", {32, 322, 376, 210}, "Velocity curve", d.curve, 5, {}, violet, d.curveState);
 }
 
+// The showcase as an editor root view: panels in the background, widgets every frame.
+struct ShowRoot final : RootView<MGui> {
+    const ModernStyle& style;
+    ShowData data;
+    explicit ShowRoot(const ModernStyle& s) : style(s) {}
+    void background(MGui& g) override {
+        g.r().drawBackground(kBlue, kViolet, 6.0f);
+        showcasePanels(g);
+    }
+    void frame(MGui& g) override { showcaseWidgets(g, style, data); }
+};
+
 // Draws one frame of the showcase on a renderer, without the editor shell (every widget every frame).
 inline void showcaseFrame(IRenderer& r, Host& host, const ModernStyle& style, ShowData& d, double time = 6.0) {
     MGui gui(host, style);

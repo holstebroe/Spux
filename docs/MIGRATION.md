@@ -18,7 +18,7 @@ only in namespace and include guards, or not at all.
 | Software fallback | Plumeflow `ui/SoftRenderer`, `ui/Font` | **Rewritten as `spux::ui::modern::SoftRenderer` (step 7)** on `CpuLayers`, with the atlas font instead of the 5x7 bitmap font. |
 | Modern painters | The inline drawing in Plumeflow `ui/Gui.cpp` (knob, toggle, segmented, dropdown, stepper, slider, button, chip, panel, popup, tooltip, text field) | **`ModernStyle` with a `ModernConfig` (step 7).** |
 | Immediate-mode `Gui` | Plumeflow `ui/Gui` | Needs: painter split, parameter binding through spux, plugin-specific ids out (10 `plugin::P_*` uses), modulation as an optional interface. **Done in `spux_ui_core` (step 6).** Plumeflow's drawing becomes the Modern painters (step 7); its `displayText`, sync dimming, effect presets and route table stay in Plumeflow. |
-| Editor shell | Plumeflow `ui/Editor` | Logical size and root view become parameters. **Done (step 6)** for CPU renderers; the GPU path and window scaling come with Modern (step 7). |
+| Editor shell | Plumeflow `ui/Editor` | Logical size and root view become parameters. **Done (step 6)** for CPU renderers; **the GPU path and window scaling done in step 7** (`FrameSurface` in the core, `ModernSurface` in `spux_ui_modern`). |
 | Editor host | Plumeflow `ui/EditorHost` | Split into a core and optional extensions. **Done (step 6)**: core, `ModulationHost`, `PresetHost`, `StoreEditorHost<N>`. |
 | Edit queue, telemetry ring | Plumeflow `plugin/EditQueue`, `plugin/Telemetry` | Ring becomes a template on the frame type. **Edit queue moved to `spux_params` (step 5); Tearwash migrated.** **Telemetry ring done (step 6)**: `spux/core/TelemetryRing.hpp` (`TelemetryRing<Frame>`, `SampleRing`). |
 | Generic live views | Plumeflow `ui/Live`, `ui/Views` (spectrum, traces, meters, curve editor) | Attractor, envelope and filter views stay in Plumeflow. **Consumers moved (step 6)**: `Spectrum`, `LevelMeter`, `History` in `spux/ui/Live.hpp`; **the generic views moved in step 7** (`spux/ui/modern/ModernViews.hpp`: spectrum, traces, stereo meter, curve editor). |
@@ -164,10 +164,23 @@ plugin-specific views and page code.
    `SoftRenderer` 244 KB (+135 KB: atlas baking 28 KB, the font data 34 KB, painters 50 KB, the renderer 31 KB); with the GPU
    renderer as well 310 KB (+200 KB over the core; the GPU renderer, GL context and shaders are about 65 KB). A plugin that does not link the
    flavor pays nothing: every part is its own object in a static library.
-   Left: the GPU path in the editor shell (a window with a GL pixel format, the context, `beginFrame` and
-   swap, the quality governor, window scaling and the HiDPI factor; `Editor<ModernStyle>` runs today on
-   `SoftRenderer` through its renderer factory); Retro and Classic painters; cascading submenus in the popup; the
-   Win32 build of this code is unverified (no Windows toolchain here; CI is the check); Plumeflow's switch (step 8).
+   **The GPU path in the editor shell** (same session): `FrameSurface` (`spux/ui/FrameSurface.hpp`, no GL in the core)
+   is how a frame reaches the screen without being pixels; `EditorCore` takes an optional `SurfaceFactory`, opens a GL
+   window, attaches the surface and, if that fails, closes it and falls back to the CPU renderer. With a surface the window
+   is the logical size times the user scale (`EditorOptions::scale`, `minScale` 0.75, `maxScale` 2; fixed aspect) times the
+   system scale; `canResize`, `adjustSize`, `setSize`, `setScale`, `setUserScale`, `scale`, `usesGpu`, `rendererName`,
+   `degradation`; window pixels become logical pixels in the input path. `ModernSurface` (GL context, `GpuRenderer`,
+   `QualityGovernor` with Plumeflow's numbers) and `modernBackend()` (the surface factory plus the `SoftRenderer`
+   factory) are what a plugin passes to `Editor<ModernStyle>`. Auto does not use a software OpenGL (the CPU renderer
+   is faster); `RendererChoice::Gpu` does; `SPUX_RENDERER=gpu|soft` overrides for development. Tests:
+   `editor_surface_test` (a fake surface on a real X window: attach, fallback, frame order, scale and limits, pixels to
+   logical pixels through synthetic X events, retry after a refused frame) and, in `gpu_renderer_test`, an `Editor<ModernStyle>` on a real
+   GL window read back from the X server, at 1x and 1.25x, and the default choice (the software fallback on Mesa). Found
+   on the way: right after a window of the process closed, `XOpenDisplay` was refused in about a third of the tries
+   under Xvfb, which broke the fallback (GL window closed, plain window refused); the X11 window now retries briefly
+   (only when a display is configured). Also fixed: clang builds (an unused field in `GuiCore`, unused GLX constants).
+   Left: Retro and Classic painters; cascading submenus in the popup; Cocoa; the Win32 build of this code is unverified
+   (no Windows toolchain here; CI is the check); Plumeflow's switch (step 8).
 8. Plumeflow and Lumeoid move onto spux (Lumeoid's GPU UI starts on spux directly).
 
 lexwash starts on spux from its first line.
@@ -249,8 +262,10 @@ from its own copy, is kept here.
     and tooltip sizes come from `Theme::metrics`. The GPU post chain constants are `GpuRenderer::Look`, with
     Plumeflow's values as the defaults, so GPU output is unchanged until a plugin sets them.
   - Stays in Plumeflow: `displayText` (units and the sync note go in through `valueText` and `dimmed`), the
-    attractor, envelope, filter response, voices, signal flow and matrix views, the quality governor and the
-    editor's GPU glue (until spux's editor shell has the GPU path). The generic views take arrays and levels
+    attractor, envelope, filter response, voices, signal flow and matrix views. The editor's GPU glue and the
+    governor are spux's now (`ModernSurface`, same constants); `PLUMEFLOW_RENDERER` is `SPUX_RENDERER`; the software
+    path's tick (12 and 4 Hz there) is `EditorOptions::activeHz` and `idleHz`; the editor's fps cap is the plugin's choice
+    of `activeHz`; `view.scale` is `Editor::setUserScale`; `g.detail` follows `degradation()`. The generic views take arrays and levels
     instead of `Gui::live()`; the curve editor keeps its drag state in a `CurveEditorState` (Plumeflow used
     function-local statics, which two editors would have shared).
   - Tests: Plumeflow's `gpu_renderer_test` cases for shapes, text, bloom and scale are in spux's; its golden frames

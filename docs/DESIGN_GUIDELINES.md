@@ -306,9 +306,16 @@ spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per wid
 
 - OpenGL 3.3 core through a runtime-loaded function table: no GL headers or libraries at build time, no
   glad, one table and one context per editor.
+- **The editor shell and the GPU.** `Editor<Style>` takes an optional `SurfaceFactory` (`FrameSurface.hpp`; the core
+  has no GL). It opens the window with a GL pixel format, attaches the surface, and from then on brackets each frame
+  with `beginFrame` and `endFrame` (swap); the renderer has no layers, so every widget draws every frame. If any step
+  fails the window is closed and a plain one opened for the CPU renderer. The window is the logical size times the
+  user scale (default 1; 0.75 to 2, fixed aspect, from the host's resizing or the plugin) times the system's scale
+  (HiDPI); window pixels become logical pixels in the input path. `ModernSurface` and `modernBackend()` are the
+  Modern implementation; `GpuRenderer::Quality` follows a `QualityGovernor` (aims for 6 ms of GPU time).
 - All GPU objects are created when the editor opens and freed when it closes; nothing while closed.
-  `GpuRenderer::Quality` (bloom levels and downscale, grain, animated backdrop) and `gpuMs()` are what a
-  quality governor needs; `Look` sets the post chain (bloom threshold and strength, grain, vignette, the
+  `GpuRenderer::Quality` (bloom levels and downscale, grain, animated backdrop) and `gpuMs()` are what the
+  quality governor in `ModernSurface` uses; `Look` sets the post chain (bloom threshold and strength, grain, vignette, the
   backdrop's pools and dust). The renderer's own defaults are the Modern look.
 - Shaders are self-contained fragment shaders, so a Metal or WebGPU backend later is a port of the
   renderer only. They are embedded at configure time (`spux_embed_shaders`).

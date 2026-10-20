@@ -3,16 +3,24 @@
 // The showcase page is compared with a stored golden frame and with the software renderer's frame.
 #include <doctest.h>
 
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "spux/gl/GlContext.hpp"
 #include "spux/ui/modern/GpuRenderer.hpp"
+#include "spux/ui/modern/ModernSurface.hpp"
 #include "spux/ui/modern/SoftRenderer.hpp"
 #include "ui/ModernSupport.hpp"
+
+#if defined(SPUX_HAS_X11)
+#include <X11/Xlib.h> // after spux: Xlib defines macros such as Bool
+#include <X11/Xutil.h>
+#endif
 
 using namespace modern_test;
 
@@ -248,3 +256,140 @@ TEST_CASE("the showcase renders through the GPU renderer: filled, golden, and th
         static_cast<double>(g.r->gpuMs()), g.r->drawCalls(), g.r->vertexCount());
     CHECK(s > 0.75);
 }
+
+#if defined(SPUX_HAS_X11)
+namespace {
+
+// The editor's window as the X server shows it: found by size among the root's viewable children, read back.
+bool grabWindow(int w, int h, std::vector<std::uint32_t>& out) {
+    Display* d = XOpenDisplay(nullptr);
+    if (!d)
+        return false;
+    Window found = 0;
+    for (int attempt = 0; attempt < 100 && !found; ++attempt) {
+        Window root, parent, *children = nullptr;
+        unsigned n = 0;
+        XQueryTree(d, DefaultRootWindow(d), &root, &parent, &children, &n);
+        for (unsigned i = 0; i < n; ++i) {
+            XWindowAttributes a;
+            if (XGetWindowAttributes(d, children[i], &a) && a.width == w && a.height == h && a.map_state == IsViewable)
+                found = children[i];
+        }
+        if (children)
+            XFree(children);
+        if (!found)
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    XImage* img =
+        found ? XGetImage(d, found, 0, 0, static_cast<unsigned>(w), static_cast<unsigned>(h), AllPlanes, ZPixmap)
+              : nullptr;
+    if (img) {
+        out.resize(static_cast<std::size_t>(w) * static_cast<std::size_t>(h));
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x)
+                out[static_cast<std::size_t>(y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(x)] =
+                    0xFF000000u | static_cast<std::uint32_t>(XGetPixel(img, x, y) & 0xFFFFFFul);
+        XDestroyImage(img);
+    }
+    XCloseDisplay(d);
+    return img != nullptr;
+}
+
+// Forces frames until `n` more have been drawn: the window's own tick draws too, and a forced frame that finds
+// the editor busy is skipped.
+void drawFrames(EditorCore& ed, std::uint64_t n, double t0 = 0.0) {
+    const std::uint64_t target = ed.framesDrawn() + n;
+    for (int i = 0; i < 400 && ed.framesDrawn() < target; ++i) {
+        ed.frame(true, t0 + 0.01 * i);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    REQUIRE(ed.framesDrawn() >= target);
+}
+
+long litPixels(const std::vector<std::uint32_t>& px) {
+    long lit = 0;
+    for (std::uint32_t p : px)
+        lit += luma(p) > 60;
+    return lit;
+}
+
+} // namespace
+
+TEST_CASE("the editor on a GL window: the GPU draws the showcase, follows the scale, and tears down") {
+    if (!std::getenv("DISPLAY"))
+        return;
+    Host host;
+    ModernStyle style;
+    ShowRoot root(style);
+    EditorOptions o;
+    o.width = kPageW;
+    o.height = kPageH;
+    o.idleHz = 5;
+    SurfaceOptions so;
+    so.choice = RendererChoice::Gpu; // a software rasterizer is fine for a test
+    const ModernBackend backend = modernBackend(so);
+    Editor<ModernStyle> ed(host, style, root, o, backend.software, backend.gpu);
+    REQUIRE(ed.setParent({platform::WindowApi::X11, 0}));
+    if (!ed.usesGpu()) {
+        std::printf("gpu_renderer_test: no GL window available, editor on GL skipped\n");
+        return;
+    }
+    std::printf("editor renderer: %s\n", ed.rendererName());
+    CHECK(ed.canResize());
+    CHECK(ed.width() == kPageW);
+    ed.show();
+    drawFrames(ed, 3);
+    CHECK(ed.lastDirty() == Rect{0, 0, kPageW, kPageH});
+    CHECK(ed.degradation() == 0);
+    std::vector<std::uint32_t> px;
+    REQUIRE(grabWindow(kPageW, kPageH, px));
+    CHECK(litPixels(px) > 15000);
+    snapshot("modern_editor_gpu", px, kPageW, kPageH);
+    // the same page as the offscreen frame: the live frame has grain and a moving backdrop, so not identical
+    std::vector<std::uint32_t> ref;
+    int rw = 0, rh = 0;
+    if (readPpm(std::string(SPUX_TEST_DATA_DIR) + "/golden/modern_gpu.ppm", ref, rw, rh))
+        CHECK(ssim(quarter(px, kPageW, kPageH), ref, rw, rh) > 0.9);
+
+    // 1.25x (the virtual screen is 1280 wide): the window grows, the renderer follows in the next frame, the page is
+    // the same at a larger size
+    REQUIRE(ed.setUserScale(1.25f));
+    CHECK(ed.width() == kPageW * 5 / 4);
+    drawFrames(ed, 3, 1.0);
+    std::vector<std::uint32_t> big;
+    REQUIRE(grabWindow(kPageW * 5 / 4, kPageH * 5 / 4, big));
+    CHECK(litPixels(big) > 15000 * 3 / 2);
+    snapshot("modern_editor_gpu_1_25x", big, kPageW * 5 / 4, kPageH * 5 / 4);
+
+    ed.destroy();
+    CHECK_FALSE(ed.usesGpu());
+}
+
+TEST_CASE("the editor with the default choice draws either way: on the GPU, or on the software renderer") {
+    if (!std::getenv("DISPLAY"))
+        return;
+    Host host;
+    ModernStyle style;
+    ShowRoot root(style);
+    EditorOptions o;
+    o.width = kPageW;
+    o.height = kPageH;
+    const ModernBackend backend = modernBackend();
+    Editor<ModernStyle> ed(host, style, root, o, backend.software, backend.gpu);
+    REQUIRE(ed.setParent({platform::WindowApi::X11, 0}));
+    ed.show();
+    drawFrames(ed, 1);
+    std::printf("default choice: %s (%s)\n", ed.usesGpu() ? "GPU" : "software", ed.rendererName());
+    if (ed.usesGpu()) {
+        const std::string name = ed.rendererName();
+        CHECK(name.find("llvmpipe") == std::string::npos); // a software rasterizer is not chosen on its own
+        CHECK(name.find("Software") == std::string::npos);
+    } else {
+        CHECK(std::string(ed.rendererName()) == "software");
+        const std::vector<std::uint32_t> px(ed.pixels(), ed.pixels() + kPageW * kPageH);
+        CHECK(litPixels(px) > 15000);
+        CHECK_FALSE(ed.canResize());
+    }
+    ed.destroy();
+}
+#endif

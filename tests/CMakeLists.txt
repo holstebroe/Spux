@@ -80,6 +80,9 @@ add_test(NAME packaging_test
 # telemetry and layout.
 spux_add_test(ui_core_test spux_ui_core)
 target_include_directories(ui_core_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+# The editor shell's GPU path with a fake surface; opens X11 windows, so it is skipped without a display.
+spux_add_test(editor_surface_test spux_ui_core)
+target_include_directories(editor_surface_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # spux_ui_modern: the software renderer, ModernStyle and its views (ui_modern_test); the GPU renderer in an
 # offscreen GL context (gpu_renderer_test, skipped without a display and OpenGL 3.3). Golden frames are

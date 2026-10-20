@@ -10,6 +10,7 @@
 
 #include "spux/ui/Editor.hpp"
 #include "spux/ui/modern/FontAtlas.hpp"
+#include "spux/ui/modern/ModernSurface.hpp"
 #include "spux/ui/modern/SoftRenderer.hpp"
 #include "ui/ModernSupport.hpp"
 
@@ -467,18 +468,6 @@ TEST_CASE("showcase on the software renderer: deterministic, filled, a golden fr
     CHECK(ssim(fast.frame(), a, kPageW, kPageH) > 0.9);
 }
 
-namespace {
-
-struct ShowRoot final : RootView<MGui> {
-    const ModernStyle& style;
-    ShowData data;
-    explicit ShowRoot(const ModernStyle& s) : style(s) {}
-    void background(MGui& g) override { showcasePanels(g); }
-    void frame(MGui& g) override { showcaseWidgets(g, style, data); }
-};
-
-} // namespace
-
 TEST_CASE("the editor shell: cached frames equal uncached frames, and only what changed is redrawn") {
     Host host;
     ModernStyle style;
@@ -510,6 +499,7 @@ TEST_CASE("the editor shell: cached frames equal uncached frames, and only what 
     ShowData d2;
     SoftRenderer r = makeSoft(kPageW, kPageH, 2);
     r.clear(style2.theme.colors.background);
+    r.drawBackground(kBlue, kViolet, 6.0f);
     MGui gui(host2, style2);
     gui.setCaching(false);
     gui.begin(r, 0.2, 0.016f, kPageW, kPageH);
@@ -523,4 +513,74 @@ TEST_CASE("the editor shell: cached frames equal uncached frames, and only what 
     // translucent panel edge
     CHECK(diff < kPageW * kPageH / 200);
     CHECK(ssim(cached, fresh, kPageW, kPageH) > 0.995);
+}
+
+TEST_CASE("the quality governor lowers effects when over budget and raises them with room to spare") {
+    QualityGovernor g(6.0f);
+    CHECK(g.level() == 0);
+    for (int i = 0; i < 300; ++i)
+        g.update(0.0f); // no timer queries: no change
+    CHECK(g.level() == 0);
+    for (int i = 0; i < 60; ++i)
+        g.update(2.0f); // comfortable: stays at full quality
+    CHECK(g.level() == 0);
+    int steps = 0, last = 0;
+    for (int i = 0; i < 4000 && g.level() < QualityGovernor::kMaxLevel; ++i) {
+        g.update(12.0f); // over budget
+        if (g.level() != last) {
+            ++steps;
+            last = g.level();
+        }
+    }
+    CHECK(g.level() == QualityGovernor::kMaxLevel);
+    CHECK(steps == QualityGovernor::kMaxLevel); // one level at a time
+    for (int i = 0; i < 20000 && g.level() > 0; ++i)
+        g.update(1.0f); // plenty of room
+    CHECK(g.level() == 0);
+    g.update(12.0f);
+    g.reset();
+    CHECK(g.level() == 0);
+}
+
+TEST_CASE("quality levels step the effects down in order") {
+    const GpuRenderer::Quality full = qualityForLevel(0);
+    CHECK(full.bloom);
+    CHECK(full.bloomLevels == 5);
+    CHECK(full.grain);
+    CHECK(full.animatedBackground);
+    int levels = 5;
+    for (int l = 1; l <= QualityGovernor::kMaxLevel; ++l) {
+        const GpuRenderer::Quality q = qualityForLevel(l);
+        CHECK(q.bloomLevels <= levels);
+        levels = q.bloomLevels;
+    }
+    CHECK(qualityForLevel(2).bloomDownscale);
+    CHECK_FALSE(qualityForLevel(1).bloomDownscale);
+    CHECK_FALSE(qualityForLevel(4).bloom);
+    CHECK_FALSE(qualityForLevel(4).animatedBackground);
+    CHECK_FALSE(qualityForLevel(0, true).grain); // reduced motion: no grain, a still backdrop
+    CHECK_FALSE(qualityForLevel(0, true).animatedBackground);
+    CHECK(qualityForLevel(99).bloomLevels == qualityForLevel(QualityGovernor::kMaxLevel).bloomLevels); // clamped
+}
+
+TEST_CASE("modernBackend: a surface to try first unless software is asked for, and the fallback renderer") {
+    const ModernBackend gpu = modernBackend();
+    CHECK(static_cast<bool>(gpu.gpu));
+    SurfaceOptions soft;
+    soft.choice = RendererChoice::Software;
+    const ModernBackend none = modernBackend(soft, 1);
+    if (!std::getenv("SPUX_RENDERER"))
+        CHECK_FALSE(static_cast<bool>(none.gpu)); // the environment may override the choice
+    auto r = none.software(64, 48);
+    REQUIRE(r != nullptr);
+    CHECK(r->width() == 64);
+    CHECK(r->height() == 48);
+    CHECK(r->layers() != nullptr);
+    CHECK_FALSE(r->isGpu());
+    auto surface = gpu.gpu();
+    REQUIRE(surface != nullptr);
+    CHECK(surface->renderer() == nullptr); // nothing exists before attach
+    CHECK(surface->degradation() == 0);
+    surface->detach(); // safe without an attach, and twice
+    surface->detach();
 }

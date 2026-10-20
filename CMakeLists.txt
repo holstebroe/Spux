@@ -204,6 +204,7 @@ add_library(spux_ui_modern STATIC
   ${SPUX_ROOT}/src/ui/modern/InterFont.cpp
   ${SPUX_ROOT}/src/ui/modern/GpuRenderer.cpp
   ${SPUX_ROOT}/src/ui/modern/SoftRenderer.cpp
+  ${SPUX_ROOT}/src/ui/modern/ModernSurface.cpp
   ${SPUX_ROOT}/src/ui/modern/ModernStyle.cpp
   ${SPUX_ROOT}/src/ui/modern/ModernViews.cpp
   ${_spux_shader_source})
