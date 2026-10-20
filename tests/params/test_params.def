@@ -1,0 +1,10 @@
+// A small parameter table for params_test and clap_glue_test: one row per kind and law, in the columns
+// of spux/params/ParamTable.hpp. Plumeflow's rows where it has one (same ids); the 89xx rows are made up.
+SPUX_PARAM(1002, quality, "Quality", Enum, 0, 2, Linear, 1, PF_AUTO|PF_STEPPED, "Eco|Normal|High", "Global", NoSmoothing)
+SPUX_PARAM(1003, mono, "Mono", Bool, 0, 1, Linear, 0, PF_AUTO|PF_STEPPED, "", "Global", NoSmoothing)
+SPUX_PARAM(1007, transpose, "Transpose", Int, -24, 24, Linear, 0, PF_AUTO|PF_STEPPED, "", "Global", NoSmoothing)
+SPUX_PARAM(2112, osc_a_phase_motion_rate, "Osc A phase motion rate", Float, 0.01, 2, Log, 0.1, PF_AUTO|PF_MODULATABLE|PF_PER_VOICE, "", "Oscillators", OnePole<0.02>)
+SPUX_PARAM(2115, osc_a_level, "Osc A level", Float, -24, 6, Db, 0, PF_AUTO|PF_MODULATABLE, "", "Oscillators", LinearRamp<>)
+SPUX_PARAM(5100, env_amp_delay, "Amp env delay", Float, 0, 60, LogZero, 0, PF_AUTO, "", "Envelopes", NoSmoothing)
+SPUX_PARAM(8901, out_gain, "Output gain", Float, -96, 12, Db, 0, PF_AUTO|PF_HOST_PLAIN, "", "Output", Slew<200.0>)
+SPUX_PARAM(8902, width, "Width", Float, 0, 1, Linear, 0.5, PF_AUTO|PF_MODULATABLE, "", "Output", NoSmoothing)

@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a) and the core and DSP building blocks (step 4) are extracted. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4) and the parameters, state and CLAP glue (step 5) are extracted. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.
@@ -28,9 +28,9 @@ target; a plugin links the targets it lists and nothing else.
 | --- | --- | --- |
 | `spux_core` (header-only) | Deterministic math, constants, PCG32, control tick, smoothing policies, denormal guard (built); SPSC rings (later) | nothing |
 | `spux_dsp` (header-only) | DSP building blocks: one-pole, SVF, biquad, DC block, half-band and oversampler, BLEP (and the pt2 BSD-3 table), delay lines, saturators with ADAA and solvers, noise, drift (built); tuning helpers (later) | `spux_core` |
-| `spux_params` | `ParamInfo`, laws, X-macro helpers, value text, key lookup, atomic store, edit queue | `spux_core` |
-| `spux_state` | Chunked state container (magic per plugin, version, CRC, unknown chunks skipped) | `spux_core` |
-| `spux_clap` | Thin CLAP glue (traits/CRTP): params, state, ports, GUI, timer | `spux_params`, `spux_state`, clap |
+| `spux_params` (header-only) | `ParamInfo`, laws and host mapping, X-macro helpers, `ParamTable` (id and key lookup, checks), value text and parsing, atomic `ParamStore`, `EditQueue` with a gesture reserve (built) | `spux_core` |
+| `spux_state` (header-only) | Chunked state container (magic per plugin, version, CRC-32, unknown and damaged chunks skipped), byte reader and writer, parameter chunk, migration hook (built) | `spux_core` |
+| `spux_clap` (header-only) | Thin CLAP glue: `spux::clap::Plugin<Derived>` (CRTP) offers the params, state, audio and note ports, GUI and timer extensions the plugin class implements; helpers for parameter info, events, the edit queue and streams; a one-class factory (built) | `spux_params`, `spux_state`, clap |
 | `spux_midi` (header-only) | Standard MIDI file reader (raw events, tempo map, timed and paired notes) and writer (tracks with tick priorities) | `spux_core` |
 | `spux_platform` | Native child window (Win32, X11, later Cocoa) with input events and a tick timer | OS only |
 | `spux_ui_core` | Immediate-mode `Gui`, `IRenderer`, layout helpers, editor shell, telemetry views | `spux_platform`, `spux_params` |

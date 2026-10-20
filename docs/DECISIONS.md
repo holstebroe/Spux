@@ -163,4 +163,13 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   stays in the report. S5 allows the same tolerances for other plugins where rounding alone exceeds -90 dBFS.
   Acidus went back to libm everywhere (bit-identical to its original output) and keeps the caching of per-sample
   coefficient work and spux's DenormalGuard.
-
+- 2026-10-20: migration step 5 (`spux_params`, `spux_state`, `spux_clap`; Tearwash as pilot). No decision changed. New
+  choices within the guidelines: the `.def` row is Plumeflow's ten columns plus `module` and a smoothing policy type
+  (S10 per parameter); the flags keep Plumeflow's names (`PF_AUTO` ...) so its table moves unchanged; `PF_HOST_PLAIN`
+  (an addition) keeps a parameter's host value plain where Plumeflow's rule would normalize it (Tearwash's gains,
+  automated in dB); the store gets a version counter for change-driven redraws; extensions are offered by concept
+  detection on the plugin class (P1: nothing to register, every extension still the plugin's to replace). All three are
+  header-only. Differences from the originals a plugin meets when it switches: an Enum's label index counts from `min`
+  (Plumeflow's enums all start at 0), `parseValue` refuses non-finite numbers, and `sanitizePlain` sends ±infinity to the
+  default like Plumeflow's `sanitize` (Tearwash keeps clamping infinities to the range end in its own `twClamp`, so "-inf
+  dB" stays the floor). Tearwash's state magic is `TWR1`, version 2; version 1 is its old text state.

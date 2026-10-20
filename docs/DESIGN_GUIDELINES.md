@@ -143,18 +143,28 @@ smooths by itself.
 
 ## 6. Parameters, state and CLAP
 
-- **Parameters** come from the plugin's X-macro `.def` file [P2]: id, key, name, kind, range, law,
-  default, flags, enum labels, smoothing policy. Never renumber ids or rename keys; only append. spux
-  provides the macros, the laws, value text and parsing, key lookup, the atomic `ParamStore` and the
-  SPSC `EditQueue` (with slots reserved for gesture begin and end).
-- **State** uses the chunk container [P3]: a 4-byte magic chosen by the plugin, a version, chunks with
-  id, length and CRC; unknown chunks are skipped and damaged ones counted. Never break loading of older
-  versions.
+- **Parameters** come from the plugin's X-macro `.def` file [P2], one row
+  `SPUX_PARAM(id, key, name, kind, min, max, law, default, flags, labels, module, smoothing)` (Plumeflow's
+  columns plus module and smoothing policy; `spux/params/ParamTable.hpp`). Never renumber ids or rename
+  keys; only append. The plugin expands the rows where it wants them (`SPUX_PARAM_INFO`, `_ENUM`,
+  `_COUNT_ONE`, `_SMOOTHER`) and checks its table with `static_assert(table.valid())`. spux provides the
+  laws (Linear, Log, LogZero, Db), value text and parsing, id and key lookup, the atomic `ParamStore` and
+  the SPSC `EditQueue` (values leave slots reserved for gesture begin and end).
+- **Host values** are normalized for Float parameters with a non-linear law and plain otherwise
+  (Plumeflow's rule); `PF_HOST_PLAIN` keeps a parameter's host value plain, for a plugin whose automation
+  is already stored in plain units. Like the laws, the host mapping of a released parameter never changes.
+- **State** uses the chunk container [P3] (`spux/state/Container.hpp`): a 4-byte magic chosen by the
+  plugin, a version, chunks with id, length and CRC-32; the plugin's chunk handler decides what is known,
+  unknown chunks are skipped and damaged ones counted. `migrate()` runs the plugin's steps from the version
+  read [S7, P9]; a state from before the container (no magic) goes to the plugin's own legacy reader. Never
+  break loading of older versions, and keep a test that loads states saved by earlier versions.
 - **Presets** [P4]: factory presets compiled in, user presets as files; both go through the state
   container.
-- **CLAP glue** [P1] is a traits or CRTP base that implements the params, state, audio and note ports,
-  GUI and timer extensions and forwards to the plugin. It stays thin: a plugin can always implement an
-  extension itself.
+- **CLAP glue** [P1] is a CRTP base (`spux::clap::Plugin<Derived>`) that fills `clap_plugin_t`, forwards
+  every call and offers an extension exactly when the plugin class has its methods (checked with
+  concepts): params, state, audio and note ports, GUI and timer. Calls are guarded so no exception
+  reaches the host. It stays thin: it owns no parameters or threads, and a plugin's own `getExtension`
+  answers what it wants and falls back to `defaultExtension`.
 - **Plugin IDs** [P12] are deferred until the brand name is chosen. Once released they never change.
 
 ## 7. User interface
