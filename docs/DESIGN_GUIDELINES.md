@@ -254,7 +254,14 @@ and broken drivers [U14].
 
 - doctest for unit tests [L14].
 - `spux_testing` provides: allocation guard, golden hashes, reference-render null test, WAV I/O,
-  loudness, render safety (finite output, peak below 1 for a chord), a CLAP smoke host.
+  loudness, render safety (finite output, peak below 1 for a chord), a CLAP smoke host. The header-only
+  parts are `spux_testing`; the allocation guard (`spux_testing_allocguard`, it replaces the global
+  `operator new`) and the smoke host (`spux_testing_clap`, `spux_clap_smoke`) are separate targets for
+  test executables, never linked into a plugin.
+- The null test takes its threshold as a parameter (`NullOptions`); a case without a stored reference
+  fails, and references are regenerated only on request (`SPUX_UPDATE_REFERENCES=1`), in the same
+  commit as the change. Golden hash files hold one hash per case for each platform and compiler
+  (`SPUX_UPDATE_GOLDEN=1`).
 - GUI: golden frames rendered headlessly (software renderer) and offscreen (GPU), plus simulated input
   that checks the parameter edits produced.
 - CPU budget [P11]: `spux_bench` for kernels and a fixed scenario per plugin (for example 8 voices,

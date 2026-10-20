@@ -18,6 +18,7 @@ endif()
 option(SPUX_BUILD_TESTS "Build the spux tests" ${_spux_dev})
 option(SPUX_BUILD_CANARY "Build the size canary plugin" ${_spux_dev})
 option(SPUX_WITH_X11 "Linux: build the X11 window and GLX context. OFF for headless builds without X11 headers; windows then report no support" ON)
+option(SPUX_BUILD_SMOKE_TOOL "Build spux_clap_smoke, the command line CLAP smoke host" ${_spux_dev})
 option(SPUX_BUILD_VST3 "Make clap-wrapper's make_clapfirst_plugins available (downloads the VST3 SDK)" OFF)
 
 # The plugin chooses its language level; spux needs C++20 at least. The top-level build sets it.
@@ -33,6 +34,8 @@ if(_spux_dev)
 endif()
 
 include(${SPUX_ROOT}/cmake/SpuxFlags.cmake)
+include(${SPUX_ROOT}/cmake/SpuxPackaging.cmake)
+include(${SPUX_ROOT}/cmake/SpuxTesting.cmake)
 
 # Third party (spux owns the versions, L6): clap, clap-wrapper (author's fork, L7), doctest.
 if(NOT TARGET clap)
@@ -68,7 +71,37 @@ spux_module(spux_midi DEPENDS spux_core)
 spux_module(spux_ui_core DEPENDS spux_platform spux_params)
 spux_module(spux_ui_retro DEPENDS spux_ui_core)
 spux_module(spux_presetbrowser DEPENDS spux_ui_core spux_state)
-spux_module(spux_testing DEPENDS spux_core spux_doctest)
+spux_module(spux_testing DEPENDS spux_core spux_doctest)    # header-only: WAV, loudness, metrics, hashes, null test
+
+# spux_testing_allocguard: replaces the global operator new/delete to catch allocations on the audio thread.
+# Test executables only, never a plugin (the replacement is process-wide).
+add_library(spux_testing_allocguard STATIC ${SPUX_ROOT}/src/testing/AllocGuard.cpp)
+add_library(spux::spux_testing_allocguard ALIAS spux_testing_allocguard)
+target_include_directories(spux_testing_allocguard PUBLIC ${SPUX_ROOT}/include)
+target_compile_features(spux_testing_allocguard PUBLIC cxx_std_20)
+set_target_properties(spux_testing_allocguard PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
+spux_target_flags(spux_testing_allocguard)
+
+# spux_testing_clap: the CLAP smoke host (load a .clap, drive it like a DAW). Test executables only.
+add_library(spux_testing_clap STATIC ${SPUX_ROOT}/src/testing/ClapHost.cpp)
+add_library(spux::spux_testing_clap ALIAS spux_testing_clap)
+target_include_directories(spux_testing_clap PUBLIC ${SPUX_ROOT}/include)
+target_compile_features(spux_testing_clap PUBLIC cxx_std_20)
+target_link_libraries(spux_testing_clap PUBLIC clap ${CMAKE_DL_LIBS})
+set_target_properties(spux_testing_clap PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
+if(UNIX AND NOT APPLE AND SPUX_WITH_X11)
+  find_package(X11 REQUIRED)
+  target_compile_definitions(spux_testing_clap PRIVATE SPUX_HAS_X11=1)
+  target_include_directories(spux_testing_clap PRIVATE ${X11_INCLUDE_DIR})
+  target_link_libraries(spux_testing_clap PUBLIC ${X11_LIBRARIES})
+endif()
+spux_target_flags(spux_testing_clap)
+
+if(SPUX_BUILD_SMOKE_TOOL)
+  add_executable(spux_clap_smoke ${SPUX_ROOT}/tools/ClapSmoke.cpp)
+  target_link_libraries(spux_clap_smoke PRIVATE spux_testing_clap)
+  spux_target_flags(spux_clap_smoke)
+endif()
 
 # spux_ui_classic: Classic drawing code (Graphics, Font, FileDialog, ClassicDraw), the first module with
 # sources, so it is a STATIC library. CPU drawing only. The font data headers (DisplayFont.hpp,
