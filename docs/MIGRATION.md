@@ -96,18 +96,14 @@ plugin-specific views and page code.
    `tanhFast`, `blep4`, `OnePoleLp`, `Biquad` and `onePoleCoeff` have spux equivalents; Acidus runs its strict
    gate on its switch. Open: `exp2F` is slower than glibc's `exp2f` (S4, docs/BENCH.md); Plumeflow's 4x
    oversampler is not a proper cascade (images at -36 dB, fixed when it moves to spux).
-   **Acidus on spux DSP** (session 6, 2026-10-20, strict gate): `extern/spux` at `850e7cc`, C++20, a null test
-   (23 curated cases, -110 dBFS) with references from the unchanged code, and the conformance report compared
-   number for number. Moved: `DenormalGuard` in `process()`, the oscillator's PolyBLEP onto `Blep<2>`, and every
-   coefficient that only depends on knobs, constants or the rate onto the spux double math (cached, so libm no
-   longer runs per sample there); `tanhF` for the VCA control law and the Distortion's rail saturation. Worst
-   difference against the original: -116.2 dBFS peak; 14 of 23 cases bit-identical (Acidus
-   `docs/SPUX_STRICT_GATE_2026-10-20.md`). **Left**: the ladder's tanh, the cutoff's `pow(2, cv)` and the VCA
-   signal tanh fail the gate with any replacement (the ladder moves by -70 to -90 dBFS on a last-bit change of
-   tanh, also with a nearly correctly rounded one), so they stay on libm until the author decides; per-sample
-   double `pow`/`exp` (pitch while sliding, square duty), the cutoff `log` and `log2`, the Distortion's `expm1`
-   and `sinh`, and the critical-gain table's `atan` stay on libm (spux has no fast or no precise equivalent). No
-   generic filter block matches Acidus's forms bit for bit (its one-poles, notch and coupling sections stay).
+   **Acidus on spux DSP** (session 6, 2026-10-20): `extern/spux`, C++20, a null test (23 curated cases) and the
+   conformance report compared number for number. Uses `DenormalGuard` in `process()` and `Blep<2>` for its PolyBLEP;
+   coefficient work that only depends on knobs, constants or the rate is cached instead of running every sample.
+   After S4 and S6 changed the same day, Acidus keeps libm everywhere (its output is bit-identical to before the
+   migration) and its null test gates on the sound tolerances (0.08 dB spectrum, 0.12 dB envelope). The ladder could
+   take `fastTanhF` (about 18 % of the engine; passes those tolerances) if the CPU is ever needed. No generic filter
+   block matches Acidus's forms (its one-poles, notch and coupling sections stay). Report: Acidus
+   `docs/SPUX_STRICT_GATE_2026-10-20.md`.
 5. `spux_params`, `spux_state`, `spux_clap`.
 6. `spux_ui_core` from Plumeflow's `Gui`; run the immediate-mode acceptance gate on one Tannhauser and
    one Acidus panel.
