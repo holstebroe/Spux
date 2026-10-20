@@ -91,9 +91,10 @@ if(NOT at EQUAL -1)
   message(FATAL_ERROR "a generator expression was left in the script:\n${text}")
 endif()
 
-# --- no tool: the target fails with a message, configuring is fine ---
+# --- no tool (a given path that does not exist, so a machine that has Inno Setup behaves the same): the target
+# fails with a message, configuring is fine ---
 run("configure without a tool" ${CMAKE_COMMAND} -S "${PROBE_SOURCE}" -B "${WORK}/build2" -G "${GENERATOR}"
-    -DCMAKE_BUILD_TYPE=Release -DSPUX_CMAKE_DIR=${SPUX_CMAKE_DIR} -DCMAKE_PROGRAM_PATH=${WORK}/nowhere)
+    -DCMAKE_BUILD_TYPE=Release -DSPUX_CMAKE_DIR=${SPUX_CMAKE_DIR} -DSPUX_INSTALLER_TOOL=${WORK}/no-such-tool)
 expect_failure("installer without a tool" ${CMAKE_COMMAND} --build "${WORK}/build2" --config Release --target installer)
 if(NOT last_output MATCHES "SPUX_INSTALLER_TOOL")
   message(FATAL_ERROR "the missing-tool message does not name SPUX_INSTALLER_TOOL:\n${last_output}")

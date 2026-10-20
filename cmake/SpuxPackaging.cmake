@@ -104,6 +104,11 @@ function(spux_add_installer)
     set(tool "${_spux_installer_tool_${scriptExt}}")
   endif()
 
+  if(tool AND NOT EXISTS "${tool}")
+    message(STATUS "spux_add_installer: ${tool} does not exist")
+    set(tool "")
+  endif()
+
   set(outDir "${CMAKE_BINARY_DIR}/installer")
   set(SPUX_NAME "${A_NAME}")
   set(SPUX_VERSION "${A_VERSION}")
@@ -135,7 +140,7 @@ function(spux_add_installer)
       VERBATIM)
   else()
     add_custom_target(${A_TARGET}
-      COMMAND ${CMAKE_COMMAND} -E echo "spux_add_installer: no ${toolNames} found; install it or set SPUX_INSTALLER_TOOL"
+      COMMAND ${CMAKE_COMMAND} -E echo "spux_add_installer: no installer compiler (${toolNames}) found or the given one does not exist; install it or set SPUX_INSTALLER_TOOL"
       COMMAND ${CMAKE_COMMAND} -E false
       VERBATIM)
   endif()
