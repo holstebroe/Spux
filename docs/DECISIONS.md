@@ -218,3 +218,16 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   Auto refuses a software OpenGL rasterizer; a context is made current only for the length of a frame, resize or detach
   (one thread at a time, under the editor's lock). The X11 window retries `XOpenDisplay` briefly when a display is
   configured: it was refused right after another window of the process closed, which broke the fallback.
+- 2026-10-20: migration step 7, the Classic flavor (`ShadedRenderer`, `ClassicStyle`, `ClassicConfig`). No decision changed.
+  Choices within the guidelines: the Classic painters shade per pixel, so they draw on a `ShadedRenderer` (found by a checked cast)
+  and draw nothing on another renderer (U4 puts the choice of flavor in the plugin, and a plugin that selects Classic has this
+  renderer); the supersampled renderer is the shared drawing code behind `IRenderer`, with the shading helpers on it (`graphics()`
+  gives the `ClassicDraw` helpers a clipped view, so painters and plugin views clip like every other call); a look is a
+  `ClassicConfig` (U8): shapes (disc or knurled knob, rocker or lever, slate or worn surface), ink, rows for label and value,
+  cap sizes, button colors, with `slate()` and `silver()` as the two shipped looks. Where a painter state has no field, a
+  convention carries it and is documented in `ClassicStyle.hpp`: the default theme accent means "no color of its own" (bare metal
+  knob, dark fader cap), a titleless `Panel` is the surface and a titled one a frame. The lamp is `drawLed` and a button variant,
+  not a new painter interface (`Painters.hpp` is unchanged); the author may want an LED painter in the core. Knob geometry depends
+  on the config, not on the state, so `hitArea()` and the drawing agree (the rows for label and value are fixed). The label
+  font backs `drawText` and Regular text, the display font Bold, both in one translation unit.
+  `GuiTestSupport.hpp` (the test host and the golden-frame helpers) came out of `ModernSupport.hpp`, used by both flavors' tests.

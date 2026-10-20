@@ -340,6 +340,28 @@ spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per wid
   telemetry; they are Gui views, so they stay correct under the CPU caches. What is specific to a plugin
   (attractors, envelopes, filter responses, route tables) stays in the plugin.
 
+### Classic specifics [U1, U8]
+
+- **The renderer is `ShadedRenderer`** (`spux/ui/classic/ShadedRenderer.hpp`): an `IRenderer` on `CpuLayers`, supersampled (2 by
+  default, 1 to 4) and box-filtered when the frame is resolved, with analytic edges and the clip applied to everything,
+  text and shading included. Besides the basics it hands out `graphics()`, a clipped view of the current layer at the
+  supersampled resolution that the `ClassicDraw` helpers (`shadeBox`, `shadeRoundRect`, `softShadow`, `shadeLit`,
+  `drawLineAA`, the lettering) draw through, so a plugin's own views shade exactly like the painters. `wornPanel` renders the
+  worn paint once per size and copies it afterwards; the cache belongs to the renderer (guideline principle 6).
+- **Painters shade per pixel**, so they need a `ShadedRenderer`; on another renderer they draw nothing. Each paints inside its
+  bounds plus its margin (it sets the clip itself), and what a knob's bounds must contain is documented in `ClassicStyle.hpp`.
+- **The look is a `ClassicConfig`**: the knob shape (disc or knurled), the toggle shape (rocker or lever), the surface (slate
+  gradient or worn silver), ink and wear, the rows reserved above and below a knob or fader for the value and the label, cap
+  sizes, button colors, and the `Theme` the `Gui` reads. `slate()` and `silver()` are the two shipped looks. The rows are fixed
+  by the config, never by a widget's state, so the interaction's idea of the dial and the drawing always agree.
+- **Conventions for what a painter state cannot say**: the theme's default accent means "no color of its own" (bare metal knob,
+  dark fader cap, neutral rocker key); any other accent colors the cap. A `Panel` with no title is the surface and takes its
+  whole bounds; a titled one is a frame with the title cut into its top line. A lamp is a button variant (`kButtonLed`) or
+  `drawLed`.
+- **Frames that must not change by accident**: the golden frames in `tests/golden/` (`classic_*`) and, for the looks
+  inherited from existing plugins, the canvases of `classic_compat_*`. Regenerate them (`SPUX_UPDATE_GOLDEN=1`) only when a
+  change of look is intended, and say so in the commit.
+
 ### Telemetry [P7]
 
 `spux::TelemetryRing<Frame>` (`spux/core/TelemetryRing.hpp`) is a lock-free single-producer ring, with

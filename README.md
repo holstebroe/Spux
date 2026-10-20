@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4), the parameters, state and CLAP glue (step 5) the immediate-mode UI core (step 6, its acceptance gate in `docs/UI_GATE.md`) and the Modern flavor (step 7: GPU and software renderers, `ModernStyle`, generic views, the editor's GPU path) are extracted. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4), the parameters, state and CLAP glue (step 5) the immediate-mode UI core (step 6, its acceptance gate in `docs/UI_GATE.md`) the Modern flavor (step 7: GPU and software renderers, `ModernStyle`, generic views, the editor's GPU path) and the Classic flavor (step 7: `ShadedRenderer`, `ClassicStyle`) are extracted. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.
@@ -35,7 +35,7 @@ target; a plugin links the targets it lists and nothing else.
 | `spux_platform` | Native child window (Win32, X11, later Cocoa) with input events and a tick timer | OS only |
 | `spux_ui_core` | Immediate-mode `Gui` (`Gui<Style>` over `GuiCore`), `IRenderer`, the CPU layer cache, painter interfaces and `Theme`, `EditorHost` with optional extensions, layout helpers, the editor shell (CPU renderers, or a `FrameSurface` for a GPU), telemetry consumers (built) | `spux_platform`, `spux_params` |
 | `spux_ui_retro` | Retro style and the pixel renderer, bitmap fonts | `spux_ui_core` |
-| `spux_ui_classic` | (built so far: `Graphics`, `Font`, `FileDialog`, `ClassicDraw`, atlas font data) Classic style, the supersampled CPU renderer with shading helpers, atlas fonts | `spux_ui_core` |
+| `spux_ui_classic` | Classic style (`ClassicStyle`, `ClassicConfig`), the supersampled CPU renderer with shading helpers (`ShadedRenderer`), the drawing code (`Graphics`, `ClassicDraw`, `FileDialog`), atlas fonts | `spux_ui_core` |
 | `spux_ui_modern` | The Modern flavor (built): the GL function table and context (`spux::gl`), `GpuRenderer` (OpenGL 3.3, bloom chain, embedded shaders), the Inter SDF font atlas, `SoftRenderer` (the same style on the CPU), `ModernStyle` with its `ModernConfig`, generic views (spectrum, traces, stereo meter, curve editor), `ModernSurface` and `modernBackend()` (the editor's GPU path with the software fallback). Static, one object per part | `spux_ui_core` |
 | `spux_presetbrowser` | Optional shared preset browser | `spux_ui_core`, `spux_state` |
 | `spux_testing` (header-only) | WAV read and write, BS.1770 loudness, analysis metrics (filters, FFT, band levels, Schroeder decay), render-safety check, FNV golden hashes and golden files, reference-render null test | `spux_core`, doctest |
