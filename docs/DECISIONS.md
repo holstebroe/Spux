@@ -172,4 +172,5 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   header-only. Differences from the originals a plugin meets when it switches: an Enum's label index counts from `min`
   (Plumeflow's enums all start at 0), `parseValue` refuses non-finite numbers, and `sanitizePlain` sends ±infinity to the
   default like Plumeflow's `sanitize` (Tearwash keeps clamping infinities to the range end in its own `twClamp`, so "-inf
-  dB" stays the floor). Tearwash's state magic is `TWR1`, version 2; version 1 is its old text state.
+  dB" stays the floor). Tearwash's state magic is `TWR1`, version 1 (by the author: Tearwash was unreleased, so the container starts the
+  numbering; its text state from before the container still loads, recognised by the missing magic).

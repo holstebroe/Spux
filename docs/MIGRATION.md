@@ -122,9 +122,9 @@ plugin-specific views and page code.
    Lumeoid's `LMN1` writer and read what it writes (200 random states).
    **Tearwash** (pilot): `TwParams.def`, values in a `ParamStore`, GUI and preset edits through an `EditQueue` (a
    producer mutex serializes its GUI and main threads), `TearwashClap` on `spux::clap::Plugin`, host state in the
-   container `TWR1` version 2 (`PARM`, `PRST`); the text state `tearwash 1` (version 1) loads through the legacy
-   reader and the migration hook. `tearwash_state_test` loads states, a user preset, and the parameter info and value
-   text recorded with the previous Tearwash (861300d), and a frozen version 2 state. Audio output (every third
+   container `TWR1` version 1 (`PARM`, `PRST`); the text state `tearwash 1` from before it loads through a legacy
+   reader (no magic). `tearwash_state_test` loads states, a user preset, and the parameter info and value
+   text recorded with the previous Tearwash (861300d), and a frozen version 1 container state. Audio output (every third
    preset with host automation) and the panel snapshot are bit-identical to before. Left: Plumeflow and Lumeoid
    switch in step 8 (Plumeflow's `.def` gets the module and smoothing columns; its `PLF1` has no CRC, so its switch
    needs a reader for the old chunks); Tannhauser, Acidus, Kikset and Gritbaal move their `ParamInfo` in their
