@@ -69,7 +69,6 @@ spux_module(spux_params DEPENDS spux_core)
 spux_module(spux_state DEPENDS spux_core)
 spux_module(spux_clap DEPENDS spux_params spux_state clap)
 spux_module(spux_midi DEPENDS spux_core)
-spux_module(spux_ui_core DEPENDS spux_platform spux_params)
 spux_module(spux_ui_retro DEPENDS spux_ui_core)
 spux_module(spux_presetbrowser DEPENDS spux_ui_core spux_state)
 spux_module(spux_testing DEPENDS spux_core spux_doctest)    # header-only: WAV, loudness, metrics, hashes, null test
@@ -103,6 +102,20 @@ if(SPUX_BUILD_SMOKE_TOOL)
   target_link_libraries(spux_clap_smoke PRIVATE spux_testing_clap)
   spux_target_flags(spux_clap_smoke)
 endif()
+
+# spux_ui_core: immediate-mode Gui, IRenderer, the CPU layer cache, painter interfaces, Theme, EditorHost,
+# the editor shell and the telemetry consumers. STATIC: a plugin pays only for the objects it references.
+add_library(spux_ui_core STATIC
+  ${SPUX_ROOT}/src/ui/core/CpuLayers.cpp
+  ${SPUX_ROOT}/src/ui/core/Gui.cpp
+  ${SPUX_ROOT}/src/ui/core/Editor.cpp
+  ${SPUX_ROOT}/src/ui/core/Live.cpp)
+add_library(spux::spux_ui_core ALIAS spux_ui_core)
+target_include_directories(spux_ui_core PUBLIC ${SPUX_ROOT}/include)
+target_compile_features(spux_ui_core PUBLIC cxx_std_20)
+target_link_libraries(spux_ui_core PUBLIC spux_platform spux_params)
+set_target_properties(spux_ui_core PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
+spux_target_flags(spux_ui_core)
 
 # spux_ui_classic: Classic drawing code (Graphics, Font, FileDialog, ClassicDraw), the first module with
 # sources, so it is a STATIC library. CPU drawing only. The font data headers (DisplayFont.hpp,

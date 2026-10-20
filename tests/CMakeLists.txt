@@ -75,3 +75,9 @@ add_test(NAME packaging_test
   COMMAND ${CMAKE_COMMAND} -DSPUX_CMAKE_DIR=${SPUX_ROOT}/cmake -DPROBE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/packaging
           -DWORK=${CMAKE_CURRENT_BINARY_DIR}/packaging_work -DGENERATOR=${CMAKE_GENERATOR}
           -P ${CMAKE_CURRENT_SOURCE_DIR}/packaging_test.cmake)
+
+# spux_ui_core: the Gui with a plain test style and renderer (tests/ui/), the caches, the editor shell,
+# telemetry and layout.
+spux_add_test(ui_core_test spux_ui_core)
+target_include_directories(ui_core_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+

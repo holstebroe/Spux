@@ -236,6 +236,22 @@ the frame and block input below them.
 5. Layout helpers (rows, columns, grids) return `Rect`s. A layout table can stay as data that a page
    loops over.
 
+How `spux_ui_core` does it (`spux/ui/Gui.hpp`, `Layers.hpp`, `Editor.hpp`):
+
+- A CPU renderer keeps three layers (`CpuLayers`): background, widgets, and display (widgets plus the
+  overlays, used only while an overlay is up). A widget that changed is redrawn over a copy of the
+  background under its bounds plus its painter's margin; a widget that is no longer drawn is erased.
+  Therefore cached widget areas must not overlap: panels, frames and printed labels belong to the
+  background (`RootView::background`). `Gui::overlapCount()` reports violations. A GPU renderer has no
+  layers and draws everything every frame.
+- The change test is a hash of the painter's state struct. A plugin view that is not a standard widget
+  uses `Gui::view(id, area, key)` with a key of what it shows, and `Gui::interact` for its input.
+- `Gui<Style>` is a thin template over `GuiCore` (the interaction, compiled once): a Style is a struct
+  with a `theme` and one painter member per widget it supports. A page calling a widget the Style lacks
+  does not compile (U4); a widget call can also name its own painter.
+- `Editor<Style>` takes the logical size and the plugin's `RootView` (background, frame, a content
+  version for what changes outside the parameters, an animation flag, a tick hook).
+
 **Acceptance gate.** Immediate mode is adopted only if it is not noticeably more expensive than retained
 mode and its layout code is as simple or simpler. The test: port one panel of Tannhauser and one of
 Acidus, then compare with today's retained version:
@@ -251,9 +267,11 @@ are unaffected.
 
 ### Painters and themes [U8]
 
-- One painter interface per widget type (`KnobPainter`, `SwitchPainter`, `MeterPainter`, ...). A
-  painter receives the renderer, the bounds and a state struct (value, hot, active, focused,
-  modulation, label).
+- One painter interface per widget type (`KnobPainter`, `SliderPainter`, `TogglePainter`,
+  `SelectorPainter`, `ButtonPainter`, `DropdownPainter`, `StepperPainter`, `PanelPainter`,
+  `TextFieldPainter`, `PopupPainter`, `TooltipPainter`; `spux/ui/Painters.hpp`). A painter receives the
+  renderer, the bounds and a state struct (value, hot, active, focused, modulation, label). It may answer
+  geometry questions the interaction needs (a knob's depth handle, a selector's cells, a popup's rows).
 - A flavor implements the painters it supports. A plugin that uses a widget its flavor lacks fails to
   compile; no other plugin is affected.
 - A flavor's look is a `Theme` data struct: colours, metrics (text sizes, minimum widget sizes), fonts.
@@ -270,6 +288,9 @@ adjustment, mouse wheel, right-click hooks. The plugin can override text formatt
 
 The plugin implements an `EditorHost` core (parameters, edit queue, telemetry, flush request, UI state)
 plus only the optional extensions it uses (modulation display, preset access). Widgets never see CLAP.
+Widgets name parameters by id and reach them through the host's `ParamTable`; `StoreEditorHost<N>`
+implements the parameter part over a `ParamStore` and an `EditQueue`. Value text and parsing default to
+spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per widget (`valueText`).
 
 ### Modern specifics [U12, U13]
 
@@ -284,9 +305,10 @@ plus only the optional extensions it uses (modulation display, preset access). W
 
 ### Telemetry [P7]
 
-`spux::TelemetryRing<Frame>` is a lock-free single-producer ring. The audio thread writes only while the
-editor is visible; the frame type is defined by the plugin. spux provides generic consumers: spectrum
-(FFT, log bands, attack and release smoothing), source histories, level meters.
+`spux::TelemetryRing<Frame>` (`spux/core/TelemetryRing.hpp`) is a lock-free single-producer ring, with
+`SampleRing` for output samples. The audio thread writes only while the editor is visible; the frame
+type is defined by the plugin. spux provides generic consumers (`spux/ui/Live.hpp`): spectrum (FFT, log
+bands, attack and release smoothing), source histories, level meters.
 
 ## 8. Platforms
 
