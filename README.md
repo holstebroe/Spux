@@ -48,8 +48,9 @@ depends on spux, never the other way round.
 ## Testing and packaging helpers
 
 - **Null test.** `runNullTest(name, rendered, options)` compares a render with the float WAV stored in the plugin repository and
-  reports the peak and RMS of the difference per case; the threshold is `NullOptions::peakThresholdDb` (-90 by default, -110 for Acidus,
-  `-infinity` for bit-exact). `SPUX_UPDATE_REFERENCES=1` regenerates the references (a case without one fails). See `spux/testing/NullTest.hpp`.
+  reports the peak and RMS of the difference per case; the threshold is `NullOptions::peakThresholdDb` (-90 by default,
+  `-infinity` for bit-exact). Optional sound tolerances, `maxSpectralDb` and `maxEnvelopeDb`, gate on what is heard instead
+  (Acidus: 0.08 and 0.12 dB, with the peak as a report). `SPUX_UPDATE_REFERENCES=1` regenerates the references (a case without one fails). See `spux/testing/NullTest.hpp`.
 - **Golden hashes.** `Fnv1a64`, `hashFloats`, `GoldenFile` (one file per platform and compiler, `SPUX_UPDATE_GOLDEN=1` to record).
 - **Smoke host.** `spux_add_clap_smoke_test(name plugin-target ARGS ...)` registers a ctest entry; the same checks are a library
   call (`runClapSmoke`) with an `extra` callback for plugin-specific ones.
