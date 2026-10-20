@@ -71,7 +71,7 @@ TEST_CASE("kernel references") {
         for (int i = 0; i < 4096; ++i) {
             const float t = static_cast<float>(i) / 4096.0f;
             y.push_back(math::exp2F(t * 40.0f - 20.0f) * 1e-6f);
-            y.push_back(math::tanhF(t * 16.0f - 8.0f));
+            y.push_back(math::fastTanhF(t * 16.0f - 8.0f));
             y.push_back(math::sinTurns(t * 7.3));
             y.push_back(math::tanRad(t * 1.5f + 1e-3f));
             y.push_back(math::tanhPade76(t * 12.0f - 6.0f));

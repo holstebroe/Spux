@@ -58,9 +58,9 @@ TEST_CASE("float set: error bounds") {
 
     worst = 0.0;
     for (float x = -12.0f; x <= 12.0f; x += 0.0037f)
-        worst = std::max(worst, std::fabs(static_cast<double>(tanhF(x)) - std::tanh(static_cast<double>(x))));
+        worst = std::max(worst, std::fabs(static_cast<double>(fastTanhF(x)) - std::tanh(static_cast<double>(x))));
     CHECK(worst < 1e-6);
-    CHECK(tanhF(10.0f) == 1.0f);
+    CHECK(fastTanhF(10.0f) == 1.0f);
 
     worst = 0.0;
     for (float x = 1e-6f; x < 1e6f; x *= 1.003f)
@@ -77,7 +77,7 @@ TEST_CASE("float set: error bounds") {
         const double ref = x == 0.0f ? 1.0 : std::tanh(static_cast<double>(x)) / x;
         worst = std::max(worst, std::fabs(static_cast<double>(tanhGain(x)) - ref));
     }
-    CHECK(worst < 3e-5); // tanhF's absolute error divided by a small x
+    CHECK(worst < 3e-5); // fastTanhF's absolute error divided by a small x
 
     worst = 0.0;
     for (double u = 0.0; u <= 1.0; u += 1e-4)
@@ -129,6 +129,6 @@ TEST_CASE("constexpr") {
     static_assert(expD(0.0) == 1.0);
     static_assert(exp2F(1.0f) > 1.999f && exp2F(1.0f) < 2.001f);
     static_assert(sinD(0.0) == 0.0);
-    static_assert(tanhF(20.0f) == 1.0f);
+    static_assert(fastTanhF(20.0f) == 1.0f);
     CHECK(true);
 }

@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
     std::printf("| --- | ---: | ---: | ---: |\n");
     row("exp2F (std::exp2 float)", timeIt(f60, [](float x) { return math::exp2F(x); }),
         timeIt(f60, [](float x) { return std::exp2(x); }));
-    row("tanhF (std::tanh float)", timeIt(f8, [](float x) { return math::tanhF(x); }),
+    row("fastTanhF (std::tanh float)", timeIt(f8, [](float x) { return math::fastTanhF(x); }),
         timeIt(f8, [](float x) { return std::tanh(x); }));
     row("tanhPade76 (std::tanh float)", timeIt(f8, [](float x) { return math::tanhPade76(x); }),
         timeIt(f8, [](float x) { return std::tanh(x); }));
