@@ -323,7 +323,7 @@ private:
     double hoverSince_ = 0.0;
     double dragStart_ = 0.0;
     float dragStartX_ = 0.0f, dragStartY_ = 0.0f;
-    bool dragShift_ = false, dragMoved_ = false;
+    bool dragShift_ = false;
     std::uint32_t activeParam_ = kNoParamId, hoveredParam_ = kNoParamId;
     std::vector<std::uint64_t> focusables_;
     std::string editText_;

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <thread>
@@ -29,7 +30,14 @@ public:
               const WindowOptions& options) override {
         if (open_ || parent.api != WindowApi::X11 || width <= 0 || height <= 0)
             return false;
+        // The server can refuse a connection for a moment, most often right after another window of this
+        // process closed its own: try again briefly before giving up. Without a display there is nothing
+        // to wait for.
         Display* d = XOpenDisplay(nullptr);
+        for (int attempt = 0; !d && attempt < 20 && std::getenv("DISPLAY"); ++attempt) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            d = XOpenDisplay(nullptr);
+        }
         if (!d)
             return false;
         const int screen = DefaultScreen(d);

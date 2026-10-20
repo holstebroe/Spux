@@ -202,3 +202,19 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   (`tests/gate/`) is marked temporary. No decision changed.
 - 2026-10-20: the UI gate code (`tests/gate/`, `tools/gate_report.sh`, `tools/gate_lines.py`) removed at the author's word,
   since the later moves do not need it; numbers and method stay in docs/UI_GATE.md, the code in history at 313587b.
+- 2026-10-20: migration step 7, the Modern flavor (`spux_ui_modern`). No decision changed. Choices within the guidelines:
+  the software fallback (U5) is a CPU renderer of its own on `CpuLayers`, not a software OpenGL: the fallback exists for
+  machines where OpenGL is missing or broken, spux loads GL at run time and takes no dependency for one, and a CPU
+  renderer also gives driver-independent output for headless golden frames and documentation screenshots. It draws
+  text from the same SDF atlas as the GPU (shared glyph shapes and advances) and leaves the effects plain. `ModernStyle`
+  is configured by a `ModernConfig` (data: the core `Theme` plus shapes, effects and control proportions), with the
+  painters as public members so a plugin can replace or derive one (U8). The GPU post chain and backdrop constants
+  became `GpuRenderer::Look` (defaults unchanged). Window scaling (U11) and the GPU path
+  in the editor shell followed in the same step (next entry).
+- 2026-10-20: migration step 7, the GPU path in the editor shell. No decision changed; U11 (Modern: free resize at a fixed
+  aspect ratio) is implemented, for GPU surfaces only (the CPU renderers draw at the logical size). Choices within the
+  guidelines: the core editor gets one hook, `FrameSurface`, instead of knowing OpenGL, so `spux_ui_core` stays free of
+  graphics libraries (guidelines 4.2); the fallback to the CPU renderer is the editor's job and silent (`usesGpu()` tells);
+  Auto refuses a software OpenGL rasterizer; a context is made current only for the length of a frame, resize or detach
+  (one thread at a time, under the editor's lock). The X11 window retries `XOpenDisplay` briefly when a display is
+  configured: it was refused right after another window of the process closed, which broke the fallback.

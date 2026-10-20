@@ -5,10 +5,14 @@
 namespace spux::inline v1::ui {
 
 EditorCore::EditorCore(EditorHost& host, GuiCore& gui, RootViewBase& root, const EditorOptions& options,
-                       RendererFactory renderer)
-    : host_(host), gui_(gui), root_(root), options_(options), makeRenderer_(std::move(renderer)) {
+                       RendererFactory renderer, SurfaceFactory surface)
+    : host_(host), gui_(gui), root_(root), options_(options), makeRenderer_(std::move(renderer)),
+      makeSurface_(std::move(surface)) {
     options_.width = std::max(1, options_.width);
     options_.height = std::max(1, options_.height);
+    options_.minScale = std::max(0.1f, options_.minScale);
+    options_.maxScale = std::max(options_.minScale, options_.maxScale);
+    userScale_ = std::clamp(options_.scale, options_.minScale, options_.maxScale);
     pixels_.assign(static_cast<std::size_t>(options_.width) * static_cast<std::size_t>(options_.height), 0xFF000000u);
     start_ = std::chrono::steady_clock::now();
 }
@@ -19,20 +23,157 @@ double EditorCore::clockNow() const {
     return std::chrono::duration<double>(std::chrono::steady_clock::now() - start_).count();
 }
 
-bool EditorCore::setParent(const platform::ParentWindow& parent) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (window_ || !platform::NativeWindow::supports(parent.api))
-        return false;
+// --- window and scale ---------------------------------------------------------------------------------------
+
+int EditorCore::physical(int logical) const {
+    return static_cast<int>(std::lround(static_cast<float>(logical) * scaleLocked()));
+}
+
+bool EditorCore::openWindow(const platform::ParentWindow& parent, bool gl, float scale) {
     auto w = platform::NativeWindow::create();
     platform::WindowOptions wo;
     wo.keyboard = options_.keyboard;
-    if (!w || !w->open(parent, options_.width, options_.height, this, wo))
+    wo.openGl = gl;
+    const int pw = static_cast<int>(std::lround(static_cast<float>(options_.width) * scale));
+    const int ph = static_cast<int>(std::lround(static_cast<float>(options_.height) * scale));
+    if (!w || !w->open(parent, pw, ph, this, wo))
         return false;
     window_ = std::move(w);
+    return true;
+}
+
+bool EditorCore::setParent(const platform::ParentWindow& parent) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (window_ || !platform::NativeWindow::supports(parent.api))
+        return false;
+    // the GPU first: a window with a GL pixel format and a surface bound to it; anything failing means the
+    // CPU renderer in a plain window
+    if (makeSurface_) {
+        std::unique_ptr<FrameSurface> surface = makeSurface_();
+        bool attached = false;
+        if (surface && openWindow(parent, true, userScale_)) {
+            const float system = std::max(1.0f, window_->contextScale());
+            std::string why;
+            attached = surface->attach(*window_, options_.width, options_.height, userScale_ * system, &why);
+            if (attached) {
+                systemScale_ = system;
+                surface_ = std::move(surface);
+                if (system != 1.0f)
+                    window_->setSize(physical(options_.width), physical(options_.height));
+            }
+        }
+        if (!attached) {
+            if (surface)
+                surface->detach();
+            surface.reset();
+            if (window_) {
+                // closing joins the window's event thread, whose callbacks take the lock: let go of it meanwhile
+                std::unique_ptr<platform::NativeWindow> dead = std::move(window_);
+                lock.unlock();
+                dead->close();
+                lock.lock();
+            }
+        }
+    }
+    if (!surface_ && !openWindow(parent, false, 1.0f))
+        return false;
     tickHz_ = options_.idleHz;
     window_->setTickRate(tickHz_);
     first_ = true;
     return true;
+}
+
+Rect EditorCore::lastDirty() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return lastDirty_;
+}
+
+int EditorCore::width() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return physical(options_.width);
+}
+int EditorCore::height() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return physical(options_.height);
+}
+
+bool EditorCore::canResize() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return surface_ != nullptr;
+}
+
+void EditorCore::adjustSize(int& w, int& h) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    float s = 1.0f;
+    if (surface_)
+        s = std::clamp(static_cast<float>(w) / static_cast<float>(options_.width) / systemScale_, options_.minScale,
+                       options_.maxScale) *
+            systemScale_;
+    w = static_cast<int>(std::lround(static_cast<float>(options_.width) * s));
+    h = static_cast<int>(std::lround(static_cast<float>(options_.height) * s));
+}
+
+void EditorCore::applyScale() {
+    scaleDirty_ = true;
+    forcePending_.store(true, std::memory_order_relaxed); // an idle editor still redraws at the new size
+    if (window_)
+        window_->setSize(physical(options_.width), physical(options_.height));
+}
+
+bool EditorCore::setSize(int width, int height) {
+    if (width <= 0 || height <= 0 || width > 8192 || height > 8192)
+        return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!surface_)
+        return width == options_.width && height == options_.height;
+    userScale_ = std::clamp(static_cast<float>(width) / static_cast<float>(options_.width) / systemScale_,
+                            options_.minScale, options_.maxScale);
+    applyScale();
+    return true;
+}
+
+bool EditorCore::setScale(double systemScale) {
+    if (!(systemScale >= 0.5 && systemScale <= 8.0))
+        return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!surface_)
+        return false;
+    systemScale_ = static_cast<float>(systemScale);
+    applyScale();
+    return true;
+}
+
+bool EditorCore::setUserScale(float scale) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!surface_ || !(scale > 0.0f))
+        return false;
+    const float s = std::clamp(scale, options_.minScale, options_.maxScale);
+    if (s != userScale_) {
+        userScale_ = s;
+        applyScale();
+    }
+    return true;
+}
+
+float EditorCore::userScale() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return userScale_;
+}
+float EditorCore::scale() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return scaleLocked();
+}
+bool EditorCore::usesGpu() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return surface_ != nullptr;
+}
+const char* EditorCore::rendererName() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return surface_ ? surface_->name() : "software";
+}
+int EditorCore::degradation() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return surface_ ? surface_->degradation() : 0;
 }
 
 void EditorCore::show() {
@@ -59,6 +200,11 @@ void EditorCore::destroy() {
         std::lock_guard<std::mutex> lock(mutex_);
         host_.setTelemetryEnabled(false);
         visible_ = false;
+        // GPU objects die while the window still exists (the driver asks the window about its size); a tick
+        // that comes later finds no surface and draws nothing
+        if (surface_)
+            surface_->detach();
+        surface_.reset();
         w = std::move(window_);
     }
     if (w)
@@ -104,15 +250,22 @@ void EditorCore::key(const KeyEvent& k) {
     gui_.onKey(k);
 }
 
+// The window reports pixels; the page works in logical pixels.
 void EditorCore::onMouseDown(int x, int y, MouseButton b, bool shift) {
-    mouseDown(static_cast<float>(x), static_cast<float>(y), b, shift);
+    const float s = scale();
+    mouseDown(static_cast<float>(x) / s, static_cast<float>(y) / s, b, shift);
 }
-void EditorCore::onMouseUp(int x, int y, MouseButton b) { mouseUp(static_cast<float>(x), static_cast<float>(y), b); }
+void EditorCore::onMouseUp(int x, int y, MouseButton b) {
+    const float s = scale();
+    mouseUp(static_cast<float>(x) / s, static_cast<float>(y) / s, b);
+}
 void EditorCore::onMouseMove(int x, int y, bool, bool shift) {
-    mouseMove(static_cast<float>(x), static_cast<float>(y), shift);
+    const float s = scale();
+    mouseMove(static_cast<float>(x) / s, static_cast<float>(y) / s, shift);
 }
 void EditorCore::onMouseWheel(int x, int y, float steps, bool shift) {
-    mouseWheel(static_cast<float>(x), static_cast<float>(y), steps, shift);
+    const float s = scale();
+    mouseWheel(static_cast<float>(x) / s, static_cast<float>(y) / s, steps, shift);
 }
 void EditorCore::onMouseLeave() { mouseLeave(); }
 void EditorCore::onKey(const KeyEvent& k) { key(k); }
@@ -133,12 +286,15 @@ bool EditorCore::frame(bool force, double now) {
 bool EditorCore::frameLocked(bool force, double now) {
     if (window_ && !visible_)
         return false;
-    if (!renderer_) {
+    if (!surface_ && !renderer_) {
         renderer_ = makeRenderer_ ? makeRenderer_(options_.width, options_.height) : nullptr;
         if (!renderer_)
             return false;
         first_ = true;
     }
+    IRenderer* renderer = surface_ ? surface_->renderer() : renderer_.get();
+    if (!renderer)
+        return false;
     root_.tick(now);
     const std::uint32_t params = host_.paramVersion();
     const std::uint64_t content = root_.contentVersion();
@@ -166,7 +322,21 @@ bool EditorCore::frameLocked(bool force, double now) {
     seenContent_ = content;
     input_ = false;
 
-    IRenderer& r = *renderer_;
+    if (surface_) {
+        if (scaleDirty_) {
+            if (!surface_->resize(options_.width, options_.height, scaleLocked())) {
+                forcePending_.store(true, std::memory_order_relaxed); // keep scaleDirty_: try again next tick
+                return false;
+            }
+            scaleDirty_ = false;
+            first_ = true;
+        }
+        if (!surface_->beginFrame(now)) {
+            forcePending_.store(true, std::memory_order_relaxed); // the context is not ready: try again
+            return false;
+        }
+    }
+    IRenderer& r = *renderer;
     LayerCache* layers = r.layers();
     const bool cached = options_.caching && layers != nullptr;
     const bool fullBackground = first_ || bgKey != seenBackground_ || !cached;
@@ -186,7 +356,10 @@ bool EditorCore::frameLocked(bool force, double now) {
     gui_.setCaching(cached);
     gui_.begin(r, now, dt, options_.width, options_.height);
     drawFrame();
-    if (layers) {
+    if (surface_) {
+        surface_->endFrame(); // the surface presents; the whole frame is new
+        lastDirty_ = {0, 0, options_.width, options_.height};
+    } else if (layers) {
         lastDirty_ = layers->dirtyBounds();
         if (first_)
             lastDirty_ = {0, 0, options_.width, options_.height};
@@ -196,8 +369,8 @@ bool EditorCore::frameLocked(bool force, double now) {
         lastDirty_ = {0, 0, options_.width, options_.height};
     }
     first_ = false;
-    ++framesDrawn_;
-    if (window_ && !lastDirty_.empty())
+    framesDrawn_.fetch_add(1, std::memory_order_relaxed);
+    if (window_ && !surface_ && !lastDirty_.empty())
         window_->present(pixels_.data(), options_.width, options_.height,
                          {lastDirty_.x, lastDirty_.y, lastDirty_.w, lastDirty_.h});
     return true;

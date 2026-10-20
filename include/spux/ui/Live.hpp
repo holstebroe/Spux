@@ -43,6 +43,13 @@ public:
     [[nodiscard]] float operator[](std::size_t i) const {
         return i < filled_ ? values_[(head_ + N - filled_ + i) % N] : 0.0f;
     }
+    // The newest values, at most maxCount, copied oldest first; returns how many were written.
+    std::size_t copyTo(float* out, std::size_t maxCount) const {
+        const std::size_t n = filled_ < maxCount ? filled_ : maxCount;
+        for (std::size_t i = 0; i < n; ++i)
+            out[i] = (*this)[filled_ - n + i];
+        return n;
+    }
     void clear() { head_ = filled_ = 0; }
 
 private:
