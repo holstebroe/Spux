@@ -8,6 +8,7 @@
 // (Graphics::blendPixel) with analytic edge coverage, so edges come out
 // smooth after the downsample. Coordinates are logical (window) pixels.
 
+#include "spux/ui/Geometry.hpp"
 #include "spux/ui/classic/Graphics.hpp"
 #include <algorithm>
 #include <cmath>
@@ -16,6 +17,9 @@
 namespace spux::inline v1::ui::classic {
 
 constexpr float kPi = 3.14159265358979f;
+
+// Straight-alpha 0xAARRGGBB, the UI's color (this namespace's `Color` is the float RGB triple below).
+using Argb = ui::Color;
 
 struct Vec3 {
     float x, y, z;
@@ -84,10 +88,10 @@ inline Vec3 tiltedNormal(float ux, float uy, float tilt) {
 // box, and blends the color it returns (alpha 0 = skip).
 template <class F> void shadeBox(Graphics& g, float x0, float y0, float x1, float y1, F&& f) {
     const int s = g.getScale();
-    const int bx0 = std::max(0, static_cast<int>(std::floor(x0 * s)));
-    const int by0 = std::max(0, static_cast<int>(std::floor(y0 * s)));
-    const int bx1 = std::min(static_cast<int>(g.getWidth()) * s, static_cast<int>(std::ceil(x1 * s)));
-    const int by1 = std::min(static_cast<int>(g.getHeight()) * s, static_cast<int>(std::ceil(y1 * s)));
+    const int bx0 = std::max(g.clipX0(), static_cast<int>(std::floor(x0 * s)));
+    const int by0 = std::max(g.clipY0(), static_cast<int>(std::floor(y0 * s)));
+    const int bx1 = std::min(g.clipX1(), static_cast<int>(std::ceil(x1 * s)));
+    const int by1 = std::min(g.clipY1(), static_cast<int>(std::ceil(y1 * s)));
     for (int by = by0; by < by1; ++by) {
         const float ly = (by + 0.5f) / s;
         for (int bx = bx0; bx < bx1; ++bx) {
@@ -110,6 +114,27 @@ inline float sdRoundRect(float x, float y, float hx, float hy, float r) {
 }
 // Outward unit direction of the rounded rectangle's distance field.
 void sdRoundRectDir(float x, float y, float hx, float hy, float r, float& ux, float& uy);
+
+// A rounded rectangle with the color f(u, v, d) per pixel: u and v run -1..1 across the box and d is the
+// signed distance to its edge in logical pixels (negative inside). f returns straight-alpha ARGB; the edge
+// coverage multiplies its alpha.
+template <class F> void shadeRoundRect(Graphics& g, float x0, float y0, float x1, float y1, float r, F&& f) {
+    const float s = static_cast<float>(g.getScale());
+    const float cx = 0.5f * (x0 + x1), cy = 0.5f * (y0 + y1);
+    const float hx = 0.5f * (x1 - x0), hy = 0.5f * (y1 - y0);
+    shadeBox(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, [&](float x, float y) {
+        const float d = sdRoundRect(x - cx, y - cy, hx, hy, r);
+        const float cov = clamp01(0.5f - d * s);
+        if (cov <= 0.f)
+            return 0u;
+        const uint32_t c = f((x - cx) / hx, (y - cy) / hy, d);
+        return toArgb(fromArgb(c), alphaOf(c) * cov);
+    });
+}
+
+// A soft black shadow under a rounded rectangle, offset by (dx, dy), fading over `spread` logical pixels.
+void softShadow(Graphics& g, float x0, float y0, float x1, float y1, float r, float spread, float alpha, float dx = 1.f,
+                float dy = 2.f);
 
 // --- Lettering ---------------------------------------------------------------
 
