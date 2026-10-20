@@ -32,8 +32,12 @@ MIT licence.
    libm in the audio path (use `spux_core` math, if `spux_bench` shows it is at least as fast). Never
    override the flags from `spux_target_flags` (`-ffp-contract=off`, `/fp:precise`).
 7. Derive coefficients from times and frequencies, never from a fixed sample rate.
-8. **No process-global mutable state.** Several instances and several spux versions share one host
-   process. Hidden visibility and the inline version namespace on everything.
+8. **Instances never affect each other's output.** No state shared between instances that is written
+   after initialization and can change what an instance computes, or that makes the audio thread wait
+   or allocate. Allowed: immutable data, and caches of pure functions keyed on every input, filled off
+   the audio thread, read without blocking, recomputed on a miss (guidelines 1.6). Several instances
+   of one plugin in a DAW are normal. Plugins and spux versions are kept apart by hidden visibility and
+   the inline version namespace on everything [L13].
 9. **UI.** One flavor per build (`<PLUGIN>_UI=RETRO|CLASSIC|MODERN|NONE`). Immediate-mode `Gui`;
    widgets draw through per-widget painters, a flavor's look is a `Theme` data struct, and every
    painter stays inside its bounds. Modern falls back to the Modern style on the software renderer.

@@ -15,8 +15,27 @@ These are the rules for building spux and for using it in a plugin. The reasons 
    (the Acidus ladder and Stinchcombe network, the Tannhauser OTA SVF, the Paula RC filters, the
    Tearwash reverb) stays in the plugin repository.
 5. **Extract on the third copy**, or earlier when two copies are already identical.
-6. **No process-global mutable state.** Several plugin instances, and several plugins with different
-   spux versions, share one host process.
+6. **Instances never affect each other's output** [L16]. A DAW runs many instances of one plugin, and
+   several plugins with different spux versions, in one process. Different plugins and spux versions
+   never see each other's symbols: hidden visibility and the inline version namespace [L13] keep each
+   binary's statics, tables and caches its own. Between the instances of one plugin, state that lives
+   longer than an instance is allowed only in these forms:
+   - **Immutable data**: tables, fonts, kernels, built at load or first use, never on the audio thread,
+     never written again (spux's BLEP tables).
+   - **Memo caches of pure functions**: the value depends only on the key, the key holds every input
+     (parameters, sample rate, ...), so a hit gives exactly what a miss computes, whoever filled it.
+     Filled off the audio thread; the audio thread reads without blocking (`try_lock` or lock-free) and
+     computes the value itself on a miss, without allocating (Acidus's critical-gain tables).
+   - **Operating-system registrations** that cannot be per instance (a Win32 window class): named per
+     module, so another plugin never shares them.
+
+   Not allowed: shared state whose content depends on which instance wrote it or when (a shared random
+   generator, a shared smoother, a "current preset"), and anything that makes one instance wait for or
+   allocate because of another. Prefer an explicit shared context created in the plugin's entry `init`,
+   destroyed in `deinit` and handed to its instances, over function-local statics: the lifetime is
+   clear, it can be reset in tests, and the plugin decides (principle 1). Per-thread storage in a
+   plugin binary is not free: a large `thread_local` in a dynamically loaded library can be allocated on
+   a thread's first access, so it does not belong on the audio thread.
 
 ### SOLID in spux
 

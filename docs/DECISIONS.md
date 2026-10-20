@@ -22,6 +22,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 | L13 | **Hidden symbol visibility** (`-fvisibility=hidden`) plus the inline version namespace. | Decided | Two plugins with different spux versions can share one host process. |
 | L14 | Tests use **doctest**. | Decided | |
 | L15 | CI: keep the current GitHub Actions setup; spux gets the same. | Decided | |
+| L16 | **Instances never affect each other's output.** Shared state between the instances of one plugin only as immutable data, memo caches of pure functions (keyed on every input, filled off the audio thread, read without blocking) or per-module OS registrations; prefer a context owned by the plugin's entry. Separation between plugins and spux versions is L13's job. | Decided | Replaces "no process-global mutable state" (2026-10-20). Guidelines 1.6. |
 
 ## Sound compatibility
 
@@ -143,3 +144,10 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   the author decides). The Acidus conformance test fails ten checks by design, so its gate is the full report compared
   with a stored copy, not its exit code. `tanhF(0)` is -6e-8 and `tanhF` is not odd (within its documented 1e-6).
   `expD`/`powD` rounded to float differ from glibc's `expf`/`powf` by one ulp for about 0.03 % / 0.06 % of arguments.
+- 2026-10-20: **L16 added** (by the author): CLAUDE.md rule 8 and guidelines principle 6 said "no process-global mutable
+  state", which also forbade harmless sharing (immutable tables, memo caches of pure functions such as Acidus's
+  critical-gain tables) while the separation of plugins and spux versions comes from L13. The rule now names what it
+  protects: no instance can change what another computes or make it wait or allocate. Allowed shared forms: immutable
+  data, memo caches keyed on every input (filled off the audio thread, read without blocking, recomputed on a miss),
+  per-module OS registrations; an entry-owned shared context is preferred over function-local statics. U13's "nothing
+  process-global" (the GL function table and context) is an instance of it and stays.
