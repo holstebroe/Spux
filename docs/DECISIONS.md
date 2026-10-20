@@ -200,3 +200,5 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   never name a plugin or cite a decision id (CLAUDE.md rules 14 and 15). The provenance notes moved from the headers to
   docs/MIGRATION.md. `fft` moved from `spux_ui_core` and `spux_testing` (two copies) to `spux/dsp/Fft.hpp`. The UI gate
   (`tests/gate/`) is marked temporary. No decision changed.
+- 2026-10-20: the UI gate code (`tests/gate/`, `tools/gate_report.sh`, `tools/gate_lines.py`) removed at the author's word,
+  since the later moves do not need it; numbers and method stay in docs/UI_GATE.md, the code in history at 313587b.

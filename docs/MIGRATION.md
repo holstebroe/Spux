@@ -144,7 +144,7 @@ plugin-specific views and page code.
    **Acceptance gate**: `tests/gate/` builds each plugin twice from its own checkout (`-DSPUX_GATE_ACIDUS_DIR`,
    `-DSPUX_GATE_TANNHAUSER_DIR`), with its retained `GuiWindow` and with a port on `spux_ui_core`, and
    `tools/gate_report.sh` measures them; numbers and method in `docs/UI_GATE.md`. No plugin repository was
-   changed. The gate is temporary: remove `tests/gate/` and `tools/gate_*` when step 7 starts. Left: the flavors' painters and renderers (step 7, from Acidus's skins, Tannhauser's panel
+   changed. The gate code was removed after the decision (kept in history at 313587b; see `docs/UI_GATE.md`). Left: the flavors' painters and renderers (step 7, from Acidus's skins, Tannhauser's panel
    renderer and Plumeflow's look); Plumeflow switches in step 8; the GPU path in the editor shell, window
    scaling, cascading submenus in spux's popup (U9, for Tannhauser's preset menu) and the shared views (`ui/Views`).
 7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow.

@@ -80,8 +80,3 @@ add_test(NAME packaging_test
 # telemetry and layout.
 spux_add_test(ui_core_test spux_ui_core)
 target_include_directories(ui_core_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-# The immediate-mode acceptance gate: only with -DSPUX_GATE_ACIDUS_DIR / -DSPUX_GATE_TANNHAUSER_DIR (tests/gate/).
-if(SPUX_GATE_ACIDUS_DIR OR SPUX_GATE_TANNHAUSER_DIR)
-  add_subdirectory(gate)
-endif()

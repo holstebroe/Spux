@@ -5,9 +5,12 @@ immediate-mode API and compare with today's retained versions. **Result: lines a
 binary size fails.** The author accepted the size cost: U7 is decided (immediate mode), and U16 builds
 spux's UI code for size in Retro plugins.
 
-**Temporary.** `tests/gate/`, `tools/gate_report.sh` and `tools/gate_lines.py` name and port two concrete
-plugins only to take these measurements. They are removed once the plugins move onto `spux_ui_core`
-(MIGRATION step 7), or earlier at the author's word; this page and the PR history keep the numbers.
+**Removed after the decision.** The gate code (`tests/gate/`, `tools/gate_report.sh`, `tools/gate_lines.py`)
+named and ported two concrete plugins only to take these measurements; the author had it deleted once U7 was
+decided. This page keeps the numbers and the method. The code is in the history: commit 313587b, the last one
+that has it (`git show 313587b:tests/gate/acidus/GuiWindow.cpp`, or `git checkout 313587b -- tests/gate tools`
+with `tests/CMakeLists.txt` of that commit to run it again). The two ports are worked examples of a panel on
+`spux_ui_core` for the plugins' own moves.
 
 | Measure | Pass | Acidus | Tannhauser | |
 | --- | --- | --- | --- | --- |
@@ -18,7 +21,7 @@ plugins only to take these measurements. They are removed once the plugins move 
 
 ## What was ported
 
-Both ports live in spux (`tests/gate/`); no plugin repository was changed. Each is a drop-in for the
+Both ports lived in spux (`tests/gate/`, now removed); no plugin repository was changed. Each is a drop-in for the
 plugin's `GuiWindow` (same class and calls), so the gate links the **whole plugin** twice from the plugin's
 own checkout, with the plugin's own compiler settings (`-Os` GUI and CLAP code, link-time optimization):
 `retained` (the plugin's `GuiWindow.cpp`) and `immediate` (the port on `spux_ui_core`). Both draw with the
@@ -41,7 +44,7 @@ Pixels: every step of a scripted session (`--pixels`) hashes the frame.
   buttons are 2 px apart), so every redraw blends the ring once more; the ring depends on how often a
   button was redrawn, in both versions. A pre-existing painter issue, not one of the API.
 
-Reproduce: configure with `-DSPUX_GATE_ACIDUS_DIR=... -DSPUX_GATE_TANNHAUSER_DIR=...`, build `spux_gate`
+Reproduce (from commit 313587b): configure with `-DSPUX_GATE_ACIDUS_DIR=... -DSPUX_GATE_TANNHAUSER_DIR=...`, build `spux_gate`
 (Release), run `tools/gate_report.sh <build> <Acidus> <Tannhauser>`. Linux x64, GCC 13, 4 cores, shared
 machine: the wall clock is noisy, the instruction counts (callgrind) are exact.
 

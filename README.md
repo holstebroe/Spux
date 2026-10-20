@@ -88,8 +88,7 @@ cmake --build build --config Release --target spux_size_canary_report
 
 Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY`, `SPUX_BUILD_SMOKE_TOOL`, `SPUX_BUILD_BENCH` (all on only in a top-level build; `build/spux_bench` times spux math against libm, results in `docs/BENCH.md`), `SPUX_BUILD_VST3`
 (makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`, `SPUX_UI_FLAVOR` and `SPUX_UI_OPTIMIZE` (`AUTO`: spux's UI code for size in a
-Retro build, for speed otherwise; guidelines 4.9), and for the immediate-mode
-acceptance gate `SPUX_GATE_ACIDUS_DIR` / `SPUX_GATE_TANNHAUSER_DIR` (plugin checkouts; `docs/UI_GATE.md`).
+Retro build, for speed otherwise; guidelines 4.9).
 
 ## License
 

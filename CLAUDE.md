@@ -54,7 +54,7 @@ MIT license.
     plugin or cite a decision id (L1, U7, ...), a plugin's spec or a work package. Where code came from and
     what a plugin meets when it switches goes in `docs/MIGRATION.md` ("Provenance and switch notes"); why
     it was decided goes in `docs/DECISIONS.md`. Guideline rule ids (R1 to R6) and section pointers are fine.
-    Tests may name the code they pin compatibility with; `tests/gate/` is temporary.
+    Tests may name the code they pin compatibility with.
 
 ## Build
 
