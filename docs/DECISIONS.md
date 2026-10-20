@@ -137,3 +137,9 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   measured 6e-10 (its test checked 1e-9), now documented. S4 finding, open: `exp2F` and `dbToGainF` are slower
   than glibc's `exp2f` (0.3x and 0.6x, latency of the Horner chain); the other float functions are as fast or
   faster, and the double set is slower than libm by design (control rate only).
+- 2026-10-20: Acidus onto spux DSP (session 6, S6 strict gate). No decision changed. Findings for S4/S6: the -110 dBFS
+  threshold admits no change to the Acidus ladder's tanh except a bit-identical one (a last-bit difference moves its
+  output by -70 to -90 dBFS from the first note, so `tanhF` would save about 18 % of the engine's CPU but cannot pass;
+  the author decides). The Acidus conformance test fails ten checks by design, so its gate is the full report compared
+  with a stored copy, not its exit code. `tanhF(0)` is -6e-8 and `tanhF` is not odd (within its documented 1e-6).
+  `expD`/`powD` rounded to float differ from glibc's `expf`/`powf` by one ulp for about 0.03 % / 0.06 % of arguments.
