@@ -25,6 +25,8 @@ struct KnobGeo {
     Rect dial;
 };
 
+// The dial does not depend on the knob's size class: a large knob has larger text inside the same dial
+// (the interaction asks for hitArea() without a state), so the text sizes reserved here are the defaults.
 KnobGeo knobGeo(const Rect& b, const Theme::Metrics& m, const ModernConfig& c) {
     KnobGeo g;
     g.cx = f(b.x) + f(b.w) * 0.5f;
@@ -519,13 +521,22 @@ void ModernPopup::paint(IRenderer& r, const Rect& b, const PopupState& s) const 
     }
 }
 
+namespace {
+// Vertical layout of the tooltip text, from the metrics (28 and 44 px at the default sizes).
+float tooltipBodyY(const Theme::Metrics& m) { return 9.0f + m.valuePx + 0.5f + 6.0f; }
+int tooltipHeight(const Theme::Metrics& m, bool body) {
+    return static_cast<int>(body ? tooltipBodyY(m) + m.valuePx + 6.0f : 8.0f + m.valuePx + 0.5f + 8.0f);
+}
+} // namespace
+
 Rect ModernTooltip::layout(IRenderer& r, const TooltipState& s, int viewW, int viewH) const {
     const Theme::Metrics& m = s.theme->metrics;
     const bool body = s.text && *s.text;
     const float w = std::max(r.textWidthPx(s.title, m.valuePx + 0.5f, FontWeight::Bold),
                              body ? r.textWidthPx(s.text, m.valuePx) : 0.0f) +
                     24.0f;
-    const int iw = static_cast<int>(w), ih = body ? 44 : 28;
+    // never wider than the view (paint() fits the text to what is left); the height follows the text size
+    const int iw = std::min(static_cast<int>(w), std::max(0, viewW - 8)), ih = tooltipHeight(m, body);
     int x = static_cast<int>(s.pointer.x) + 14, y = static_cast<int>(s.pointer.y) + 18;
     if (x + iw > viewW - 4)
         x = std::max(4, viewW - 4 - iw);
@@ -544,10 +555,13 @@ void ModernTooltip::paint(IRenderer& r, const Rect& b, const TooltipState& s) co
         r.strokeRoundRect(b, c.shape.tooltipRadius, hairline(0.14f), c.shape.stroke);
     }
     const bool body = s.text && *s.text;
-    r.drawTextPx(s.title, f(b.x) + 12.0f, f(b.y) + (body ? 9.0f : 8.0f), t.colors.text, t.metrics.valuePx + 0.5f,
-                 Align::Left, FontWeight::Bold);
+    const float room = f(b.w) - 24.0f;
+    r.drawTextPx(fitText(r, s.title, t.metrics.valuePx + 0.5f, room, FontWeight::Bold).c_str(), f(b.x) + 12.0f,
+                 f(b.y) + (body ? 9.0f : 8.0f), t.colors.text, t.metrics.valuePx + 0.5f, Align::Left,
+                 FontWeight::Bold);
     if (body)
-        r.drawTextPx(s.text, f(b.x) + 12.0f, f(b.y) + 27.0f, t.colors.textDim, t.metrics.valuePx);
+        r.drawTextPx(fitText(r, s.text, t.metrics.valuePx, room).c_str(), f(b.x) + 12.0f,
+                     f(b.y) + tooltipBodyY(t.metrics), t.colors.textDim, t.metrics.valuePx);
 }
 
 } // namespace spux::inline v1::ui::modern

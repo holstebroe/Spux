@@ -47,6 +47,8 @@ SoftRenderer::SoftRenderer(int width, int height, int supersample, std::shared_p
     : layers_(std::max(1, width), std::max(1, height), std::clamp(supersample, 1, 4)), font_(std::move(font)) {
     clips_.reserve(16);
     if (!font_)
+        font_ = FontAtlas::shared();
+    if (!font_)
         font_ = makeFontAtlas();
 }
 

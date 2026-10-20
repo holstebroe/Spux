@@ -115,6 +115,7 @@ void EditorCore::adjustSize(int& w, int& h) const {
 
 void EditorCore::applyScale() {
     scaleDirty_ = true;
+    forcePending_.store(true, std::memory_order_relaxed); // an idle editor still redraws at the new size
     if (window_)
         window_->setSize(physical(options_.width), physical(options_.height));
 }
@@ -323,7 +324,10 @@ bool EditorCore::frameLocked(bool force, double now) {
 
     if (surface_) {
         if (scaleDirty_) {
-            surface_->resize(options_.width, options_.height, scaleLocked());
+            if (!surface_->resize(options_.width, options_.height, scaleLocked())) {
+                forcePending_.store(true, std::memory_order_relaxed); // keep scaleDirty_: try again next tick
+                return false;
+            }
             scaleDirty_ = false;
             first_ = true;
         }

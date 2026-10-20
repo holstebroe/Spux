@@ -1,6 +1,7 @@
 #include "spux/ui/modern/GpuRenderer.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
@@ -220,7 +221,8 @@ bool GpuRenderer::init(bool offscreen, std::string* error) {
             *error = std::string("OpenGL 3.3 is required, the context is ") + gl_.version;
         return false;
     }
-    if (!font_.build()) {
+    font_ = FontAtlas::shared();
+    if (!font_) {
         if (error)
             *error = "font atlas";
         return false;
@@ -256,7 +258,7 @@ bool GpuRenderer::init(bool offscreen, std::string* error) {
     gl_.BindTexture(gl::TEXTURE_2D, atlasTex_);
     gl_.PixelStorei(gl::UNPACK_ALIGNMENT, 1);
     gl_.TexImage2D(gl::TEXTURE_2D, 0, static_cast<GLint>(gl::R8), FontAtlas::kSize, FontAtlas::kSize, 0, gl::RED,
-                   gl::UNSIGNED_BYTE, font_.pixels().data());
+                   gl::UNSIGNED_BYTE, font_->pixels().data());
     gl_.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, static_cast<GLint>(gl::LINEAR));
     gl_.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, static_cast<GLint>(gl::LINEAR));
     gl_.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, static_cast<GLint>(gl::CLAMP_TO_EDGE));
@@ -363,9 +365,9 @@ void GpuRenderer::flush() {
     gl_.BindTexture(gl::TEXTURE_2D, atlasTex_);
     gl_.BindVertexArray(vao_);
     gl_.BindBuffer(gl::ARRAY_BUFFER, vbo_);
-    gl_.BufferData(gl::ARRAY_BUFFER, static_cast<GLsizeiptr>(kMaxBatchVertices * sizeof(Vertex)), nullptr,
-                   gl::STREAM_DRAW); // orphan
-    gl_.BufferSubData(gl::ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(verts_.size() * sizeof(Vertex)), verts_.data());
+    // orphan the buffer at the size of this batch, not of the largest one
+    gl_.BufferData(gl::ARRAY_BUFFER, static_cast<GLsizeiptr>(verts_.size() * sizeof(Vertex)), verts_.data(),
+                   gl::STREAM_DRAW);
     if (blend_ == Blend::Alpha)
         gl_.BlendFuncSeparate(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA, gl::ONE, gl::ONE_MINUS_SRC_ALPHA);
     else
@@ -473,8 +475,8 @@ bool GpuRenderer::readPixels(std::vector<std::uint32_t>& out) {
 
 void GpuRenderer::emitVertex(float x, float y, float px, float py, const float (&shape)[4], Color c0, Color c1,
                              Kind kind) {
-    if (verts_.size() >= kMaxBatchVertices)
-        flush();
+    // callers make room for whole primitives first (a flush here could split a triangle)
+    assert(verts_.size() < kMaxBatchVertices);
     Vertex v;
     v.x = x;
     v.y = y;
@@ -812,7 +814,7 @@ void GpuRenderer::drawMeter(const Rect& area, float level, Color c) {
 // --- text ----------------------------------------------------------------------------------------
 
 float GpuRenderer::textWidthPx(const char* text, float px, FontWeight weight) const {
-    return text ? font_.width(weight, text) * px : 0.0f;
+    return text ? font_->width(weight, text) * px : 0.0f;
 }
 int GpuRenderer::textWidth(const char* text, int scale) const {
     return static_cast<int>(std::ceil(textWidthPx(text, 9.0f * static_cast<float>(scale))));
@@ -840,7 +842,7 @@ void GpuRenderer::drawTextPx(const char* text, float x, float y, Color c, float 
     float pen = x;
     const std::string_view sv(text);
     for (std::size_t i = 0; i < sv.size();) {
-        const FontAtlas::Glyph& g = font_.glyph(weight, FontAtlas::nextCodePoint(sv, i));
+        const FontAtlas::Glyph& g = font_->glyph(weight, FontAtlas::nextCodePoint(sv, i));
         if (g.valid) {
             const float x0 = (pen + g.x0 * px) * s, x1 = (pen + g.x1 * px) * s;
             const float y0 = (baseline + g.y0 * px) * s, y1 = (baseline + g.y1 * px) * s;

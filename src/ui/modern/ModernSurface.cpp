@@ -119,9 +119,14 @@ void ModernSurface::endFrame() {
 
 void ModernSurface::detach() {
     // GPU objects die with their context current, and while the window still exists
-    if (ctx_ && gpu_ && ctx_->makeCurrent()) {
-        gpu_.reset();
-        ctx_->doneCurrent();
+    if (ctx_ && gpu_) {
+        if (ctx_->makeCurrent()) {
+            gpu_.reset();
+            ctx_->doneCurrent();
+        } else {
+            // deleting GL objects without their context is undefined: leak them rather than crash the host
+            (void)gpu_.release();
+        }
     }
     gpu_.reset();
     ctx_.reset();
@@ -132,7 +137,9 @@ ModernBackend modernBackend(const SurfaceOptions& options, int supersample) {
     ModernBackend b;
     if (choiceFor(options.choice) != RendererChoice::Software)
         b.gpu = [options] { return std::make_unique<ModernSurface>(options); };
-    b.software = [supersample](int w, int h) { return std::make_unique<SoftRenderer>(w, h, supersample); };
+    b.software = [supersample](int w, int h) {
+        return std::make_unique<SoftRenderer>(w, h, supersample, FontAtlas::shared());
+    };
     return b;
 }
 

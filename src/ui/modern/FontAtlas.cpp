@@ -123,20 +123,29 @@ std::uint32_t FontAtlas::nextCodePoint(std::string_view s, std::size_t& i) {
         ++i;
         return c;
     }
-    auto cont = [&](std::size_t k) { return k < s.size() && (b(k) & 0xC0) == 0x80; };
-    if ((c & 0xE0) == 0xC0 && cont(i + 1)) {
-        const std::uint32_t cp = (static_cast<std::uint32_t>(c & 0x1F) << 6) | (b(i + 1) & 0x3Fu);
-        i += 2;
-        return cp;
+    const std::size_t len = (c & 0xE0) == 0xC0 ? 2 : (c & 0xF0) == 0xE0 ? 3 : (c & 0xF8) == 0xF0 ? 4 : 0;
+    std::size_t n = 1; // bytes of this sequence that are really there
+    while (n < (len ? len : 1u << 30) && i + n < s.size() && (b(i + n) & 0xC0) == 0x80)
+        ++n;
+    if (len == 0) { // a stray continuation byte or an invalid lead: take it with its continuations
+        i += n;
+        return '?';
     }
-    if ((c & 0xF0) == 0xE0 && cont(i + 1) && cont(i + 2)) {
-        const std::uint32_t cp =
-            (static_cast<std::uint32_t>(c & 0x0F) << 12) | ((b(i + 1) & 0x3Fu) << 6) | (b(i + 2) & 0x3Fu);
-        i += 3;
-        return cp;
-    }
-    ++i;
-    return '?';
+    std::uint32_t cp = c & (0xFFu >> (len + 1));
+    for (std::size_t k = 1; k < n; ++k)
+        cp = (cp << 6) | (b(i + k) & 0x3Fu);
+    static constexpr std::uint32_t kMin[5] = {0, 0, 0x80, 0x800, 0x10000};
+    const bool ok = n == len && cp >= kMin[len] && cp <= 0x10FFFF && (cp < 0xD800 || cp > 0xDFFF);
+    i += n;
+    return ok ? cp : '?';
+}
+
+std::shared_ptr<const FontAtlas> FontAtlas::shared() {
+    static const std::shared_ptr<const FontAtlas> atlas = [] {
+        auto a = std::make_shared<FontAtlas>();
+        return a->build() ? std::shared_ptr<const FontAtlas>(std::move(a)) : nullptr;
+    }();
+    return atlas;
 }
 
 float FontAtlas::width(FontWeight w, std::string_view s) const {

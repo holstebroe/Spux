@@ -5,6 +5,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -29,6 +30,9 @@ public:
 
     // Rasterizes both weights; false when the font data is unusable.
     bool build();
+    // One immutable atlas for the process, baked on first use: the renderers of every editor share it.
+    // nullptr if baking fails.
+    static std::shared_ptr<const FontAtlas> shared();
     [[nodiscard]] const std::vector<std::uint8_t>& pixels() const { return pixels_; }
 
     // The glyph for a Unicode code point (a space or an unknown code point has no quad but an advance).
@@ -40,6 +44,8 @@ public:
     static constexpr float kLineHeight = 1.21f;
 
     // Next code point of a UTF-8 string; advances `i`. Invalid bytes become '?'.
+    // Next code point of UTF-8 text, advancing `i`. A malformed sequence (stray or missing continuation,
+    // overlong form, surrogate, beyond U+10FFFF) is consumed whole and yields '?' once.
     static std::uint32_t nextCodePoint(std::string_view s, std::size_t& i);
 
 private:

@@ -166,7 +166,7 @@ private:
     Target scene_, out_;
     static constexpr int kMaxBloom = 5;
     Target bloom_[kMaxBloom];
-    FontAtlas font_;
+    std::shared_ptr<const FontAtlas> font_;
 
     std::vector<Vertex> verts_;
     Blend blend_ = Blend::Alpha;
