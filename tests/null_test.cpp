@@ -188,3 +188,35 @@ TEST_CASE("the report has one row per case") {
     CHECK(report.find("pass") != std::string::npos);
     CHECK(report.find("MISSING") != std::string::npos);
 }
+
+TEST_CASE("sound tolerances accept an inaudible change the peak threshold rejects, and catch a small real one") {
+    TempDir d("spux_null_test_sound");
+    NullOptions o = options(d);
+    o.update = true;
+    runNullTest("x", render(48000), o);
+    o.update = false;
+    o.peakThresholdDb = std::numeric_limits<double>::infinity(); // the peak is a report only
+    o.maxSpectralDb = 0.05;
+    o.maxEnvelopeDb = 0.05;
+
+    NullResult r = runNullTest("x", render(48000), o);
+    CHECK(r.status == NullStatus::Pass);
+    CHECK(r.spectralDb == 0.0); // bit-identical: nothing to measure
+
+    WavData tiny = render(48000); // one ulp-sized step on every 100th sample: about -100 dBFS peak
+    for (std::size_t i = 0; i < tiny.samples.size(); i += 100)
+        tiny.samples[i] = std::nextafter(tiny.samples[i], 1.0f) + 1e-5f;
+    r = runNullTest("x", tiny, o);
+    CHECK(r.diffPeakDb > -110.0); // the strict peak threshold would reject it
+    CHECK(r.spectralDb < 0.01);
+    CHECK(r.envelopeDb < 0.01);
+    CHECK(r.status == NullStatus::Pass);
+
+    WavData louder = render(48000, 0.5 * std::pow(10.0, 0.2 / 20.0)); // +0.2 dB
+    r = runNullTest("x", louder, o);
+    CHECK(r.envelopeDb == doctest::Approx(0.2).epsilon(0.02));
+    CHECK(r.spectralDb == doctest::Approx(0.2).epsilon(0.02));
+    CHECK(r.status == NullStatus::Fail);
+    CHECK(nullMessage(r).find("spectrum") != std::string::npos);
+    CHECK(formatNullReport({r}, o).find("envelope") != std::string::npos);
+}
