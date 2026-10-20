@@ -180,3 +180,12 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   program, about 10 KB for 75 presets; the container would be no smaller and would lose the "missing means the
   program's setting" meaning). spux gets the shared text format, `spux/state/TextPreset.hpp` (header line with
   format and version, `key=value` lines, locale-free numbers); Tearwash's `.twpreset` uses it unchanged, byte for byte.
+- 2026-10-20: migration step 6 (`spux_ui_core`, the immediate-mode acceptance gate). No decision changed; U7 stays
+  conditional until the author has seen the gate (`docs/UI_GATE.md`). Choices within the guidelines: `Gui<Style>` is a
+  thin template over a compiled `GuiCore`, so a Style is a plain struct of painters and a missing painter fails to
+  compile only where a page uses that widget (U4); the CPU caches are three layers (background, widgets, a display layer
+  used only while an overlay is up) with per-widget skip by a hash of the painter state, so cached widget areas must not
+  overlap (panels and printed labels go to the background); painters may answer geometry questions (a knob's depth
+  handle, a selector's cells, a popup's rows); the editor shell's root view reports a content version, an animation flag
+  and a tick hook besides drawing; the telemetry ring is in `spux_core` (the audio side needs no UI target). Parameter id
+  0 is valid: "no parameter" is `kNoParamId`.

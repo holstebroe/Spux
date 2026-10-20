@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4) and the parameters, state and CLAP glue (step 5) are extracted. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4), the parameters, state and CLAP glue (step 5) and the immediate-mode UI core (step 6, its acceptance gate in `docs/UI_GATE.md`) are extracted. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.
@@ -26,14 +26,14 @@ target; a plugin links the targets it lists and nothing else.
 
 | Target | Contents | Depends on |
 | --- | --- | --- |
-| `spux_core` (header-only) | Deterministic math, constants, PCG32, control tick, smoothing policies, denormal guard (built); SPSC rings (later) | nothing |
+| `spux_core` (header-only) | Deterministic math, constants, PCG32, control tick, smoothing policies, denormal guard, the telemetry rings `TelemetryRing<Frame>` and `SampleRing` (built) | nothing |
 | `spux_dsp` (header-only) | DSP building blocks: one-pole, SVF, biquad, DC block, half-band and oversampler, BLEP (and the pt2 BSD-3 table), delay lines, saturators with ADAA and solvers, noise, drift (built); tuning helpers (later) | `spux_core` |
 | `spux_params` (header-only) | `ParamInfo`, laws and host mapping, X-macro helpers, `ParamTable` (id and key lookup, checks), value text and parsing, atomic `ParamStore`, `EditQueue` with a gesture reserve (built) | `spux_core` |
 | `spux_state` (header-only) | Chunked state container (magic per plugin, version, CRC-32, unknown and damaged chunks skipped), byte reader and writer, parameter chunk, migration hook, text preset files (key=value, locale-free numbers) (built) | `spux_core` |
 | `spux_clap` (header-only) | Thin CLAP glue: `spux::clap::Plugin<Derived>` (CRTP) offers the params, state, audio and note ports, GUI and timer extensions the plugin class implements; helpers for parameter info, events, the edit queue and streams; a one-class factory (built) | `spux_params`, `spux_state`, clap |
 | `spux_midi` (header-only) | Standard MIDI file reader (raw events, tempo map, timed and paired notes) and writer (tracks with tick priorities) | `spux_core` |
 | `spux_platform` | Native child window (Win32, X11, later Cocoa) with input events and a tick timer | OS only |
-| `spux_ui_core` | Immediate-mode `Gui`, `IRenderer`, layout helpers, editor shell, telemetry views | `spux_platform`, `spux_params` |
+| `spux_ui_core` | Immediate-mode `Gui` (`Gui<Style>` over `GuiCore`), `IRenderer`, the CPU layer cache, painter interfaces and `Theme`, `EditorHost` with optional extensions, layout helpers, the editor shell, telemetry consumers (built) | `spux_platform`, `spux_params` |
 | `spux_ui_retro` | Retro style and the pixel renderer, bitmap fonts | `spux_ui_core` |
 | `spux_ui_classic` | (built so far: `Graphics`, `Font`, `FileDialog`, `ClassicDraw`, atlas font data) Classic style, the supersampled CPU renderer with shading helpers, atlas fonts | `spux_ui_core` |
 | `spux_ui_modern` | (built so far: the GL function table and context, `spux::gl`) Modern style, GPU renderer (OpenGL 3.3), SDF font atlas, software fallback | `spux_ui_core` |
@@ -86,7 +86,8 @@ cmake --build build --config Release --target spux_size_canary_report
 ```
 
 Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY`, `SPUX_BUILD_SMOKE_TOOL`, `SPUX_BUILD_BENCH` (all on only in a top-level build; `build/spux_bench` times spux math against libm, results in `docs/BENCH.md`), `SPUX_BUILD_VST3`
-(makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`.
+(makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`, and for the immediate-mode
+acceptance gate `SPUX_GATE_ACIDUS_DIR` / `SPUX_GATE_TANNHAUSER_DIR` (plugin checkouts; `docs/UI_GATE.md`).
 
 ## Licence
 

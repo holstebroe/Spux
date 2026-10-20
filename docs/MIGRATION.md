@@ -10,16 +10,16 @@ only in namespace and include guards, or not at all.
 | Classic drawing (`Graphics`, `Font`, `FileDialog`, `modern/ModernDraw`, `DisplayFont`, `LabelFont`) | Acidus, Tannhauser, Tearwash | Three copies; Tannhauser and Tearwash byte-identical. Renamed `modern/` to `classic/`. **Moved to `spux_ui_classic` (step 2); Tearwash migrated.** |
 | Classic CPU renderer | Plumeflow `ui/SoftRenderer` + the files above | Merge into one supersampled renderer with shading helpers. |
 | Retro style and fonts | Acidus `RetroSkin`, Syrebas and Gritbaal renderers, Paulascape `Framebuffer` and pt2 font, Kikset `Graphics` | Four drifting forks of the same `Graphics`. |
-| Skin interfaces | Acidus `IGuiSkin`, Gritbaal `IControlRenderer`, Syrebas `IControlRenderer` | Become the per-widget painter interfaces. |
+| Skin interfaces | Acidus `IGuiSkin`, Gritbaal `IControlRenderer`, Syrebas `IControlRenderer` | Become the per-widget painter interfaces. **Interfaces in `spux_ui_core` (step 6)**; the skins become flavor painters in step 7. |
 | Native window | Plumeflow `gfx/NativeWindow*` (ported from Acidus); `GuiWindow` code in Acidus, Gritbaal, Syrebas, Tannhauser, Tearwash, Kikset, Paulascape | Plumeflow's version is the base; Cocoa missing. **Moved to `spux_platform` (step 3); Tearwash migrated.** |
 | GL context and function table | Plumeflow `gfx/GlApi`, `GlContext_{wgl,glx,none}` | Generic as is. **Moved to `spux_ui_modern` (step 3), namespace `spux::gl`.** |
-| Renderer interface | Plumeflow `ui/IRenderer` | Generic as is. |
+| Renderer interface | Plumeflow `ui/IRenderer` | Generic as is. **Moved to `spux_ui_core` (step 6)**, plus `layers()` for the CPU caches. |
 | GPU renderer, shaders, SDF fonts | Plumeflow `ui/GpuRenderer`, `ui/shaders`, `ui/FontAtlas`, `ui/InterFont`, `tools/make_fonts.py`, `cmake/EmbedShaders.cmake` | Generic as is. |
-| Immediate-mode `Gui` | Plumeflow `ui/Gui` | Needs: painter split, parameter binding through spux, plugin-specific ids out (10 `plugin::P_*` uses), modulation as an optional interface. |
-| Editor shell | Plumeflow `ui/Editor` | Logical size and root view become parameters. |
-| Editor host | Plumeflow `ui/EditorHost` | Split into a core and optional extensions. |
-| Edit queue, telemetry ring | Plumeflow `plugin/EditQueue`, `plugin/Telemetry` | Ring becomes a template on the frame type. **Edit queue moved to `spux_params` (step 5); Tearwash migrated.** Telemetry ring not yet. |
-| Generic live views | Plumeflow `ui/Live`, `ui/Views` (spectrum, traces, meters, curve editor) | Attractor, envelope and filter views stay in Plumeflow. |
+| Immediate-mode `Gui` | Plumeflow `ui/Gui` | Needs: painter split, parameter binding through spux, plugin-specific ids out (10 `plugin::P_*` uses), modulation as an optional interface. **Done in `spux_ui_core` (step 6).** Plumeflow's drawing becomes the Modern painters (step 7); its `displayText`, sync dimming, effect presets and route table stay in Plumeflow. |
+| Editor shell | Plumeflow `ui/Editor` | Logical size and root view become parameters. **Done (step 6)** for CPU renderers; the GPU path and window scaling come with Modern (step 7). |
+| Editor host | Plumeflow `ui/EditorHost` | Split into a core and optional extensions. **Done (step 6)**: core, `ModulationHost`, `PresetHost`, `StoreEditorHost<N>`. |
+| Edit queue, telemetry ring | Plumeflow `plugin/EditQueue`, `plugin/Telemetry` | Ring becomes a template on the frame type. **Edit queue moved to `spux_params` (step 5); Tearwash migrated.** **Telemetry ring done (step 6)**: `spux/core/TelemetryRing.hpp` (`TelemetryRing<Frame>`, `SampleRing`). |
+| Generic live views | Plumeflow `ui/Live`, `ui/Views` (spectrum, traces, meters, curve editor) | Attractor, envelope and filter views stay in Plumeflow. **Consumers moved (step 6)**: `Spectrum`, `LevelMeter`, `History` in `spux/ui/Live.hpp`; the views (`ui/Views`) with the Modern style in step 7. |
 | Parameters | `ParamInfo` in Tannhauser, Plumeflow, Lumeoid, Kikset, Gritbaal; X-macro in Plumeflow and Lumeoid | Plumeflow `params.def` + `ParamStore` as the base. **Moved to `spux_params` (step 5); Tearwash migrated.** |
 | State container | Lumeoid `LMN1`, Plumeflow `PLF1`, Rodee `StateChunk` | Lumeoid as the base. **Moved to `spux_state` (step 5); Tearwash migrated (`TWR1`).** |
 | PCG32 | Lumeoid, Plumeflow | Merge. **Merged into `spux_core` (step 4).** |
@@ -131,7 +131,22 @@ plugin-specific views and page code.
    needs a reader for the old chunks); Tannhauser, Acidus, Kikset and Gritbaal move their `ParamInfo` in their
    own steps; the telemetry ring and Rodee's `StateChunk` are not looked at yet.
 6. `spux_ui_core` from Plumeflow's `Gui`; run the immediate-mode acceptance gate on one Tannhauser and
-   one Acidus panel.
+   one Acidus panel. **Done in spux** (2026-10-20); the gate's result waits for the author's decision (U7).
+   `spux_ui_core` (STATIC): `Geometry`, `IRenderer` (Plumeflow's, the effect calls with plain defaults,
+   `drawTrace`/`drawMeter` no longer pure), `Layers` (`LayerCache`, `CpuLayers`: background, widgets and
+   display layers, dirty rectangles, box-filter resolve), `Theme` (colours, metrics, interaction feel, font
+   slots), `Painters` (state structs and one interface per widget), `EditorHost` (core, `ModulationHost`,
+   `PresetHost`, `StoreEditorHost<N>`), `Gui` (`GuiCore` with Plumeflow's interaction, gestures, value
+   entry, Tab focus, tooltips, popups, text field; `Gui<Style>` picks the painters), `Layout`, `Editor`
+   (`EditorCore` with change-driven frames and the window, `Editor<Style>`, `RootView`), `Live`;
+   `spux_core` gets `TelemetryRing`. Parameters are bound by id through the host's `ParamTable`; no plugin
+   id is left in the core. Test: `ui_core_test` (a plain test style and renderer in `tests/ui/`).
+   **Acceptance gate**: `tests/gate/` builds each plugin twice from its own checkout (`-DSPUX_GATE_ACIDUS_DIR`,
+   `-DSPUX_GATE_TANNHAUSER_DIR`), with its retained `GuiWindow` and with a port on `spux_ui_core`, and
+   `tools/gate_report.sh` measures them; numbers and method in `docs/UI_GATE.md`. No plugin repository was
+   changed. Left: the flavors' painters and renderers (step 7, from Acidus's skins, Tannhauser's panel
+   renderer and Plumeflow's look); Plumeflow switches in step 8; the GPU path in the editor shell, window
+   scaling, cascading popups (Tannhauser's preset menu) and the shared views (`ui/Views`).
 7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow.
 8. Plumeflow and Lumeoid move onto spux (Lumeoid's GPU UI starts on spux directly).
 
