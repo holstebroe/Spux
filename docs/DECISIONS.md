@@ -47,7 +47,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 | P1 | **Thin CLAP glue** (traits/CRTP), not a framework. | Decided | |
 | P2 | **Parameters from an X-macro `.def` file.** Laws live in spux and follow S1. | Decided | The host stores normalized values; a changed law changes old projects. |
 | P3 | **One chunked state container**, magic chosen per plugin, version and CRC, unknown chunks skipped. | Decided | Lumeoid `LMN1` is the starting point. |
-| P4 | Presets: **compiled-in factory presets and user files**. | Decided | |
+| P4 | Presets: **compiled-in factory presets and user files**. User files are **human-readable text keyed by parameter key** (spux's text preset format); factory presets take whatever compact compiled form suits the plugin. | Decided | Changed 2026-10-20 (was: both go through the state container). |
 | P5 | Formats: **CLAP and VST3** through clap-wrapper. | Decided | |
 | P6 | **Shared helpers are opt-in**: modulation matrix, voice allocation, MPE, tuning, transport sync, poly modulation, preset browser. The plugin decides; unused parts are never compiled or linked. | Decided | |
 | P7 | **Audio→GUI telemetry**: a shared lock-free ring templated on the frame type, switched off while the editor is hidden. | Decided | From Plumeflow `Telemetry`. |
@@ -174,3 +174,9 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   default like Plumeflow's `sanitize` (Tearwash keeps clamping infinities to the range end in its own `twClamp`, so "-inf
   dB" stays the floor). Tearwash's state magic is `TWR1`, version 1 (by the author: Tearwash was unreleased, so the container starts the
   numbering; its text state from before the container still loads, recognised by the missing magic).
+- 2026-10-20: **P4 changed** (by the author): user presets are human-readable text files keyed by parameter key, not
+  the state container: they can be read, diffed, edited and mailed, and keys survive any table change that only
+  appends. Factory presets stay compiled in, in the plugin's own compact form (Tearwash's are changes on top of a
+  program, about 10 KB for 75 presets; the container would be no smaller and would lose the "missing means the
+  program's setting" meaning). spux gets the shared text format, `spux/state/TextPreset.hpp` (header line with
+  format and version, `key=value` lines, locale-free numbers); Tearwash's `.twpreset` uses it unchanged, byte for byte.

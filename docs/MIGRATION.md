@@ -112,7 +112,8 @@ plugin-specific views and page code.
    `BasicEditQueue` / `EditQueue` (`pushBegin`, `pushValue`, `pushEnd` with the gesture reserve, `freeSlots`).
    `spux_state`: `ByteWriter`, `ByteReader` (bounds-checked), `crc32`, `FourCC`, `ContainerWriter`,
    `readContainer` with the plugin's chunk handler, `hasMagic`, the `PARM` chunk (`paramPayload`,
-   `readParamPayload`) and `migrate()` with `Migration` steps. `spux_clap`: `Plugin<Derived>` (lifecycle defaults,
+   `readParamPayload`), `migrate()` with `Migration` steps, and the text preset format for user preset files
+   (`TextPreset`, `parseTextPreset`, `writeTextPreset`, `formatNumber`, `parseNumber`; P4 as changed that day). `spux_clap`: `Plugin<Derived>` (lifecycle defaults,
    extensions offered by concept: params, state, audio and note ports, GUI with the platform window API and
    fixed-size defaults, timer; guarded calls; host helpers for flush, rescan, dirty state and timers),
    `SingleFactory<P>`, and helpers (`fillParamInfo`, `hostValueToText`, `asParamValue`, `pushParamValue`,
@@ -123,7 +124,7 @@ plugin-specific views and page code.
    **Tearwash** (pilot): `TwParams.def`, values in a `ParamStore`, GUI and preset edits through an `EditQueue` (a
    producer mutex serializes its GUI and main threads), `TearwashClap` on `spux::clap::Plugin`, host state in the
    container `TWR1` version 1 (`PARM`, `PRST`); the text state `tearwash 1` from before it loads through a legacy
-   reader (no magic). `tearwash_state_test` loads states, a user preset, and the parameter info and value
+   reader (no magic). Its `.twpreset` reader and writer use spux's text preset code (files unchanged). `tearwash_state_test` loads states, a user preset, and the parameter info and value
    text recorded with the previous Tearwash (861300d), and a frozen version 1 container state. Audio output (every third
    preset with host automation) and the panel snapshot are bit-identical to before. Left: Plumeflow and Lumeoid
    switch in step 8 (Plumeflow's `.def` gets the module and smoothing columns; its `PLF1` has no CRC, so its switch

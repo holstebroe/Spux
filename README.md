@@ -29,7 +29,7 @@ target; a plugin links the targets it lists and nothing else.
 | `spux_core` (header-only) | Deterministic math, constants, PCG32, control tick, smoothing policies, denormal guard (built); SPSC rings (later) | nothing |
 | `spux_dsp` (header-only) | DSP building blocks: one-pole, SVF, biquad, DC block, half-band and oversampler, BLEP (and the pt2 BSD-3 table), delay lines, saturators with ADAA and solvers, noise, drift (built); tuning helpers (later) | `spux_core` |
 | `spux_params` (header-only) | `ParamInfo`, laws and host mapping, X-macro helpers, `ParamTable` (id and key lookup, checks), value text and parsing, atomic `ParamStore`, `EditQueue` with a gesture reserve (built) | `spux_core` |
-| `spux_state` (header-only) | Chunked state container (magic per plugin, version, CRC-32, unknown and damaged chunks skipped), byte reader and writer, parameter chunk, migration hook (built) | `spux_core` |
+| `spux_state` (header-only) | Chunked state container (magic per plugin, version, CRC-32, unknown and damaged chunks skipped), byte reader and writer, parameter chunk, migration hook, text preset files (key=value, locale-free numbers) (built) | `spux_core` |
 | `spux_clap` (header-only) | Thin CLAP glue: `spux::clap::Plugin<Derived>` (CRTP) offers the params, state, audio and note ports, GUI and timer extensions the plugin class implements; helpers for parameter info, events, the edit queue and streams; a one-class factory (built) | `spux_params`, `spux_state`, clap |
 | `spux_midi` (header-only) | Standard MIDI file reader (raw events, tempo map, timed and paired notes) and writer (tracks with tick priorities) | `spux_core` |
 | `spux_platform` | Native child window (Win32, X11, later Cocoa) with input events and a tick timer | OS only |

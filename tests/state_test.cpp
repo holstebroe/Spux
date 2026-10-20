@@ -1,14 +1,17 @@
 // spux_state: CRC-32, byte reading and writing, the container (magic, version, CRC, unknown and damaged
-// chunks), the parameter chunk, the migration hook, and a fixed byte image so the format cannot drift.
+// chunks), the parameter chunk, the migration hook, a fixed byte image so the format cannot drift, and the
+// text preset format.
 #include <doctest.h>
 
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <map>
 #include <string>
 #include <vector>
 
 #include "spux/state/Container.hpp"
+#include "spux/state/TextPreset.hpp"
 
 using namespace spux::state;
 
@@ -168,4 +171,61 @@ TEST_CASE("migration: one step per version, from the version read") {
     Data c;
     CHECK(migrate<Data>(c, 9, steps) == 9); // newer than every step: as it is
     CHECK(c.log.empty());
+}
+
+TEST_CASE("text presets: header, key=value lines, comments, trimming, last key wins") {
+    const char* text = "# Example preset v3\r\n"
+                       "name = Big Room \n"
+                       "\n"
+                       "# a comment = not an entry\n"
+                       "program=GRAND HALL\n"
+                       "no equals sign here\n"
+                       "decay=0.25\n"
+                       "decay=0.5\n"
+                       "gain=+3.5 dB\n";
+    TextPreset p;
+    REQUIRE(parseTextPreset(text, p));
+    CHECK(p.format == "Example preset");
+    CHECK(p.version == 3);
+    CHECK(p.entries.size() == 5);
+    CHECK(*p.find("name") == "Big Room");
+    CHECK(*p.find("program") == "GRAND HALL");
+    CHECK(*p.find("decay") == "0.5");
+    CHECK(p.find("a comment") == nullptr);
+    double v = 0;
+    CHECK((parseNumber(*p.find("gain"), v) && v == 3.5));
+    CHECK(!parseNumber("dB", v));
+    CHECK(!parseNumber("", v));
+
+    TextPreset none;
+    CHECK(!parseTextPreset("# Example preset v3\n\n# nothing\n", none));
+    CHECK(parseTextPreset("a=1", none));
+    CHECK(none.format.empty());
+    CHECK(none.version == 0);
+    CHECK(parseTextPreset("# not a header\nb=2\n", none));
+    CHECK(none.version == 0);
+}
+
+TEST_CASE("text presets: written as read, numbers like %.*g without the locale") {
+    TextPreset p;
+    p.format = "Example preset";
+    p.version = 1;
+    p.set("name", "Init");
+    p.set("mix", formatNumber(0.35, 10));
+    p.set("third", formatNumber(1.0 / 3.0));
+    p.set("big", formatNumber(-1.5e-7, 10));
+    const std::string text = writeTextPreset(p);
+    CHECK(text == "# Example preset v1\nname=Init\nmix=0.35\nthird=0.33333333333333331\nbig=-1.5e-07\n");
+    TextPreset q;
+    REQUIRE(parseTextPreset(text, q));
+    CHECK(q.entries == p.entries);
+    double v = 0;
+    CHECK((parseNumber(*q.find("third"), v) && v == 1.0 / 3.0));
+    char buf[32];
+    for (double x : {0.6666666666666666, 2.76, -60.0, 0.1, 1e-300, 123456789.0}) {
+        std::snprintf(buf, sizeof buf, "%.10g", x);
+        CHECK(formatNumber(x, 10) == buf);
+        std::snprintf(buf, sizeof buf, "%.17g", x);
+        CHECK(formatNumber(x) == buf);
+    }
 }

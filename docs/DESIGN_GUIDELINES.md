@@ -158,8 +158,10 @@ smooths by itself.
   unknown chunks are skipped and damaged ones counted. `migrate()` runs the plugin's steps from the version
   read [S7, P9]; a state from before the container (no magic) goes to the plugin's own legacy reader. Never
   break loading of older versions, and keep a test that loads states saved by earlier versions.
-- **Presets** [P4]: factory presets compiled in, user presets as files; both go through the state
-  container.
+- **Presets** [P4]: factory presets compiled in, in whatever compact form suits the plugin (a preset can be
+  a change on top of a program); user presets as human-readable text files keyed by parameter key, never
+  by id: spux's text preset format (`spux/state/TextPreset.hpp`: a `# <format> v<version>` header, then
+  `key=value` lines, numbers without the C locale). The host state is the container.
 - **CLAP glue** [P1] is a CRTP base (`spux::clap::Plugin<Derived>`) that fills `clap_plugin_t`, forwards
   every call and offers an extension exactly when the plugin class has its methods (checked with
   concepts): params, state, audio and note ports, GUI and timer. Calls are guarded so no exception
