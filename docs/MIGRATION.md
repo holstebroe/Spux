@@ -22,13 +22,13 @@ only in namespace and include guards, or not at all.
 | Generic live views | Plumeflow `ui/Live`, `ui/Views` (spectrum, traces, meters, curve editor) | Attractor, envelope and filter views stay in Plumeflow. |
 | Parameters | `ParamInfo` in Tannhauser, Plumeflow, Lumeoid, Kikset, Gritbaal; X-macro in Plumeflow and Lumeoid | Plumeflow `params.def` + `ParamStore` as the base. |
 | State container | Lumeoid `LMN1`, Plumeflow `PLF1`, Rodee `StateChunk` | Lumeoid as the base. |
-| PCG32 | Lumeoid, Plumeflow | Merge. |
-| Math approximations | Lumeoid `dsp/math`, Plumeflow `dsp/Math`, Tannhauser `tanhFast` | Merge; replace `std::tanh` in Acidus, Gritbaal, Syrebas, Kikset. |
-| Half-band oversampler | Plumeflow (4+4 all-pass sections), Lumeoid (5+5) | Merge into one design. |
-| BLEP | Plumeflow (orders 2/4/16/32), Tannhauser `blep4`, Paulascape (pt2-clone, BSD-3) | Plumeflow as base; pt2 table in its own licensed folder. |
-| One-pole, biquad, SVF, delay line | Acidus, Gritbaal, Tannhauser `Dsp.hpp`, Lumeoid, Plumeflow | Generic forms only; character filters stay in plugins. |
-| Ramps and smoothing | Lumeoid `ramp`, Tannhauser `onePoleCoeff` | Become smoothing policies. |
-| Denormal guard | Plumeflow, plus inline code in Acidus, Tannhauser, Tearwash | One class. |
+| PCG32 | Lumeoid, Plumeflow | Merge. **Merged into `spux_core` (step 4).** |
+| Math approximations | Lumeoid `dsp/math`, Plumeflow `dsp/Math`, Tannhauser `tanhFast` | Merge; replace `std::tanh` in Acidus, Gritbaal, Syrebas, Kikset. **Merged into `spux_core` (step 4)**; the libm replacement happens in each plugin's step. |
+| Half-band oversampler | Plumeflow (4+4 all-pass sections), Lumeoid (5+5) | Merge into one design. **Done (step 4): Lumeoid's 5+5, by measurement (docs/BENCH.md).** |
+| BLEP | Plumeflow (orders 2/4/16/32), Tannhauser `blep4`, Paulascape (pt2-clone, BSD-3) | Plumeflow as base; pt2 table in its own licensed folder. **Done (step 4)**: `spux/dsp/Blep.hpp`, `spux/dsp/pt2/` (BSD-3). |
+| One-pole, biquad, SVF, delay line | Acidus, Gritbaal, Tannhauser `Dsp.hpp`, Lumeoid, Plumeflow | Generic forms only; character filters stay in plugins. **Done (step 4)**, plus DC block, saturators with ADAA and the solvers (Gritbaal style), noise and OU drift. |
+| Ramps and smoothing | Lumeoid `ramp`, Tannhauser `onePoleCoeff` | Become smoothing policies. **Done (step 4)**: `TickRamp`, `Smoothed<Policy>`, `onePoleCoeff`. |
+| Denormal guard | Plumeflow, plus inline code in Acidus, Tannhauser, Tearwash | One class. **Done (step 4)**: Lumeoid's guard (it has one too, the more complete one). |
 | Allocation guard | Lumeoid, Plumeflow | `spux_testing`. **Moved to `spux_testing_allocguard` (step 3a).** |
 | WAV, loudness, metrics | Kikset `WavWriter`, Plumeflow `tools/Wav`, `tools/Loudness`, Tannhauser `Loudness`, Tearwash `analysis/Metrics` | `spux_testing`. **Moved (step 3a).** |
 | MIDI files | Acidus `MidiExport`, Paulascape `midi_export`, `midi_file_reader`, Lumeoid `tools/midi_file`, Plumeflow `tools/MidiFile` | `spux_midi`. **Writer and readers moved (step 3a)**; what decides the notes stays in the plugin. |
@@ -77,7 +77,25 @@ plugin-specific views and page code.
    `presetLoudness` (the phrases and the engine) and Acidus's `renderPatternNotes` / Paulascape's note generation stay in the
    plugin. Differences a plugin will see when it switches: see the DECISIONS history of this date.
 4. `spux_core` and `spux_dsp`: merge the duplicates, add kernel references, replace libm in the older
-   plugins. Acidus runs its strict gate.
+   plugins. Acidus runs its strict gate. **Done in spux** (2026-10-20), header-only, sample type a template
+   parameter, policies with concepts. `spux_core`: `Math` (Lumeoid's double set, Plumeflow's float set, the
+   [7/6] and [3/2] Pade tanh shapes), `Pcg32`, `ControlTick<N = 64>` and `TickRamp`, `Smoothed<Policy>` with
+   `NoSmoothing`, `LinearRamp<N>`, `OnePole<Tau>`, `Slew<Rate>` and `onePoleCoeff`, `DenormalGuard`.
+   `spux_dsp`: `OnePoleTpt`, `Svf`, `Biquad` with the RBJ designs, `DcBlock`, `DelayLine`, `HalfbandStage` and
+   `Oversampler` (1/2/4/8; Lumeoid's 5 + 5 design, chosen by measurement, docs/BENCH.md), `Blep<2/4/16/32>`,
+   `pt2::MinBlep` (BSD-3, own folder, `THIRD_PARTY_LICENSES.md`), saturator policies (`TanhSaturator`,
+   `AsymmetricTanhSaturator`, `HardClipSaturator`, `PadeSaturator`) with `Adaa1`, `NewtonSolver` and
+   `FixedPointSolver`, `WhiteNoise`, `PinkNoise`, `OuProcess`, `OuDrift`. Kernel references and golden hashes
+   for every block in `tests/kernels/` (`dsp_kernel_test`); error tests against libm (`math_test`); alias
+   tests for the saturators and BLEPs; `spux_bench` with the results in `docs/BENCH.md`. Checked against the
+   originals: every merged function and block gives bit-identical output to its Lumeoid, Plumeflow or
+   Paulascape source (3.7 million comparisons), except the OU setup (expD, 1e-11 cents). **No plugin
+   migrated.** Left, per plugin (their own steps): switch Lumeoid and Plumeflow to these headers (renames
+   and differences in the DECISIONS history of 2026-10-20); replace `std::tanh` in Acidus, Gritbaal, Syrebas
+   and Kikset where `spux_bench` shows the spux shape is faster (it is, by 1.5x for `tanhF`); Tannhauser's
+   `tanhFast`, `blep4`, `OnePoleLp`, `Biquad` and `onePoleCoeff` have spux equivalents; Acidus runs its strict
+   gate on its switch. Open: `exp2F` is slower than glibc's `exp2f` (S4, docs/BENCH.md); Plumeflow's 4x
+   oversampler is not a proper cascade (images at -36 dB, fixed when it moves to spux).
 5. `spux_params`, `spux_state`, `spux_clap`.
 6. `spux_ui_core` from Plumeflow's `Gui`; run the immediate-mode acceptance gate on one Tannhauser and
    one Acidus panel.

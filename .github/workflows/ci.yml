@@ -33,6 +33,8 @@ jobs:
         run: ${{ matrix.name == 'linux' && 'xvfb-run -a ' || '' }}ctest --test-dir build -C Release --output-on-failure
       - name: Size canary
         run: cmake --build build --config Release --target spux_size_canary_report
+      - name: spux_bench (math against the platform libm, DSP blocks; docs/BENCH.md)
+        run: ${{ matrix.name == 'windows' && 'build/Release/spux_bench.exe' || 'build/spux_bench' }} --quick
 
   # Same source with the UI and optional parts off: what a headless plugin builds.
   build-minimal:

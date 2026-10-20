@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3) and the testing, MIDI and packaging utilities (step 3a) are extracted. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a) and the core and DSP building blocks (step 4) are extracted. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.
@@ -26,8 +26,8 @@ target; a plugin links the targets it lists and nothing else.
 
 | Target | Contents | Depends on |
 | --- | --- | --- |
-| `spux_core` (header-only) | Deterministic math, constants, PCG32, control tick, smoothing policies, denormal guard, SPSC rings | nothing |
-| `spux_dsp` (header-only) | DSP building blocks: one-pole, SVF, biquad, DC block, half-band and oversampler, BLEP, delay lines, saturators with ADAA, noise, drift, tuning helpers | `spux_core` |
+| `spux_core` (header-only) | Deterministic math, constants, PCG32, control tick, smoothing policies, denormal guard (built); SPSC rings (later) | nothing |
+| `spux_dsp` (header-only) | DSP building blocks: one-pole, SVF, biquad, DC block, half-band and oversampler, BLEP (and the pt2 BSD-3 table), delay lines, saturators with ADAA and solvers, noise, drift (built); tuning helpers (later) | `spux_core` |
 | `spux_params` | `ParamInfo`, laws, X-macro helpers, value text, key lookup, atomic store, edit queue | `spux_core` |
 | `spux_state` | Chunked state container (magic per plugin, version, CRC, unknown chunks skipped) | `spux_core` |
 | `spux_clap` | Thin CLAP glue (traits/CRTP): params, state, ports, GUI, timer | `spux_params`, `spux_state`, clap |
@@ -84,11 +84,11 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target spux_size_canary_report
 ```
 
-Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY`, `SPUX_BUILD_SMOKE_TOOL` (all on only in a top-level build), `SPUX_BUILD_VST3`
+Options: `SPUX_BUILD_TESTS`, `SPUX_BUILD_CANARY`, `SPUX_BUILD_SMOKE_TOOL`, `SPUX_BUILD_BENCH` (all on only in a top-level build; `build/spux_bench` times spux math against libm, results in `docs/BENCH.md`), `SPUX_BUILD_VST3`
 (makes clap-wrapper's `make_clapfirst_plugins` available), `SPUX_SANITIZE=address,undefined`.
 
 ## Licence
 
-MIT. Third-party code inside spux keeps its own licence in its own folder (for example the BSD-3 BLEP
-table from pt2-clone, the OFL font Inter); `THIRD_PARTY_LICENSES.md` (added with the first third-party code) lists what a shipped plugin must
-include.
+MIT. Third-party code inside spux keeps its own licence in its own folder (the BSD-3 BLEP table from
+pt2-clone in `include/spux/dsp/pt2/`, later the OFL font Inter); `THIRD_PARTY_LICENSES.md` lists what a
+shipped plugin must include.
