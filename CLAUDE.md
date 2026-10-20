@@ -22,18 +22,22 @@ MIT licence.
    and additions are allowed. A different curve, law, tuning, shape or default is a new class, policy
    or option, and the old one stays the default. Parameter laws and smoothing policies count as sound.
 3. **Acidus is strict.** Its calibration must survive. Any change that can reach Acidus's output must
-   pass its `reference_conformance_test` and the strict null test, and every difference is reported to
-   the author per patch. Never accept an Acidus difference silently.
+   pass its `reference_conformance_test` and its null test within the sound tolerances, and every
+   difference is reported to the author per patch. Never accept an Acidus difference silently.
 4. **Check sound changes.** Kernel references and golden hashes in spux; reference renders and the null
    test in each plugin. Update references in the same commit as the change, with a changelog line.
 5. **Real time.** Nothing on the audio thread allocates, locks (except `try_lock`), throws, makes system
    calls or touches the GPU. Flush denormals.
-6. **Determinism.** Bit-identical output within one build for any block size. PCG32 for randomness. No
-   libm in the audio path (use `spux_core` math, if `spux_bench` shows it is at least as fast). Never
-   override the flags from `spux_target_flags` (`-ffp-contract=off`, `/fp:precise`).
+6. **Determinism.** Bit-identical output within one build for any block size. PCG32 for randomness.
+   libm is fine in the audio path; `spux_core` math is opt-in where `spux_bench` shows a gain that matters
+   (`fastTanhF`) [S4]. Never override the flags from `spux_target_flags` (`-ffp-contract=off`, `/fp:precise`).
 7. Derive coefficients from times and frequencies, never from a fixed sample rate.
-8. **No process-global mutable state.** Several instances and several spux versions share one host
-   process. Hidden visibility and the inline version namespace on everything.
+8. **Instances never affect each other's output.** No state shared between instances that is written
+   after initialization and can change what an instance computes, or that makes the audio thread wait
+   or allocate. Allowed: immutable data, and caches of pure functions keyed on every input, filled off
+   the audio thread, read without blocking, recomputed on a miss (guidelines 1.6). Several instances
+   of one plugin in a DAW are normal. Plugins and spux versions are kept apart by hidden visibility and
+   the inline version namespace on everything [L13].
 9. **UI.** One flavor per build (`<PLUGIN>_UI=RETRO|CLASSIC|MODERN|NONE`). Immediate-mode `Gui`;
    widgets draw through per-widget painters, a flavor's look is a `Theme` data struct, and every
    painter stays inside its bounds. Modern falls back to the Modern style on the software renderer.
@@ -66,5 +70,5 @@ Add this section to each plugin's CLAUDE.md:
 > in the same commit as the pointer bump. This plugin's UI flavor: `<flavor>`. Character code stays in
 > this repository.
 
-For Acidus add: "Strict gate: every spux bump runs `reference_conformance_test` and the strict null
-test; report every difference per patch to the author before accepting."
+For Acidus add: "Strict gate: every spux bump runs `reference_conformance_test` and the null test within
+its sound tolerances; report every difference per patch to the author before accepting."

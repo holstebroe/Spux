@@ -15,7 +15,7 @@ next section.
 | function                           |    spux |    libm |     x |
 | --- | ---: | ---: | ---: |
 | exp2F (std::exp2 float)            |    9.63 |    2.84 |  0.30 |
-| tanhF (std::tanh float)            |   11.17 |   17.65 |  1.58 |
+| fastTanhF (std::tanh float)        |   11.17 |   17.65 |  1.58 |
 | tanhPade76 (std::tanh float)       |    4.85 |   17.52 |  3.61 |
 | tanhPade32 (std::tanh float)       |    6.65 |   17.46 |  2.63 |
 | sinTurns (std::sin float)          |   16.58 |   15.67 |  0.95 |
@@ -54,7 +54,7 @@ next section.
 | function | spux | libm | x |
 | --- | ---: | ---: | ---: |
 | exp2F (std::exp2 float) | 5.31 | 2.78 | 0.52 |
-| tanhF (std::tanh float) | 7.43 | 13.29 | 1.79 |
+| fastTanhF (std::tanh float) | 7.43 | 13.29 | 1.79 |
 | tanhPade76 (std::tanh float) | 5.66 | 13.25 | 2.34 |
 | tanhPade32 (std::tanh float) | 7.13 | 13.24 | 1.86 |
 | sinTurns (std::sin float) | 16.92 | 15.19 | 0.90 |
@@ -76,15 +76,18 @@ Blep<16> 7.22, PinkNoise 4.78, Smoothed<OnePole> 5.55. The MSVC build also passe
 
 ### Reading
 
-- **Faster than glibc** in the audio path: `tanhF` (1.6x), the Pade tanh shapes (2.6 to 3.6x),
-  `tanRad` (2.7x), `atanApprox` (1.6x), `log2Approx` (1.2x), `logCosh` (1.3x). These replace libm
-  as S4 asks (Acidus, Gritbaal, Syrebas and Kikset call `std::tanh` per sample today).
+- **Faster than glibc** in the audio path: `fastTanhF` (1.6x), the Pade tanh shapes (2.6 to 3.6x),
+  `tanRad` (2.7x), `atanApprox` (1.6x), `log2Approx` (1.2x), `logCosh` (1.3x). Since 2026-10-20 (S4) they are
+  opt-in: a plugin uses them where the gain matters (Acidus's ladder would gain 18 % of its engine with
+  `fastTanhF`) and keeps libm elsewhere.
 - **On par**: `sinTurns` (0.95 to 1.02 between runs) and `sinD` (1.1x).
 - **Slower than glibc: `exp2F` (0.3x) and `dbToGainF` (0.6x against `std::pow`, it calls `exp2F`).** glibc's `exp2f` is
   a table plus a short double polynomial (about 3 ns); `exp2F` is Plumeflow's degree-5 Horner chain,
   bound by its latency. Speeding it up would change its results (a different polynomial or order of
-  evaluation), so it is unchanged and the question is open (MIGRATION.md, step 4): by S4 a plugin keeps
-  libm's `exp2f` where `exp2F` would be slower, or accepts the cost for platform-independent output.
+  evaluation), so it is unchanged: a plugin keeps libm's `exp2f` (the S4 default). A port of glibc's
+  `exp2f` (ARM optimized-routines, MIT; 32-entry double table and a cubic, 0.502 ulp) measured 2.6 to
+  3.5 ns and 235 bytes of code plus a 256-byte table, bit-identical to glibc for every float (Acidus
+  report, 2026-10-20), if spux ever wants a fast exp2 of its own.
   On Windows (the v1 platform) `exp2F` is also slower than the UCRT's `exp2f` (0.5x), but `dbToGainF`
   beats `std::pow` (2.4x).
 - **The double set is slower than libm** (`expD` 7x, `exp2D` 12x, `logD` 10x, `tanD` 2x): series with

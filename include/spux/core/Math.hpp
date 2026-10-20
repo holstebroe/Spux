@@ -1,5 +1,7 @@
-// Deterministic math for the audio path (R2, R3, decision S4): fixed formulas with no libm call, so a
-// result depends only on the build, never on the platform's math library. Merged from Lumeoid
+// Deterministic math (R2, R3, decision S4): fixed formulas with no libm call, so a result depends only on
+// the build, never on the platform's math library. Opt-in: libm is the default in the audio path (its
+// differences between platforms are inaudible); use these where spux_bench shows a gain that matters, where
+// constexpr is needed, or where the same bits on every platform are wanted. Merged from Lumeoid
 // `dsp/math.hpp` (the double-precision `...D` set, the [7/6] Pade tanh) and Plumeflow `dsp/Math.hpp` (the
 // float set fitted on Chebyshev nodes by its tools/fit_math.py), plus Tannhauser's [3/2] Pade tanh.
 //
@@ -7,7 +9,8 @@
 //   - double (`expD`, `exp2D`, `logD`, `log2D` to about 1e-14 relative; `sinD`, `cosD` to 6e-10 absolute;
 //     `tanD` to 3e-8 relative near pi/2): coefficients, tables, phase. Series with a fixed number of terms; slower than
 //     libm (see docs/BENCH.md), so use them at control rate.
-//   - float, to about 1e-6 (`exp2F`, `tanhF`, `sinTurns`, `tanRad`, ...): per sample.
+//   - float, to about 1e-6 (`exp2F`, `fastTanhF`, `sinTurns`, `tanRad`, ...): per sample. Less precise than
+//     libm (one to two ulp, against libm's half to one); `exp2F` is also slower than glibc's.
 // Every function is a fixed sequence of IEEE operations, constexpr where C++20 allows it. The measured
 // errors are checked by tests/math_test.cpp and the speed against libm by spux_bench.
 //
@@ -15,7 +18,7 @@
 // came from, so a plugin that switches gets identical results (checked against the originals when they
 // were merged). The only differences: floor is done by integer conversion instead of std::floor (same
 // result), NaN input to `exp2F` gives 2^-126 instead of undefined behaviour, and the renamed functions
-// (Plumeflow `exp2`, `tanh` are `exp2F`, `tanhF`; Lumeoid `tanhApprox` is `tanhPade76`; Tannhauser
+// (Plumeflow `exp2`, `tanh` are `exp2F`, `fastTanhF`; Lumeoid `tanhApprox` is `tanhPade76`; Tannhauser
 // `tanhFast` is `tanhPade32`), so `using namespace` never collides with <cmath>.
 #pragma once
 
@@ -174,8 +177,10 @@ inline constexpr float kPiF = 3.14159265358979323846f;
     return inv ? 1.0f / t : t;
 }
 
-// tanh through exp2F; absolute error < 1e-6, exactly +-1 beyond |x| = 9.
-[[nodiscard]] constexpr float tanhF(float x) {
+// tanh through exp2F, for hot loops: 1.6x (glibc) to 1.8x (MSVC) faster than std::tanh (docs/BENCH.md); in
+// Acidus's ladder, about 150 calls per sample, that is 18 % of the engine. Absolute error below 1.2e-7 (libm:
+// about 1e-7), exactly +-1 beyond |x| = 9; not odd, and fastTanhF(0) = -6e-8 (exp2F(0) is 1 - 1e-7).
+[[nodiscard]] constexpr float fastTanhF(float x) {
     if (x > 9.0f)
         return 1.0f;
     if (x < -9.0f)
@@ -216,12 +221,12 @@ inline constexpr float kPiF = 3.14159265358979323846f;
 }
 
 // tanh(x) / x: the gain of a saturating stage at amplitude x (series near zero); absolute error below
-// 3e-5 (tanhF's error divided by a small x).
+// 3e-5 (fastTanhF's error divided by a small x).
 [[nodiscard]] constexpr float tanhGain(float x) {
     const float a = x < 0.0f ? -x : x;
     if (a < 1e-3f)
         return 1.0f - x * x * (1.0f / 3.0f);
-    return tanhF(x) / x;
+    return fastTanhF(x) / x;
 }
 
 namespace detail {
@@ -252,7 +257,7 @@ inline constexpr std::array<double, 9> kLog1pUnit = {0.9999992249459301,   -0.49
     const float a = x < 0.0f ? -x : x;
     if (a <= 0.75f)
         return x;
-    const float y = 0.75f + 0.25f * tanhF((a - 0.75f) * 4.0f);
+    const float y = 0.75f + 0.25f * fastTanhF((a - 0.75f) * 4.0f);
     return x < 0.0f ? -y : y;
 }
 

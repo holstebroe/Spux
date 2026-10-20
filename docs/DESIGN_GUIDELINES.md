@@ -15,8 +15,27 @@ These are the rules for building spux and for using it in a plugin. The reasons 
    (the Acidus ladder and Stinchcombe network, the Tannhauser OTA SVF, the Paula RC filters, the
    Tearwash reverb) stays in the plugin repository.
 5. **Extract on the third copy**, or earlier when two copies are already identical.
-6. **No process-global mutable state.** Several plugin instances, and several plugins with different
-   spux versions, share one host process.
+6. **Instances never affect each other's output** [L16]. A DAW runs many instances of one plugin, and
+   several plugins with different spux versions, in one process. Different plugins and spux versions
+   never see each other's symbols: hidden visibility and the inline version namespace [L13] keep each
+   binary's statics, tables and caches its own. Between the instances of one plugin, state that lives
+   longer than an instance is allowed only in these forms:
+   - **Immutable data**: tables, fonts, kernels, built at load or first use, never on the audio thread,
+     never written again (spux's BLEP tables).
+   - **Memo caches of pure functions**: the value depends only on the key, the key holds every input
+     (parameters, sample rate, ...), so a hit gives exactly what a miss computes, whoever filled it.
+     Filled off the audio thread; the audio thread reads without blocking (`try_lock` or lock-free) and
+     computes the value itself on a miss, without allocating (Acidus's critical-gain tables).
+   - **Operating-system registrations** that cannot be per instance (a Win32 window class): named per
+     module, so another plugin never shares them.
+
+   Not allowed: shared state whose content depends on which instance wrote it or when (a shared random
+   generator, a shared smoother, a "current preset"), and anything that makes one instance wait for or
+   allocate because of another. Prefer an explicit shared context created in the plugin's entry `init`,
+   destroyed in `deinit` and handed to its instances, over function-local statics: the lifetime is
+   clear, it can be reset in tests, and the plugin decides (principle 1). Per-thread storage in a
+   plugin binary is not free: a large `thread_local` in a dynamically loaded library can be allocated on
+   a thread's first access, so it does not belong on the audio thread.
 
 ### SOLID in spux
 
@@ -32,8 +51,9 @@ These are the rules for building spux and for using it in a plugin. The reasons 
 
 - **R1** Nothing on the audio thread allocates, locks (except `try_lock`), throws, makes system calls or
   touches the GPU. Debug and test builds check this (allocation guard, thread asserts) [P8].
-- **R2** No libm in the audio path: use `spux_core` math, provided `spux_bench` shows it is at least as
-  fast [S4].
+- **R2** libm is fine in the audio path [S4]: different platforms' libm differ in the last bit, which nobody
+  hears. Use `spux_core` math where `spux_bench` shows a gain that matters in a hot loop (`fastTanhF`), where
+  constexpr is needed, or where the same bits on every platform are wanted.
 - **R3** Output is bit-identical within one build for any block size and every re-render [S3]. Use
   PCG32 for all randomness. `spux_target_flags` sets `-ffp-contract=off -fno-fast-math` and
   `/fp:precise`; never override them.
@@ -66,11 +86,17 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
 2. **Reference renders in each plugin.** A curated set of patches and note sequences, a few seconds
    each, stored as 32-bit float (or 24-bit) WAV in the plugin repo. The null test renders with the
    current code, subtracts the stored file and fails above the threshold (proposed -90 dBFS peak). One
-   checkout is enough. Accepting a change means regenerating the references in the same commit.
+   checkout is enough. Accepting a change means regenerating the references in the same commit. Where a
+   one-ulp change already exceeds the peak threshold (a resonant filter amplifies rounding), gate on what
+   is heard instead: the null test's spectrum and envelope tolerances (`NullOptions::maxSpectralDb`,
+   `maxEnvelopeDb`), with the peak as a report.
 3. **Acidus is strict.** Its calibration is the product. A spux update in Acidus must pass
-   `reference_conformance_test` and the null test at the tighter threshold (proposed -110 dBFS), and the
-   report lists every difference per patch. The author signs off audible changes; nothing is accepted
-   silently.
+   `reference_conformance_test` (its whole report compared with the stored one) and the null test within
+   the sound tolerances (0.08 dB spectrum, 0.12 dB envelope: about 2x above a libm rounding change in its
+   ladder and 2x below the smallest planted mistake, +0.1 dB gain or a one-sample delay), and the report
+   lists every difference per patch. The author signs off changes; nothing is accepted silently.
+   Bit-exactness is not required: a one-ulp change moves Acidus's ladder by -70 to -90 dBFS and its
+   harmonics by about 0.003 dB.
 4. **State version.** Every plugin state carries a version field and a migration hook [S7, P9], so a
    later converter can restore old behaviour or rescue old data.
 
@@ -107,7 +133,7 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
   golden hash per block, in `portable.txt` unless a toolchain needs its own file. A changed hash gets a
   line in `docs/CHANGELOG.md`.
 - The double-precision math (`expD`, `logD`, `tanD`, ...) is for coefficients at control rate; it is slower
-  than libm (docs/BENCH.md). Per sample, use the float set.
+  than libm (docs/BENCH.md). Per sample, use the float set. All of it is opt-in; libm is the default [S4].
 
 ### Smoothing [S10]
 

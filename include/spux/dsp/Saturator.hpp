@@ -10,7 +10,7 @@
 // lowers the total alias power by about 5.5 dB, 4x oversampling by 32 to 44 dB, and ADAA on top of 4x by
 // 0.2 dB (smooth shapes) to 12 dB (hard clip). Adaa1 delays the signal by half a sample.
 //
-//   TanhSaturator           tanh (tanhF, abs. error < 1e-6); antiderivative log cosh (Plumeflow `logCosh`).
+//   TanhSaturator           tanh (fastTanhF, abs. error < 1e-6); antiderivative log cosh (Plumeflow `logCosh`).
 //   AsymmetricTanhSaturator tanh for x >= 0, 1.3 tanh(0.7 x) below (Gritbaal's diode-clipper asymmetry).
 //   HardClipSaturator       clamp to [-1, 1].
 //   PadeSaturator           x (27 + x^2) / (27 + 9 x^2), +-1 from |x| = 3 (Tannhauser `tanhFast`).
@@ -36,10 +36,10 @@ concept AdaaSaturator = Saturator<S, T> && requires(double x) {
 
 namespace detail {
 template <std::floating_point T> constexpr T absT(T x) { return x < T(0) ? -x : x; }
-// tanh in T: tanhF for float; for double through expD (error below 1e-15).
+// tanh in T: fastTanhF for float; for double through expD (error below 1e-15).
 template <std::floating_point T> constexpr T tanhT(T x) {
     if constexpr (std::same_as<T, float>) {
-        return math::tanhF(x);
+        return math::fastTanhF(x);
     } else {
         if (x > T(20))
             return T(1);
