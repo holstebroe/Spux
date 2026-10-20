@@ -84,8 +84,8 @@ void CpuLayers::clearDirty() {
     bounds_ = {};
 }
 
-void CpuLayers::resolve(std::uint32_t* out, const Rect& r) const {
-    const Rect c = clip(r);
+void CpuLayers::resolve(std::uint32_t* out, const Rect& area) const {
+    const Rect c = clip(area);
     if (c.empty())
         return;
     const std::uint32_t* src = buffer(composited_ ? Layer::Display : Layer::Widgets);
