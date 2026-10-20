@@ -120,3 +120,20 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   events, and paired notes are keyed by channel and key and a repeated note-on ends the sounding note (Plumeflow keyed by key
   only and dropped the first note). The standard FNV-1a offset basis is used by `Fnv1a64`; the Classic drawing golden was
   made with a basis missing its last digit and keeps it as `kFnvLegacyBasis` (the golden is unchanged).
+- 2026-10-20: migration step 4 (`spux_core`, `spux_dsp`). No decision changed. New choices within the guidelines:
+  **one half-band design, Lumeoid's 5 + 5 all-pass sections** (-108 dB stopband against -95 dB for Plumeflow's
+  4 + 4, about 25 % more CPU; docs/BENCH.md has the measurement and the reasons). The pt2-clone BLEP lives in
+  `include/spux/dsp/pt2/` with its BSD-3 licence; `THIRD_PARTY_LICENSES.md` exists now. Kernel golden hashes are
+  in `tests/kernels/portable.txt` (the blocks call no libm, so GCC and Clang on x64 agree); a toolchain that
+  differs gets its own `tests/kernels/<platform>.txt`. Function names that would collide with `<cmath>` under
+  `using namespace` were renamed: Plumeflow `exp2`, `tanh` are `exp2F`, `tanhF`; Lumeoid `tanhApprox` is
+  `tanhPade76`; Tannhauser `tanhFast` is `tanhPade32`. Differences a plugin meets when it switches: a
+  default-constructed `Pcg32` has the PCG reference state (Lumeoid's), not Plumeflow's seed(0, 1); Lumeoid's
+  `reseed` is `seed` and `Oversampler::prepare` is `setFactor`; Plumeflow's `DelayLine::push` is `write`, and
+  its fractional reads interpolate from the newer sample (last-bit differences); `exp2F` maps NaN to 2^-126
+  instead of undefined behaviour; the OU setup uses expD (1e-11 cents); Plumeflow's `DenormalGuard` becomes
+  Lumeoid's, which also sets round-to-nearest and masks exceptions; the BLEP tables are built with spux math
+  (bit-identical to Plumeflow's tables here). Lumeoid's `sinD` comment claimed exactness to double precision;
+  measured 6e-10 (its test checked 1e-9), now documented. S4 finding, open: `exp2F` and `dbToGainF` are slower
+  than glibc's `exp2f` (0.3x and 0.6x, latency of the Horner chain); the other float functions are as fast or
+  faster, and the double set is slower than libm by design (control rate only).

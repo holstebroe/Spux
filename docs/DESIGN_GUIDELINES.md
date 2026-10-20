@@ -101,7 +101,13 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
 - Every nonlinear block states its anti-aliasing (oversampling, ADAA) and has an alias test.
 - Each block documents its law and constants in its header and has a kernel reference (section 3).
 - First merges (before any 1.0): one PCG32, one set of math approximations, one half-band design, one
-  BLEP family (orders 2, 4, 16, 32; the pt2-clone table stays in its BSD-3 folder).
+  BLEP family (orders 2, 4, 16, 32; the pt2-clone table stays in its BSD-3 folder). Done in step 4:
+  `spux/core/`, `spux/dsp/`, the pt2 table in `spux/dsp/pt2/`.
+- Kernel references live in `tests/kernels/` (`dsp_kernel_test`): the first output values as text and a
+  golden hash per block, in `portable.txt` unless a toolchain needs its own file. A changed hash gets a
+  line in `docs/CHANGELOG.md`.
+- The double-precision math (`expD`, `logD`, `tanD`, ...) is for coefficients at control rate; it is slower
+  than libm (docs/BENCH.md). Per sample, use the float set.
 
 ### Smoothing [S10]
 

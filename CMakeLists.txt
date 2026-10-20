@@ -19,6 +19,7 @@ option(SPUX_BUILD_TESTS "Build the spux tests" ${_spux_dev})
 option(SPUX_BUILD_CANARY "Build the size canary plugin" ${_spux_dev})
 option(SPUX_WITH_X11 "Linux: build the X11 window and GLX context. OFF for headless builds without X11 headers; windows then report no support" ON)
 option(SPUX_BUILD_SMOKE_TOOL "Build spux_clap_smoke, the command line CLAP smoke host" ${_spux_dev})
+option(SPUX_BUILD_BENCH "Build spux_bench (math against libm, DSP block timings; meaningful in Release)" ${_spux_dev})
 option(SPUX_BUILD_VST3 "Make clap-wrapper's make_clapfirst_plugins available (downloads the VST3 SDK)" OFF)
 
 # The plugin chooses its language level; spux needs C++20 at least. The top-level build sets it.
@@ -158,6 +159,12 @@ if(WIN32)
 endif()
 set_target_properties(spux_ui_modern PROPERTIES POSITION_INDEPENDENT_CODE ON EXCLUDE_FROM_ALL ON)
 spux_target_flags(spux_ui_modern)
+
+if(SPUX_BUILD_BENCH)
+  add_executable(spux_bench ${SPUX_ROOT}/bench/SpuxBench.cpp)
+  target_link_libraries(spux_bench PRIVATE spux_dsp)
+  spux_target_flags(spux_bench)
+endif()
 
 if(SPUX_BUILD_TESTS)
   enable_testing()

@@ -24,6 +24,14 @@ spux_add_test(render_safety_test)
 spux_add_test(null_test)
 spux_add_test(midi_test spux_midi)
 
+# spux_core and spux_dsp (header-only). The kernel test reads and, with SPUX_UPDATE_GOLDEN=1, writes
+# tests/kernels/ in the source tree.
+foreach(t math_test pcg32_test smoothing_test filters_test halfband_test blep_test saturator_test noise_drift_test
+          dsp_kernel_test)
+  spux_add_test(${t} spux_dsp)
+  target_compile_definitions(${t} PRIVATE SPUX_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+endforeach()
+
 # The CLAP smoke host against a small test plugin and four broken variants of it.
 function(spux_test_plugin name fault)
   add_library(${name} MODULE clap_test_plugin.cpp)
