@@ -390,6 +390,52 @@ spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per wid
   inherited from existing plugins, the canvases of `classic_compat_*`. Regenerate them (`SPUX_UPDATE_GOLDEN=1`) only when a
   change of look is intended, and say so in the commit.
 
+### Retro specifics [U1, U8, U12]
+
+- **The renderer is `PixelRenderer`** (`spux/ui/retro/PixelRenderer.hpp`): an `IRenderer` on `CpuLayers` at scale 1, integer
+  arithmetic, no coverage values. A point lies in the pixel `(floor x, floor y)`; a shape covers a pixel when the pixel's center
+  is inside it; a circle of radius r around the center of pixel `(cx, cy)` (the point `(cx + 0.5, cy + 0.5)`) spans `cx - r` to
+  `cx + r`; a line is a Bresenham line with a square brush of the thickness rounded to whole pixels; a rounded rectangle's radius
+  is whole pixels (one cuts nothing, two take the corner pixel off). Colors blend with integer arithmetic (rounded), an opaque
+  color is a plain store, and the add blend saturates. The frame is deterministic: the same calls give the same pixels, and a
+  cached frame equals an uncached one exactly.
+- **Effects are the pixel-art version of each extension**: arcs are stamped pixel by pixel, glows, radial gradients and shadows
+  are dithered with a 4 x 4 ordered pattern (`PixelRenderer::dither`, `fillDither`), the glass panel is a one-pixel bevel and the
+  level bar a column of segments. Painters and plugins also get `pixel`, `hLine`, `vLine`, `bevel`, `text`, `textCentered` and
+  `bits` (a one-bit picture) for views of their own.
+- **Text is a `BitmapFont`** (`spux/ui/retro/BitmapFont.hpp`): one byte per pixel row, the leftmost column in bit 7, at most 8
+  columns, drawn at integer scales. Three faces ship, each in its own object so a program links only those it uses: `font5x7()`
+  (capitals from space to `_`, lowercase draws as capitals, other characters draw `?`), `fontPanel7()` (the heavy 7-pixel face:
+  digits, capitals, `-` and `.`; every other glyph is blank) and `fontPt2()` (the 8x8 tracker face, BSD 3-Clause, own folder and
+  license). `(x, y)` of a text call is the left edge and the top of the capitals, as on every renderer; a font says where its
+  capitals sit (`capTop`, `capHeight`), so labels center the same way in every face. `drawTextPx` picks a whole-step scale from the
+  size (below 15 px one, below 24 two, else three) and `FontWeight::Bold` draws the renderer's bold font (the label font unless
+  one is given). A plugin makes its own face from a table it owns.
+- **Painters draw on a `PixelRenderer`** and draw nothing on another renderer, like Classic's. Each sets its own clip to its
+  bounds, and the bounds are everything it touches except the popup and the tooltip, whose two-pixel shadow is their margin.
+- **The look is a `RetroConfig`** (data): the fonts, the inks, the surface and its trims, the frame (outline, etched or a forged
+  plate with rivets), the knob (fluted or flat, printed ticks, index square, shadow, sweep, the rows for label and value), the
+  toggle (lever or key), the fader, the bevelled face of buttons, tabs and selector cells, the recessed display, the popup, the
+  tooltip, the keyboard. `silver()`, `tracker()` and `forge()` ship, each in its own object so a program links only the fonts of
+  the look it uses; the config's fonts must outlive the style. `retroRenderer(config)` is the renderer factory for
+  `Editor<RetroStyle>`: it hands the config's fonts to the renderer, so layout and drawing measure the same text.
+- **Conventions where a painter state has no field**: the theme's default accent means "no color of its own" (no cap color on a
+  knob, the button face for a fader cap and a selector's lever); any other accent colors them. A `Panel` without a title is the
+  surface (with the trims when the look has them), a titled one a frame. A knob is a square with a row above and one below it for
+  the label and the value and 9 pixels around the dial for the printed scale (14 above, for the index square), so a page that lays
+  out Classic knobs lays out Retro knobs; on is the lever down, as in Classic.
+- **Frames that must not change by accident**: the full-size golden frames in `tests/golden/` (`retro_silver`, `retro_tracker`,
+  `retro_forge`). A frame is integer arithmetic, but knob ticks and arcs take their positions from libm, so the comparison allows
+  0.2 % of the pixels to differ (one pixel moved by a toolchain's last bit); regenerate them (`SPUX_UPDATE_GOLDEN=1`) only when a
+  change of look is intended, and say so in the commit.
+- **Size** (a probe that draws a knob, a fader, a toggle, a selector, a button, a lamp, a dropdown and two panels once, stripped,
+  GCC -O2, x64 Linux, standard library linked dynamically; an empty program is 14 KB): 121 KB with spux's UI built for size
+  (`SPUX_UI_FLAVOR=RETRO`, the default of a Retro plugin, decision U16), 170 KB built for speed, against 264 KB for the same probe
+  on Classic. The objects: the renderer 14.7 KB and the painters 31.4 KB (`-Os`), each font about 0.6 KB (`fontPt2()` 1.2 KB), each
+  look about 1 KB.
+- **Whole-step scaling (U11) is not built**: the editor draws a CPU flavor at its logical size, so a Retro plugin that wants a
+  larger window scales the finished frame itself.
+
 ### Telemetry [P7]
 
 `spux::TelemetryRing<Frame>` (`spux/core/TelemetryRing.hpp`) is a lock-free single-producer ring, with

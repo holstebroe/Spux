@@ -11,8 +11,8 @@ only in namespace and include guards, or not at all.
 | Classic CPU renderer | Plumeflow `ui/SoftRenderer` + the files above | Merge into one supersampled renderer with shading helpers. **Done (step 7, Classic): `ShadedRenderer` (the basics and the shading helpers over the Classic drawing code); Plumeflow's `SoftRenderer` became the Modern fallback (session 9), so only the Classic drawing code was merged into it.** |
 | Envelope, LFO, chorus, voice allocator, modulation routes, brown and crackle noise | Gritbaal `core/Envelope`, `Lfo`, `Chorus`, `SynthEngine` (voice allocation, mod targets), `Oscillator` (noise); Tannhauser `SynthEngine::allocateVoice` | **Harvested into `spux_dsp` (session 11)**: `Adsr`, `Lfo`, `Chorus`, `VoiceAllocator`, `ModMatrix`, `BrownNoise`, `CrackleNoise`; `Wave` in `spux_core`. Gritbaal itself not migrated yet. |
 | Classic painters | Tannhauser `gui/PanelRenderer` (knob, slider cap, rocker, lever, tone and arrow buttons, panel), Acidus `gui/modern/ModernSkin` (knurled knob, lever switch, worn panel), Tearwash `TwGui` (the look Tannhauser took) | **`ClassicStyle` with a `ClassicConfig` (step 7, Classic); Tannhauser and Acidus drawn pixel for pixel, Tearwash not compared.** |
-| Retro style and fonts | Acidus `RetroSkin`, Syrebas and Gritbaal renderers, Paulascape `Framebuffer` and pt2 font, Kikset `Graphics` | Four drifting forks of the same `Graphics`. |
-| Skin interfaces | Acidus `IGuiSkin`, Gritbaal `IControlRenderer`, Syrebas `IControlRenderer` | Become the per-widget painter interfaces. **Interfaces in `spux_ui_core` (step 6)**; the skins become flavor painters in step 7. |
+| Retro style and fonts | Acidus `RetroSkin`, Syrebas and Gritbaal renderers, Paulascape `Framebuffer` and pt2 font, Kikset `Graphics` | Four drifting forks of the same `Graphics`. **Done in spux (session 11): `PixelRenderer`, `RetroStyle` with a `RetroConfig` (`silver()`, `tracker()`, `forge()`), the three bitmap fonts in `spux_ui_retro`; no plugin switched yet.** |
+| Skin interfaces | Acidus `IGuiSkin`, Gritbaal `IControlRenderer`, Syrebas `IControlRenderer` | Become the per-widget painter interfaces. **Interfaces in `spux_ui_core` (step 6)**; the skins became flavor painters in step 7 (**Classic, Modern and Retro done in spux**). |
 | Native window | Plumeflow `gfx/NativeWindow*` (ported from Acidus); `GuiWindow` code in Acidus, Gritbaal, Syrebas, Tannhauser, Tearwash, Kikset, Paulascape | Plumeflow's version is the base; Cocoa missing. **Moved to `spux_platform` (step 3); Tearwash migrated.** |
 | GL context and function table | Plumeflow `gfx/GlApi`, `GlContext_{wgl,glx,none}` | Generic as is. **Moved to `spux_ui_modern` (step 3), namespace `spux::gl`.** |
 | Renderer interface | Plumeflow `ui/IRenderer` | Generic as is. **Moved to `spux_ui_core` (step 6)**, plus `layers()` for the CPU caches. |
@@ -151,7 +151,7 @@ plugin-specific views and page code.
    changed. The gate code was removed after the decision (kept in history at 313587b; see `docs/UI_GATE.md`). Left: the flavors' painters and renderers (step 7, from Acidus's skins, Tannhauser's panel
    renderer and Plumeflow's look); Plumeflow switches in step 8; the GPU path in the editor shell, window
    scaling, cascading submenus in spux's popup (U9, for Tannhauser's preset menu) and the shared views (`ui/Views`).
-7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow. **Classic and Modern done in spux; Retro left.**
+7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow. **Classic, Modern and Retro done in spux.**
    **Modern done in spux** (session 9, 2026-10-20), `spux_ui_modern` (STATIC, one object per part):
    `GpuRenderer` (with `Look` for the post chain), `FontAtlas` and the Inter data (own object), the shaders
    embedded by `cmake/SpuxEmbedShaders.cmake`, `tools/make_fonts.py`, `SoftRenderer` (supersample 1 to 4, shareable atlas),
@@ -215,6 +215,29 @@ plugin-specific views and page code.
    0 of 255; Acidus identical outside its printed symbols).
    Left: Retro; Classic spectrum, traces and curve editor; a modulation display on the Classic knob; Classic scaling in steps (U11);
    cascading submenus (U9); Tearwash's faders (slot width, two-sided scale).
+   **Retro done in spux** (session 11, 2026-10-21), in `spux_ui_retro` (STATIC, one object per part): `PixelRenderer` (an
+   `IRenderer` on `CpuLayers` at scale 1: whole pixels, Bresenham lines with a square brush, circles by pixel centers, integer
+   blends, clip for everything including text, and the pixel-art effects: stamped arcs, 4 x 4 ordered dither for glow, radial
+   gradient and shadow, a beveled panel, a segmented level bar; plus the pixel helpers `pixel`, `hLine`, `vLine`, `bevel`, `text`,
+   `textCentered`, `bits`, `fillDither`), `BitmapFont` with the three faces (`font5x7()`, `fontPanel7()`, `fontPt2()`, each its own
+   object), `RetroStyle` (`RetroKnob`, `RetroSlider`, `RetroToggle`, `RetroSelector`, `RetroButton`, `RetroPanel`, `RetroLed`,
+   `RetroKeyboard`, `RetroDropdown`, `RetroStepper`, `RetroTextField`, `RetroPopup`, `RetroTooltip`, `RetroTabs`, `RetroReadout`:
+   every standard painter) with `RetroConfig` (`silver()`, `tracker()`, `forge()`, each in its own object so only the fonts of the
+   look in use link) and `retroRenderer(config)` for `Editor<RetroStyle>`. Tests: `ui_retro_test` (the fonts, the renderer's
+   exactness for every basic, clipping, blends, text, the effects, the layers; every painter inside its bounds plus margin in the
+   three looks at five sizes; no drawing on another renderer; popup and tooltip layout; icons; the geometry the interaction asks
+   for; the Gui driving a knob, selectors, toggles, buttons, sliders, keyboard, tabs, dropdown, stepper and the preset bar in all
+   three looks; the editor shell with caches against an uncached frame, exact; the showcase as full-size golden frames
+   `retro_silver`, `retro_tracker`, `retro_forge`). The gallery (`spux_widget_gallery`) renders every control in the three looks
+   and the three showcase pages; `docs/WIDGETS.md` shows them. **No plugin changed.** Against the plugins' own code (a harness
+   outside the repository compiles their sources unchanged, draws the same on the same canvas and diffs the frames): the 5x7 text of
+   Acidus and Syrebas (Gritbaal's table is Syrebas's, checked by diff), Acidus's 7-pixel text and Paulascape's pt2 text (scale 1 and 2), its pt2 table (byte for byte),
+   its Bresenham lines and its bevel are **identical to the last pixel**; Acidus's lever switch and the trims of its panel are
+   identical; Acidus's knob (radius 10, 14, 17, with and without a cap color, four values) is identical except for at most 2 of
+   255 in the pixels of the stacked translucent shadow (spux rounds a blend, Acidus truncates); Syrebas's and Gritbaal's knob is a
+   simpler drawing and differs (see the notes below). Size: docs/DESIGN_GUIDELINES.md, Retro specifics.
+   Left: Retro whole-step scaling (U11); a Retro spectrum, traces and curve editor; the Syrebas and Gritbaal knob as an exact
+   variant, if the author wants it (their repositories' switch); a level meter painter in any flavor.
 8. Plumeflow and Lumeoid move onto spux (Lumeoid's GPU UI starts on spux directly).
 
 lexwash starts on spux from its first line.
@@ -328,6 +351,37 @@ from its own copy, is kept here.
     `Gui::keyboard` (keys 36 to 96; the felt strip is `ClassicConfig::keyboardFelt`); the waveform symbols printed on the
     panel are `Wave` icons, or the plugin's own `Icon`.
   - Acidus's printed waveform symbols can be `drawWave` calls in its background; its switch has no symbols of its own.
+- **Retro style** (`retro/PixelRenderer`, `retro/RetroStyle`, `retro/RetroConfig`, `retro/BitmapFont`): the silver look, the
+  fluted knob (the shadow of four translucent discs, the bezel, skirt and rim, the 12 flutes, the conical face with its sheen, the
+  colored cap, the pointer), the lever switch and the panel trims are Acidus `gui/RetroSkin`; the 5x7 face is the table of Acidus
+  `gui/Font` (`g_classicColumns`), Syrebas `gui/Font` and Gritbaal `gui/Font` (the same 59 glyphs, converted to rows), with the
+  five punctuation glyphs `[ \ ] ^ _` from Kikset `gui/Graphics` (the other three have none: blank there); the 7-pixel face is
+  Acidus `Font::defaultPanelFont`; `fontPt2()` is the table of Paulascape `core/pt2/pt2_font` (pt2-clone, BSD 3-Clause), and the
+  tracker look takes its palette, bevel and row heights from Paulascape `gui/ui_app` (`COL_*`, `bevel`); the forge look takes the
+  panel frame with rivets and copper trim, the push button, the lamp, the display with a copper outline and the amber lettering from
+  Gritbaal `gui/Graphics` (`drawPanelFrame`, `drawRivet`) and `gui/GuiWindow`. The pixel renderer's lines are the Bresenham loop
+  of Acidus `Graphics::drawLine` and Paulascape `Framebuffer::drawLine`. What a plugin meets when it switches:
+  - Acidus: a knob's bounds are `2r + 29` wide and `2r + 29 + 18` high for the radius `r` (the dial centered on a pixel: 14
+    pixels above it for the index square, 9 at the sides, rows of 9 above and below); `silver()` sets that. The label sits centered
+    in the 9-pixel row above the dial (about 4 pixels lower than the old label) and the value in the row below; set
+    `knob.bottomRow = 0` and `knob.showValue = false` for the old look without a value. The pointer is `pointerWidth` 3 (the old
+    line was drawn with a 3 x 3 brush). A lever switch's bounds are about 18 x 44 plus a label row when it has a label, the plate
+    centered; the printed waveform symbols beside it stay the plugin's (`drawWave` in the background). Blends are rounded where
+    the old `blendPixel` truncated (at most 2 of 255 in the shadow of a knob), and text widths drop the gap after the last glyph
+    (the old `getTextWidth` counted it), so a centered label moves by half a pixel.
+  - Syrebas and Gritbaal: their knob is a simpler drawing than Acidus's: a gray ring offset by one pixel instead of the drop shadow,
+    skirt flutes from `r - 4` to `r`, a face of radius `r - 4` with a darker outline, a dot on the pointer's tip, tick ends
+    truncated instead of rounded, a sweep of 270 degrees from 7 o'clock. `silver()` with `knob.startDeg = 135`, `sweepDeg = 270` and
+    `shadow = false` has the same layout and about 1 400 differing pixels for a radius 17 knob (shading, not geometry); exact
+    parity would need options for the face inset, the sheen, the tip dot and the offset ring, which are not built. Their toggle
+    is the Acidus lever with `SQR` and `SAW` printed beside it, which stays in the plugin. Gritbaal's mode selector is a `dropdown`
+    or `selector`, its push button a `button`, its lamp a `led`, its preset bar `presetBar`.
+  - Paulascape: its text, lines and bevels draw the same pixels through `PixelRenderer::text`, `drawLine` and `bevel` (the string
+    call's `y` is the top of the 8-pixel cell; spux's is the top of the capitals, one pixel lower, so `text(fontPt2(), s, x, y + 1)`
+    draws the same). Its screens (the matrix, the scopes, the sample view) stay in the plugin and draw with these calls; it hit-tests
+    with its own list, not the `Gui`, so it switches by drawing through `PixelRenderer` in place of `Framebuffer` first.
+  - Kikset: its `Graphics` has anti-aliased lines and arcs on a `0x00RRGGBB` buffer; the pixel renderer draws whole pixels on
+    opaque ARGB, so its arcs and lines become pixel lines, and its `&` and `*` glyphs change to the three-copy shapes.
 - **Modern UI**: `GpuRenderer`, `FontAtlas`, the shaders, `InterFont` (byte for byte, namespace only) and
   `tools/make_fonts.py` come from Plumeflow `ui/` and `tools/`; `cmake/EmbedShaders.cmake` is
   `spux_embed_shaders` (it takes the output file; the raw string delimiter is `SPX`). `SoftRenderer` replaces
