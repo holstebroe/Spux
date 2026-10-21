@@ -60,6 +60,33 @@ void drawLineAA(Graphics& g, float x0, float y0, float x1, float y1, float width
              });
 }
 
+void softShadow(Graphics& g, float x0, float y0, float x1, float y1, float r, float spread, float alpha, float dx,
+                float dy) {
+    const float cx = 0.5f * (x0 + x1) + dx, cy = 0.5f * (y0 + y1) + dy;
+    const float hx = 0.5f * (x1 - x0), hy = 0.5f * (y1 - y0);
+    shadeBox(g, x0 + dx - spread, y0 + dy - spread, x1 + dx + spread, y1 + dy + spread, [&](float x, float y) {
+        const float d = sdRoundRect(x - cx, y - cy, hx, hy, r);
+        const float a = alpha * (1.f - smoothstep(-spread * 0.3f, spread, d));
+        return a > 0.002f ? toArgb({0.f, 0.f, 0.f}, a) : 0u;
+    });
+}
+
+void drawRivet(Graphics& g, float cx, float cy, float radius) {
+    const float sc = static_cast<float>(g.getScale());
+    const Material steel{{0.24f, 0.25f, 0.27f}, 0.35f, 0.75f, 0.55f, 18.f};
+    shadeBox(g, cx - radius - 1, cy - radius - 1, cx + radius + 1, cy + radius + 1, [&](float x, float y) {
+        const float dx = x - cx, dy = y - cy, d = std::sqrt(dx * dx + dy * dy);
+        const float cov = clamp01((radius - d) * sc + 0.5f);
+        if (cov <= 0.f)
+            return 0u;
+        const float t = d / radius;
+        const float ux = d > 1e-4f ? dx / d : 0.f, uy = d > 1e-4f ? dy / d : 0.f;
+        Color c = shadeLit(steel, tiltedNormal(ux, uy, 1.15f * t));
+        c = scale(c, 0.55f + 0.45f * (1.f - smoothstep(0.7f, 1.f, t))); // a dark seam where the head meets the plate
+        return toArgb(c, cov);
+    });
+}
+
 void sdRoundRectDir(float x, float y, float hx, float hy, float r, float& ux, float& uy) {
     const float e = 0.05f;
     ux = sdRoundRect(x + e, y, hx, hy, r) - sdRoundRect(x - e, y, hx, hy, r);

@@ -144,6 +144,21 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
 - The double-precision math (`expD`, `logD`, `tanD`, ...) is for coefficients at control rate; it is slower
   than libm (docs/BENCH.md). Per sample, use the float set. All of it is opt-in; libm is the default [S4].
 
+### Modulation sources and voices
+
+- `Adsr` (exponential segments; attack is the time to 1, decay and release the time to fall 60 dB), `Lfo` over the shared
+  `Wave` set (`spux/core/Wave.hpp`, also the waveform icons of the UI), bipolar and without depth: an amount belongs to the
+  route that uses it. Random waves draw from a seeded PCG32.
+- `ModMatrix<N>` is a list of routes (source id, target id, signed depth in the target's normalized units). A synth with one
+  target per source uses one route per source; a synth whose sources reach many targets (drag a source onto a knob, set the
+  depth on a ring) uses more routes of the same matrix. `amountFor` and `effective` give the numbers the audio thread
+  applies and the editor shows (`ModulationHost`); how a depth parameter maps to the signed number is the plugin's.
+- `VoiceAllocator` keeps who plays what: a re-struck key keeps its voice, a free voice is taken round-robin, then the voice
+  released longest ago, then the oldest held note. Mono and legato are limit 1 with `wasHeld`. Portamento is
+  `Smoothed<OnePole<...>>` on the pitch, not a class.
+- `Chorus` (three voices, stereo, on `DelayLine`), and the noise colors next to white and pink: `BrownNoise` and
+  `CrackleNoise` (clicks at a rate).
+
 ### Smoothing [S10]
 
 `Smoothed<Policy, T>` with `NoSmoothing`, `LinearRamp` (per tick), `OnePole<Tau>` and `Slew`. The plugin
@@ -278,8 +293,9 @@ are unaffected.
 ### Painters and themes [U8]
 
 - One painter interface per widget type (`KnobPainter`, `SliderPainter`, `TogglePainter`,
-  `SelectorPainter`, `ButtonPainter`, `DropdownPainter`, `StepperPainter`, `PanelPainter`,
-  `TextFieldPainter`, `PopupPainter`, `TooltipPainter`; `spux/ui/Painters.hpp`). A painter receives the
+  `SelectorPainter`, `ButtonPainter`, `LedPainter`, `KeyboardPainter`, `DropdownPainter`, `StepperPainter`,
+  `PanelPainter`, `TextFieldPainter`, `PopupPainter`, `TooltipPainter`; `spux/ui/Painters.hpp`). A widget with a
+  distinct purpose gets its own interface (the lamp is not a button variant). A painter receives the
   renderer, the bounds and a state struct (value, hot, active, focused, modulation, label). It may answer
   geometry questions the interaction needs (a knob's depth handle, a selector's cells, a popup's rows).
 - A flavor implements the painters it supports. A plugin that uses a widget its flavor lacks fails to
@@ -288,6 +304,19 @@ are unaffected.
   A plugin can supply its own theme values.
 - Every painter draws inside the bounds it is given (plus the declared margin), so incremental redraws
   stay clean.
+
+### Icons and the keyboard
+
+- An **`Icon`** (`spux/ui/Icons.hpp`) is a function `draw(renderer, area, color, width, data)` and a pointer to what it
+  draws. Buttons take `icon`, selectors `icons`; a plugin supplies its own by writing one function. The built-in set is the
+  waveforms (`Wave`: sine, triangle, saw, saw down, square, pulse, noise, sample and hold; `waveIcon`, `drawWave`). Icons draw
+  through the basics of `IRenderer` only, so every flavor shows every icon.
+- The **keyboard** (`Gui::keyboard`) draws and hits through one geometry (`keyboard::keyRect`, `keyAt`: white keys tile the
+  bounds, black keys sit above the joints), reports what the pointer did (`KeyboardEvents`: pressed, released, velocity from
+  the height of the press, glide across keys) and shows the plugin's sounding notes (`KeyboardOptions::lit`). It sends no
+  notes: the plugin does. Things that belong to one plugin (a ribbon, paddles) are not shared widgets; the plugin builds
+  them on `Gui::view` and `Gui::interact`.
+- `docs/WIDGETS.md` lists every control per flavor with an image, and what is not done.
 
 ### Editing helpers [U9]
 
@@ -339,6 +368,27 @@ spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per wid
   `drawCurveEditor`. They take data (band values, histories, levels, curve points), not a plugin's
   telemetry; they are Gui views, so they stay correct under the CPU caches. What is specific to a plugin
   (attractors, envelopes, filter responses, route tables) stays in the plugin.
+
+### Classic specifics [U1, U8]
+
+- **The renderer is `ShadedRenderer`** (`spux/ui/classic/ShadedRenderer.hpp`): an `IRenderer` on `CpuLayers`, supersampled (2 by
+  default, 1 to 4) and box-filtered when the frame is resolved, with analytic edges and the clip applied to everything,
+  text and shading included. Besides the basics it hands out `graphics()`, a clipped view of the current layer at the
+  supersampled resolution that the `ClassicDraw` helpers (`shadeBox`, `shadeRoundRect`, `softShadow`, `shadeLit`,
+  `drawLineAA`, the lettering) draw through, so a plugin's own views shade exactly like the painters. `wornPanel` renders the
+  worn paint once per size and copies it afterwards; the cache belongs to the renderer (guideline principle 6).
+- **Painters shade per pixel**, so they need a `ShadedRenderer`; on another renderer they draw nothing. Each paints inside its
+  bounds plus its margin (it sets the clip itself), and what a knob's bounds must contain is documented in `ClassicStyle.hpp`.
+- **The look is a `ClassicConfig`**: the knob shape (disc or knurled), the toggle shape (rocker or lever), the surface (slate
+  gradient or worn silver), ink and wear, the rows reserved above and below a knob or fader for the value and the label, cap
+  sizes, button colors, and the `Theme` the `Gui` reads. `slate()` and `silver()` are the two shipped looks. The rows are fixed
+  by the config, never by a widget's state, so the interaction's idea of the dial and the drawing always agree.
+- **Conventions for what a painter state cannot say**: the theme's default accent means "no color of its own" (bare metal knob,
+  dark fader cap, neutral rocker key); any other accent colors the cap. A `Panel` with no title is the surface and takes its
+  whole bounds; a titled one is a frame with the title cut into its top line.
+- **Frames that must not change by accident**: the golden frames in `tests/golden/` (`classic_*`) and, for the looks
+  inherited from existing plugins, the canvases of `classic_compat_*`. Regenerate them (`SPUX_UPDATE_GOLDEN=1`) only when a
+  change of look is intended, and say so in the commit.
 
 ### Telemetry [P7]
 

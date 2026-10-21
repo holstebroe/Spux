@@ -89,6 +89,12 @@ void ModernKnob::paint(IRenderer& r, const Rect& b, const KnobState& s) const {
     const float lo = std::min(a0, a1), hi = std::max(a0, a1);
 
     r.pushClip(b);
+    if (s.pickable) {
+        // can be picked now (a modulation target, MIDI learn): a ring in the modulation color around the dial
+        lit(r, c, 1.6f);
+        r.strokeCircle({cx, cy}, g.ringRadius + 5.0f, withAlpha(t.colors.modulation, 0.95f), 2.2f);
+        unlit(r);
+    }
     if (s.label && *s.label)
         r.drawTextPx(fitText(r, s.label, labelPx, f(b.w) - 4.0f, FontWeight::Bold).c_str(), cx, f(b.y),
                      hot ? t.colors.text : t.colors.textDim, labelPx, Align::Center, FontWeight::Bold);
@@ -305,6 +311,12 @@ void ModernSelector::paint(IRenderer& r, const Rect& b, const SelectorState& s) 
         } else if (hot) {
             r.fillRoundRect(face, fr, hairline(0.08f));
         }
+        if (s.icons && s.icons[i]) {
+            const int ih = std::max(4, std::min(16, cell.h - 10)), iw = std::min(ih * 2, std::max(4, cell.w - 10));
+            s.icons[i](r, {cell.x + (cell.w - iw) / 2, cell.y + (cell.h - ih) / 2, iw, ih},
+                       on ? s.accent : (hot ? t.colors.text : t.colors.textDim), 1.6f);
+            continue;
+        }
         char fallback[24];
         const char* text = "";
         std::string enumText;
@@ -335,6 +347,33 @@ void ModernButton::paint(IRenderer& r, const Rect& b, const ButtonState& s) cons
     const bool chip = s.variant == kButtonChip;
     const float px = chip ? t.metrics.valuePx - 0.5f : t.metrics.valuePx;
     r.pushClip(b);
+    if (s.variant == kButtonArrowLeft || s.variant == kButtonArrowRight) {
+        r.fillRoundRect(b, rad, hairline(s.active ? 0.2f : s.hot ? 0.13f : 0.07f));
+        r.strokeRoundRect(b, rad, hairline(s.hot ? 0.3f : 0.14f), c.shape.stroke);
+        const Point m = b.center();
+        const float k = s.variant == kButtonArrowLeft ? -1.0f : 1.0f;
+        const Color col = s.hot ? t.colors.text : t.colors.textDim;
+        r.drawLine({m.x + 2.0f * k, m.y - 4.0f}, {m.x - 2.0f * k, m.y}, col, 1.8f);
+        r.drawLine({m.x - 2.0f * k, m.y}, {m.x + 2.0f * k, m.y + 4.0f}, col, 1.8f);
+        if (s.focused)
+            focusRing(r, c, t, b, rad, s.accent);
+        r.popClip();
+        return;
+    }
+    if (s.variant == kButtonDisplay) {
+        r.fillRoundRect(b, c.shape.fieldRadius, hairline(s.hot ? 0.12f : 0.07f));
+        r.strokeRoundRect(b, c.shape.fieldRadius,
+                          s.active ? withAlpha(t.colors.accent, 0.8f) : hairline(s.hot ? 0.3f : 0.14f), c.shape.stroke);
+        r.drawTextPx(fitText(r, s.label, px, f(b.w) - 34.0f).c_str(), f(b.x) + f(b.w) * 0.5f - 6.0f,
+                     capY(f(b.y), f(b.h), px), t.colors.text, px, Align::Center);
+        const float ax = f(b.right()) - 13.0f, ay = f(b.y) + f(b.h) * 0.5f;
+        r.drawLine({ax - 3.5f, ay - 1.5f}, {ax, ay + 2.0f}, t.colors.textDim, 1.6f);
+        r.drawLine({ax, ay + 2.0f}, {ax + 3.5f, ay - 1.5f}, t.colors.textDim, 1.6f);
+        if (s.focused)
+            focusRing(r, c, t, b, c.shape.fieldRadius, s.accent);
+        r.popClip();
+        return;
+    }
     if (s.on) {
         if (chip && c.shape.controlShadow > 0.0f && c.effects.glow)
             r.drawShadow(b, rad, c.shape.controlShadow, halo(c, s.accent, 0.35f));
@@ -345,11 +384,136 @@ void ModernButton::paint(IRenderer& r, const Rect& b, const ButtonState& s) cons
         r.fillRoundRect(b, rad, hairline(fillA));
         r.strokeRoundRect(b, rad, hairline(s.hot ? (chip ? 0.28f : 0.3f) : (chip ? 0.12f : 0.14f)), c.shape.stroke);
     }
-    r.drawTextPx(fitText(r, s.label, px, f(b.w) - (chip ? 14.0f : 12.0f), FontWeight::Bold).c_str(),
-                 f(b.x) + f(b.w) * 0.5f, capY(f(b.y), f(b.h), px),
-                 s.on ? s.accent : (s.hot ? t.colors.text : t.colors.textDim), px, Align::Center, FontWeight::Bold);
+    const Color ink = s.on ? s.accent : (s.hot ? t.colors.text : t.colors.textDim);
+    float textX = f(b.x) + f(b.w) * 0.5f, room = f(b.w) - (chip ? 14.0f : 12.0f);
+    if (s.icon) {
+        // alone it is centered; beside a label it takes the left end
+        const bool text = s.label && *s.label;
+        const int ih = std::max(4, std::min(16, b.h - 10)), iw = std::min(ih * 2, std::max(4, b.w - 12));
+        const int ix = text ? b.x + 8 : b.x + (b.w - iw) / 2;
+        s.icon(r, {ix, b.y + (b.h - ih) / 2, iw, ih}, ink, 1.6f);
+        if (text) {
+            textX = f(ix + iw) + (f(b.right() - ix - iw)) * 0.5f;
+            room = f(b.right() - ix - iw) - 10.0f;
+        }
+    }
+    if (s.label && *s.label)
+        r.drawTextPx(fitText(r, s.label, px, room, FontWeight::Bold).c_str(), textX, capY(f(b.y), f(b.h), px), ink, px,
+                     Align::Center, FontWeight::Bold);
     if (s.focused)
         focusRing(r, c, t, b, rad, s.accent);
+    r.popClip();
+}
+
+// --- lamp ------------------------------------------------------------------------------------------------
+
+void ModernLed::paint(IRenderer& r, const Rect& b, const LedState& s) const {
+    const ModernConfig& c = cfg();
+    const Theme& t = *s.theme;
+    const float cy = f(b.y) + f(b.h) * 0.5f, rad = std::clamp(f(b.h) * 0.5f - 4.0f, 3.0f, 5.0f);
+    const Point at{f(b.x) + rad + 4.0f, cy};
+    const float k = s.on ? std::clamp(s.level, 0.0f, 1.0f) : 0.0f;
+    r.pushClip(b.expand(margin()));
+    r.fillCircle(at, rad + 1.5f, withAlpha(rgb(0, 0, 0), 0.45f));
+    r.fillCircle(at, rad, mix(withAlpha(s.accent, 0.22f), s.accent, k));
+    if (k > 0.0f) {
+        if (c.effects.glow) {
+            lit(r, c, 1.8f * k);
+            r.drawGlow(at, rad * 3.2f, halo(c, s.accent, 0.7f * k));
+            unlit(r);
+        }
+        r.fillCircle({at.x - rad * 0.25f, at.y - rad * 0.3f}, rad * 0.35f, withAlpha(kWhite, 0.55f * k));
+    }
+    if (s.label && *s.label) {
+        const float px = t.metrics.labelPx + 0.5f;
+        r.drawTextPx(fitText(r, s.label, px, f(b.w) - rad * 2.0f - 14.0f, FontWeight::Bold).c_str(), at.x + rad + 8.0f,
+                     capY(f(b.y), f(b.h), px), s.on ? t.colors.text : t.colors.textDim, px, Align::Left,
+                     FontWeight::Bold);
+    }
+    r.popClip();
+}
+
+// --- keyboard --------------------------------------------------------------------------------------------
+
+void ModernKeyboard::paint(IRenderer& r, const Rect& b, const KeyboardState& s) const {
+    const ModernConfig& c = cfg();
+    const Theme& t = *s.theme;
+    const keyboard::Layout lay = layout();
+    r.pushClip(b);
+    r.fillRect(b, withAlpha(rgb(0, 0, 0), 0.4f));
+    for (int pass = 0; pass < 2; ++pass)
+        for (int k = s.first; k <= s.last; ++k) {
+            if (keyboard::isBlack(k) != (pass == 1))
+                continue;
+            const keyboard::KeyRect kr = keyboard::keyRect(b, s.first, s.last, k, lay);
+            const bool down = s.down && s.down[k], sounding = s.lit && s.lit[k];
+            const Rect cell{static_cast<int>(kr.x0) + 1, static_cast<int>(kr.y0), static_cast<int>(kr.x1 - kr.x0) - 1,
+                            static_cast<int>(kr.y1 - kr.y0) - 1};
+            Color col = pass == 1 ? rgb(24, 28, 42) : rgb(214, 220, 236);
+            if (s.hotKey == k && !down)
+                col = pass == 1 ? rgb(40, 46, 66) : rgb(232, 238, 252);
+            if (down || sounding)
+                col = mix(col, s.accent, down ? 0.7f : 0.55f);
+            r.fillRoundRect(cell, 3.0f, col);
+            if (pass == 1)
+                r.strokeRoundRect(cell, 3.0f, hairline(0.18f), c.shape.stroke);
+            if (sounding && c.effects.glow) {
+                lit(r, c, 1.4f);
+                r.fillRoundRect(cell.inset(1), 2.0f, halo(c, s.accent, 0.35f));
+                unlit(r);
+            }
+        }
+    (void)t;
+    r.popClip();
+}
+
+// --- tabs and readout ------------------------------------------------------------------------------------
+
+void ModernTabs::paint(IRenderer& r, const Rect& b, const TabsState& s) const {
+    const ModernConfig& c = cfg();
+    const Theme& t = *s.theme;
+    const float px = t.metrics.labelPx + 0.5f;
+    r.pushClip(b);
+    for (int i = 0; i < s.count; ++i) {
+        const Rect cell = this->cell(b, s, i).inset(2, 1);
+        const bool on = i == s.index, hot = i == s.hotIndex;
+        const float rad = f(cell.h) * 0.5f;
+        if (on) {
+            r.fillRoundRect(cell, rad, withAlpha(s.accent, 0.3f));
+            r.strokeRoundRect(cell, rad, withAlpha(s.accent, 0.9f), c.shape.stroke);
+        } else if (hot) {
+            r.fillRoundRect(cell, rad, hairline(0.08f));
+        }
+        const char* text = s.labels && s.labels[i] ? s.labels[i] : "";
+        r.drawTextPx(fitText(r, text, px, f(cell.w) - 8.0f, FontWeight::Bold).c_str(), f(cell.x) + f(cell.w) * 0.5f,
+                     capY(f(cell.y), f(cell.h), px), on ? s.accent : (hot ? t.colors.text : t.colors.textDim), px,
+                     Align::Center, FontWeight::Bold);
+    }
+    if (s.focused)
+        focusRing(r, c, t, b, f(b.h) * 0.5f, s.accent);
+    r.popClip();
+}
+
+void ModernReadout::paint(IRenderer& r, const Rect& b, const ReadoutState& s) const {
+    const ModernConfig& c = cfg();
+    const Theme& t = *s.theme;
+    const float px = t.metrics.valuePx;
+    r.pushClip(b);
+    r.fillRoundRect(b, c.shape.fieldRadius, hairline(0.05f));
+    r.strokeRoundRect(b, c.shape.fieldRadius, hairline(0.12f), c.shape.stroke);
+    const float y = capY(f(b.y), f(b.h), px);
+    if (s.idle) {
+        r.drawTextPx(fitText(r, s.name, px, f(b.w) - 20.0f).c_str(), f(b.x) + 10.0f, y, t.colors.textFaint, px);
+    } else {
+        const std::string line = std::string(s.name) + ": " + s.value;
+        r.drawTextPx(fitText(r, line, px, f(b.w) - 20.0f, FontWeight::Bold).c_str(), f(b.x) + 10.0f, y, t.colors.text,
+                     px, Align::Left, FontWeight::Bold);
+        if (s.hint && *s.hint) {
+            const float lw = r.textWidthPx(line.c_str(), px, FontWeight::Bold), hw = r.textWidthPx(s.hint, px);
+            if (lw + hw + 36.0f < f(b.w))
+                r.drawTextPx(s.hint, f(b.right()) - 10.0f, y, t.colors.textDim, px, Align::Right);
+        }
+    }
     r.popClip();
 }
 

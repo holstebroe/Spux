@@ -8,7 +8,9 @@ only in namespace and include guards, or not at all.
 | spux part | Source today | Notes |
 | --- | --- | --- |
 | Classic drawing (`Graphics`, `Font`, `FileDialog`, `modern/ModernDraw`, `DisplayFont`, `LabelFont`) | Acidus, Tannhauser, Tearwash | Three copies; Tannhauser and Tearwash byte-identical. Renamed `modern/` to `classic/`. **Moved to `spux_ui_classic` (step 2); Tearwash migrated.** |
-| Classic CPU renderer | Plumeflow `ui/SoftRenderer` + the files above | Merge into one supersampled renderer with shading helpers. |
+| Classic CPU renderer | Plumeflow `ui/SoftRenderer` + the files above | Merge into one supersampled renderer with shading helpers. **Done (step 7, Classic): `ShadedRenderer` (the basics and the shading helpers over the Classic drawing code); Plumeflow's `SoftRenderer` became the Modern fallback (session 9), so only the Classic drawing code was merged into it.** |
+| Envelope, LFO, chorus, voice allocator, modulation routes, brown and crackle noise | Gritbaal `core/Envelope`, `Lfo`, `Chorus`, `SynthEngine` (voice allocation, mod targets), `Oscillator` (noise); Tannhauser `SynthEngine::allocateVoice` | **Harvested into `spux_dsp` (session 11)**: `Adsr`, `Lfo`, `Chorus`, `VoiceAllocator`, `ModMatrix`, `BrownNoise`, `CrackleNoise`; `Wave` in `spux_core`. Gritbaal itself not migrated yet. |
+| Classic painters | Tannhauser `gui/PanelRenderer` (knob, slider cap, rocker, lever, tone and arrow buttons, panel), Acidus `gui/modern/ModernSkin` (knurled knob, lever switch, worn panel), Tearwash `TwGui` (the look Tannhauser took) | **`ClassicStyle` with a `ClassicConfig` (step 7, Classic); Tannhauser and Acidus drawn pixel for pixel, Tearwash not compared.** |
 | Retro style and fonts | Acidus `RetroSkin`, Syrebas and Gritbaal renderers, Paulascape `Framebuffer` and pt2 font, Kikset `Graphics` | Four drifting forks of the same `Graphics`. |
 | Skin interfaces | Acidus `IGuiSkin`, Gritbaal `IControlRenderer`, Syrebas `IControlRenderer` | Become the per-widget painter interfaces. **Interfaces in `spux_ui_core` (step 6)**; the skins become flavor painters in step 7. |
 | Native window | Plumeflow `gfx/NativeWindow*` (ported from Acidus); `GuiWindow` code in Acidus, Gritbaal, Syrebas, Tannhauser, Tearwash, Kikset, Paulascape | Plumeflow's version is the base; Cocoa missing. **Moved to `spux_platform` (step 3); Tearwash migrated.** |
@@ -149,7 +151,7 @@ plugin-specific views and page code.
    changed. The gate code was removed after the decision (kept in history at 313587b; see `docs/UI_GATE.md`). Left: the flavors' painters and renderers (step 7, from Acidus's skins, Tannhauser's panel
    renderer and Plumeflow's look); Plumeflow switches in step 8; the GPU path in the editor shell, window
    scaling, cascading submenus in spux's popup (U9, for Tannhauser's preset menu) and the shared views (`ui/Views`).
-7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow.
+7. Flavors: Retro and Classic painters from the existing skins; Modern from Plumeflow. **Classic and Modern done in spux; Retro left.**
    **Modern done in spux** (session 9, 2026-10-20), `spux_ui_modern` (STATIC, one object per part):
    `GpuRenderer` (with `Look` for the post chain), `FontAtlas` and the Inter data (own object), the shaders
    embedded by `cmake/SpuxEmbedShaders.cmake`, `tools/make_fonts.py`, `SoftRenderer` (supersample 1 to 4, shareable atlas),
@@ -181,9 +183,58 @@ plugin-specific views and page code.
    (only when a display is configured). Also fixed: clang builds (an unused field in `GuiCore`, unused GLX constants).
    Left: Retro and Classic painters; cascading submenus in the popup; Cocoa; the Win32 build of this code is unverified
    (no Windows toolchain here; CI is the check); Plumeflow's switch (step 8).
+   **Classic done in spux** (session 10, 2026-10-20), in `spux_ui_classic` (STATIC, one object per part): `ShadedRenderer`
+   (an `IRenderer` on `CpuLayers`, supersample 1 to 4, default 2 with the box filter; analytic edges for the basics, clip for
+   everything including text and shading; the shading helpers: `graphics()`, `ink`, `inkCentered`, `wornPanel` with a per-renderer
+   cache, the two atlas fonts), `ClassicStyle` (`ClassicKnob`, `ClassicSlider`, `ClassicToggle`, `ClassicSelector`,
+   `ClassicButton`, `ClassicPanel`, `drawLed`) with `ClassicConfig` (`slate()`, `silver()`), and `classicRenderer()` for
+   `Editor<ClassicStyle>`. `ClassicDraw` gained `shadeRoundRect` and `softShadow` (the third copies: Tannhauser, Tearwash and
+   Acidus each had them) and `Graphics` a clip (`setClip`; the default is the whole buffer, so the golden hash of the drawing
+   code is unchanged). Tests: `ui_classic_style_test` (renderer primitives and clipping, the worn-panel cache, every painter
+   inside its bounds plus margin in both looks and at four sizes, no drawing on another renderer, the lamp, the geometry the
+   interaction asks for, a knob drag, selector and toggle through the `Gui`, `configure()`, the showcase as golden frames in
+   both looks, the plugin canvases as golden frames, the editor shell with caches against an uncached frame). The golden
+   frames are quarter-size pixmaps in `tests/golden/` (structural similarity). **No plugin changed.** Against the plugins'
+   own code (a harness outside the repository compiles Tannhauser's `PanelRenderer.cpp` and Acidus's `ModernSkin.cpp`
+   unchanged, draws the same widgets on the same canvas with the painters, and diffs the frames): Tannhauser's knobs (scale and
+   hover), faders (dark and colored caps, ticks, slot), rockers (well, lamp), lever, tone buttons (lit, dim, hover), arrow
+   buttons (hover, pressed) and the surface are **identical to the last pixel** (largest difference 0 of 255); Acidus's worn
+   panel, knurled knobs (metal and four cap colors, labels) and lever switches are identical except for what Acidus draws in its
+   switch (the printed waveform symbols, which stay in the plugin). Tearwash was not compared (see the notes below). Size (stripped,
+   GCC -O2 on x64 Linux, with the standard library, the same kind of probe as for Modern: eight widgets drawn once): `ClassicStyle` on
+   `ShadedRenderer` 210 KB, against 109 KB for the core `Gui` with a plain test style and 244 KB for `ModernStyle` on `SoftRenderer`; the two
+   font tables are in `ShadedRenderer`'s object, so a program that draws on it carries both.
+   **Second round of the same session** (after review): the LED is a painter interface of its own (`LedPainter`, `LedState`,
+   `Gui::led`; `ClassicLed`, `ModernLed`); the Classic dropdown, stepper, text field, popup and tooltip painters (a recessed
+   display, `[-] [+]` buttons, a floating dark list with shadow); a **keyboard** widget in the core (`KeyboardPainter`,
+   `KeyboardState`, the shared geometry in `keyboard::`, `Gui::keyboard` reporting press, release, velocity and glide; painters
+   in both flavors); **icons** (`spux/ui/Icons.hpp`: `Icon` is a function and a pointer, so a plugin writes its own; the built-in
+   set is the waveforms, `Wave`, `waveIcon`, `drawWave`; buttons take `icon`, selectors `icons`, in both flavors). The tone and
+   rocker, paddle, ribbon and LCD of Tannhauser stay plugin territory. `docs/WIDGETS.md` is the status table of every control
+   per flavor with an image of each, from `spux_widget_gallery`. The pixel comparison with the plugins is unchanged (Tannhauser
+   0 of 255; Acidus identical outside its printed symbols).
+   Left: Retro; Classic spectrum, traces and curve editor; a modulation display on the Classic knob; Classic scaling in steps (U11);
+   cascading submenus (U9); Tearwash's faders (slot width, two-sided scale).
 8. Plumeflow and Lumeoid move onto spux (Lumeoid's GPU UI starts on spux directly).
 
 lexwash starts on spux from its first line.
+
+**Gritbaal harvest** (session 11, 2026-10-21; Gritbaal is work in progress, so spux's concepts win where they differ). DSP:
+`Adsr`, `Lfo`, `Chorus`, `VoiceAllocator`, `ModMatrix` (one route per source for a single-target synth, more routes for
+macros), `BrownNoise`, `CrackleNoise`; the `Wave` enum moved to `spux_core` so LFOs, icons and oscillators name waves
+once. UI: the knob's circular value, modulation and end-tick arcs and the pickable highlight (`ClassicConfig::Knob::Arc`,
+`KnobState::pickable`; Modern draws a pick ring), a drag option on the dropdown, `Gui::tabs`, `Gui::readout` (three plugins
+had a "what is under the pointer" bar), `presetBar`, the display and arrow button variants as core `StdButtonVariant`, the
+forge look (`ClassicConfig::forge()`: iron plates, rivets, copper trim, dark gunmetal knurled knobs with a glowing pointer,
+lever with a lamp). What Gritbaal meets when it switches (it does not yet): its envelope's attack knob was a time constant
+(about a third of the time to 1; `Adsr` attack is the time to 1, so the knob range is rescaled); LFO patterns map Sine,
+Triangle, Saw, Square as before, Perlin to `Wave::Noise`, PulseGate to `Wave::Pulse`, and a triangle starts at 0 instead of
+-1; a re-struck key keeps its voice while it rings out, not only while it is held; the free voice is taken round-robin,
+not first-free, and a steal takes the voice released longest ago (by release time, not by age); white noise is uniform and
+pink noise Kellet's 3-pole version (spux's); brown and crackle noise derive their decay from times, not a fixed per-sample
+factor; random numbers are PCG32, not `std::mt19937`; `Chorus` is the same law on a spux delay line; glide is
+`Smoothed<OnePole>`; the filter keeps its ladder and Sallen-Key models (character) and drops its saturator and solver
+copies for spux's, its 16-tap FIR oversampler for the half-band `Oversampler`; the thermal walk is `OuDrift`.
 
 ## Provenance and switch notes
 
@@ -244,6 +295,39 @@ from its own copy, is kept here.
   and pattern banks.
 - **UI core**: `Geometry`, `IRenderer`, `Gui`, `Editor`, `EditorHost` (its modulation extension is Plumeflow's
   matrix) and `Live` come from Plumeflow `ui/`; `EditQueue` gesture balancing follows Plumeflow's Gui.
+- **Gritbaal harvest**: `Adsr` is Gritbaal `core/Envelope` (RC attack aimed at 1.05, exponential decay and release,
+  smoothstep shaping), `Lfo` its `core/Lfo` (Perlin pattern as `Wave::Noise`), `Chorus` its `core/Chorus`,
+  `VoiceAllocator` the key assigner of Gritbaal's `SynthEngine::allocateVoice` and Tannhauser's (their steps merged),
+  `CrackleNoise` and `BrownNoise` its `Oscillator::generateNoiseSample`; the knob arcs, the target highlight, the tabs, the
+  touched-control bar and the preset header are its `IndustrialGritbaalRenderer` and `GuiWindow`.
+- **Classic style** (`classic/ShadedRenderer`, `classic/ClassicStyle`, `classic/ClassicConfig`): the knob, slider cap, rocker,
+  lever, tone and arrow buttons and the slate surface are Tannhauser `gui/PanelRenderer` (`drawKnob`, `drawSliderCap`,
+  `drawRockerKey`, `drawLever`, `drawToneButton`, `drawArrowButton`, the slot, tick and scale code of `drawStatic`), which took
+  its cap, disc and button look from Tearwash `TwGui`; the knurled knob, the lever switch and the worn panel are Acidus
+  `gui/modern/ModernSkin`; `drawLed` is new, in the lamp style of Tannhauser's rocker lamp and memory dot. What a plugin meets when it
+  switches:
+  - Tannhauser: a control becomes a standard widget whose bounds the painter draws in, with what the static layer printed: the
+    scale of a knob (bounds = the control's rectangle grown by 7 for a 44 px knob: the dial's radius plus 10 on every side), the
+    slot and ticks of a fader (bounds = the control's rectangle, the cap 21 x 11, the slot 5 wide), the well of a rocker (bounds
+    = the key's rectangle grown by 4), the slot of a lever. A cap's color is the widget's accent (`KnobOptions::accent` and
+    the others): the default accent is neutral metal, so a fader or lever cap with no color of its own is the dark one (Tannhauser's
+    `kCapBlack`). A fader's center tick is lit when the parameter's range crosses zero (Tannhauser asked its own `PF_BIPOLAR` flag).
+    A button's pressed and hovered states are separate, as there; a knob's or fader's pressed state brightens like hover. The tone
+    button's two legend lines are one label with a newline, set at 0.31 and 0.62 of the height (the same pixels at Tannhauser's
+    32). The LCD, paddles, ribbon, keyboard, readout, header, walnut cheeks, waveform symbols and the name board stay in the plugin
+    (drawn with `ShadedRenderer::graphics()` and the `ClassicDraw` helpers in a `Gui::view` or the background).
+  - Acidus: the knurled knob's bounds are `2r + 31` wide and `2r + 31 + 15` high for the radius `r` (the dial centered on a pixel
+    center, a row of 15 above it for the label, which is the label's old place); `silver()` sets that. The panel is a titleless
+    `Gui::panel` over the window (trims on) and the printed divider is the plugin's. The sprite cache of finished knobs is not
+    needed: `Gui` skips a widget whose state is unchanged. Labels are clipped to the widget's bounds now (the old skin drew them
+    outside), so a toggle's bounds must be as wide as its label.
+  - Tearwash: its look is the slate look with `knob.ticks = false`, `slider.capW = 28`, `capH = 15` and `button.radius` 4 or 5; its
+    faders also print a tick scale on both sides and a slot 4 wide, which `ClassicStyle` does not offer yet, so it was not
+    switched or compared.
+  - Tannhauser's LCD becomes a `dropdown` or a plain display drawn by the plugin; its preset menu is the popup; the keyboard is
+    `Gui::keyboard` (keys 36 to 96; the felt strip is `ClassicConfig::keyboardFelt`); the waveform symbols printed on the
+    panel are `Wave` icons, or the plugin's own `Icon`.
+  - Acidus's printed waveform symbols can be `drawWave` calls in its background; its switch has no symbols of its own.
 - **Modern UI**: `GpuRenderer`, `FontAtlas`, the shaders, `InterFont` (byte for byte, namespace only) and
   `tools/make_fonts.py` come from Plumeflow `ui/` and `tools/`; `cmake/EmbedShaders.cmake` is
   `spux_embed_shaders` (it takes the output file; the raw string delimiter is `SPX`). `SoftRenderer` replaces

@@ -78,6 +78,35 @@ public:
     void paint(IRenderer& r, const Rect& bounds, const ButtonState& s) const override;
 };
 
+// A lit dot with a halo, the label to its right.
+class ModernLed final : public LedPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const LedState& s) const override;
+    [[nodiscard]] Margin margin() const override { return Margin::all(10); }
+};
+
+// Rounded keys on a dark rail; held keys take the accent, sounding keys glow in it.
+class ModernKeyboard final : public KeyboardPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const KeyboardState& s) const override;
+};
+
+// Pills in a row, the selected one in the accent.
+class ModernTabs final : public TabsPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const TabsState& s) const override;
+};
+
+// The name and value of the parameter under the pointer, the hint to the right.
+class ModernReadout final : public ReadoutPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const ReadoutState& s) const override;
+};
+
 class ModernDropdown final : public DropdownPainter, detail::PainterBase {
 public:
     using PainterBase::PainterBase;
@@ -123,8 +152,8 @@ public:
 struct ModernStyle {
     explicit ModernStyle(const ModernConfig& c = {})
         : theme(c.theme), config_(c), knob(config_), slider(config_), toggle(config_), selector(config_),
-          button(config_), dropdown(config_), stepper(config_), panel(config_), textField(config_), popup(config_),
-          tooltip(config_) {}
+          button(config_), led(config_), tabs(config_), readout(config_), keyboard(config_), dropdown(config_),
+          stepper(config_), panel(config_), textField(config_), popup(config_), tooltip(config_) {}
     ModernStyle(const ModernStyle&) = delete;
     ModernStyle& operator=(const ModernStyle&) = delete;
 
@@ -147,6 +176,10 @@ public:
     ModernToggle toggle;
     ModernSelector selector;
     ModernButton button;
+    ModernLed led;
+    ModernTabs tabs;
+    ModernReadout readout;
+    ModernKeyboard keyboard;
     ModernDropdown dropdown;
     ModernStepper stepper;
     ModernPanel panel;

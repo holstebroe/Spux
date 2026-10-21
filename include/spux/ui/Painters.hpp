@@ -16,6 +16,7 @@
 
 #include "spux/params/ParamInfo.hpp"
 #include "spux/ui/IRenderer.hpp"
+#include "spux/ui/Icons.hpp"
 #include "spux/ui/Theme.hpp"
 
 namespace spux::inline v1::ui {
@@ -56,7 +57,8 @@ struct KnobState : WidgetState {
     bool caret = false;   // the entry caret is visible this frame
     bool bipolar = false; // the arc starts at the center
     bool large = false;
-    bool dimmed = false; // shown but overridden (a tempo-synced rate)
+    bool dimmed = false;   // shown but overridden (a tempo-synced rate)
+    bool pickable = false; // can be picked right now (a modulation target, MIDI learn): the painter highlights it
     bool showValue = true;
     Color accent = 0;
     ModulationView mod;
@@ -89,6 +91,7 @@ struct SelectorState : WidgetState {
     int index = 0;                       // the current step
     int hotIndex = -1;                   // the step under the pointer
     const char* const* labels = nullptr; // count labels, or null: the parameter's enum labels
+    const Icon* icons = nullptr;         // count icons shown in place of the labels, or null
     bool vertical = false;
     Color accent = 0;
 };
@@ -98,6 +101,107 @@ struct ButtonState : WidgetState {
     bool on = false; // selected (a tab, a lit button)
     Color accent = 0;
     int variant = 0; // a painter's own variants (chip, arrow, ...)
+    Icon icon = {};  // shown beside the label, or alone when the label is empty
+};
+
+// A lamp: on or off, or any level between (a signal, a meter segment). It takes no input.
+struct LedState : WidgetState {
+    const char* label = "";
+    bool on = false;
+    float level = 1.0f; // brightness of a lit lamp, 0..1
+    Color accent = 0;
+};
+
+// A piano keyboard of the keys first..last (MIDI notes). `down` is the key the pointer holds, `lit` the keys
+// that sound (both 128 flags indexed by note, or null), `hotKey` the key under the pointer.
+struct KeyboardState : WidgetState {
+    int first = 36, last = 96;
+    const std::uint8_t* down = nullptr;
+    const std::uint8_t* lit = nullptr;
+    int hotKey = -1;
+    Color accent = 0;
+};
+
+namespace keyboard {
+inline bool isBlack(int key) {
+    const int n = ((key % 12) + 12) % 12;
+    return n == 1 || n == 3 || n == 6 || n == 8 || n == 10;
+}
+// The geometry every flavor shares, so what is drawn is what is hit.
+struct Layout {
+    float blackWidth = 0.62f;  // of a white key's width
+    float blackLength = 0.62f; // of the keyboard's height
+};
+struct KeyRect {
+    float x0 = 0, y0 = 0, x1 = 0, y1 = 0; // logical pixels
+    bool black = false;
+};
+// The white keys of first..last (a keyboard may begin or end on a black key: it then has half a white key there).
+inline int whiteKeys(int first, int last) {
+    int n = 0;
+    for (int k = first; k <= last; ++k)
+        n += isBlack(k) ? 0 : 1;
+    return n > 0 ? n : 1;
+}
+inline KeyRect keyRect(const Rect& b, int first, int last, int key, const Layout& l = {}) {
+    const float ww = static_cast<float>(b.w) / static_cast<float>(whiteKeys(first, last));
+    int whitesBefore = 0;
+    for (int k = first; k < key; ++k)
+        whitesBefore += isBlack(k) ? 0 : 1;
+    KeyRect r;
+    r.black = isBlack(key);
+    if (!r.black) {
+        r.x0 = static_cast<float>(b.x) + ww * static_cast<float>(whitesBefore);
+        r.x1 = r.x0 + ww;
+        r.y0 = static_cast<float>(b.y);
+        r.y1 = static_cast<float>(b.bottom());
+    } else {
+        const float cx = static_cast<float>(b.x) + ww * static_cast<float>(whitesBefore);
+        r.x0 = cx - ww * l.blackWidth * 0.5f;
+        r.x1 = cx + ww * l.blackWidth * 0.5f;
+        r.y0 = static_cast<float>(b.y);
+        r.y1 = static_cast<float>(b.y) + static_cast<float>(b.h) * l.blackLength;
+    }
+    return r;
+}
+// The key under a point (black keys first), or -1.
+inline int keyAt(const Rect& b, int first, int last, Point p, const Layout& l = {}) {
+    for (int pass = 0; pass < 2; ++pass)
+        for (int k = first; k <= last; ++k) {
+            if (isBlack(k) != (pass == 0))
+                continue;
+            const KeyRect r = keyRect(b, first, last, k, l);
+            if (p.x >= r.x0 && p.x < r.x1 && p.y >= r.y0 && p.y < r.y1)
+                return k;
+        }
+    return -1;
+}
+} // namespace keyboard
+
+// Button variants every flavor draws, so a helper (the preset bar) works in all of them. A flavor's own variants
+// are numbered from 0 upward; these start at 100.
+enum StdButtonVariant : int {
+    kButtonArrowLeft = 100,  // a chevron pointing left (previous)
+    kButtonArrowRight = 101, // and right (next)
+    kButtonDisplay = 102     // a recessed display of the label that opens something when pressed
+};
+
+// A row of tabs, one selected.
+struct TabsState : WidgetState {
+    int count = 0;
+    int index = 0;
+    int hotIndex = -1;
+    const char* const* labels = nullptr;
+    Color accent = 0;
+};
+
+// What the pointer is on: the parameter's name and value, and its hint, or the idle text.
+struct ReadoutState : WidgetState {
+    const char* name = "";
+    const char* value = "";
+    const char* hint = "";
+    bool idle = false; // no parameter: `name` is the idle text
+    Color accent = 0;
 };
 
 struct DropdownState : WidgetState {
@@ -188,6 +292,27 @@ public:
 };
 
 class ButtonPainter : public Painter<ButtonState> {};
+class LedPainter : public Painter<LedState> {};
+class ReadoutPainter : public Painter<ReadoutState> {};
+
+class TabsPainter : public Painter<TabsState> {
+public:
+    // The part of the bounds that picks tab i; the default divides the bounds evenly along the row.
+    [[nodiscard]] virtual Rect cell(const Rect& b, const TabsState& s, int i) const {
+        const int n = s.count > 0 ? s.count : 1;
+        const int x0 = b.x + b.w * i / n, x1 = b.x + b.w * (i + 1) / n;
+        return {x0, b.y, x1 - x0, b.h};
+    }
+};
+
+class KeyboardPainter : public Painter<KeyboardState> {
+public:
+    // The key under a point; the default is the shared geometry (keyboard::keyAt) with this painter's layout.
+    [[nodiscard]] virtual int keyAt(const Rect& b, const KeyboardState& s, Point p) const {
+        return keyboard::keyAt(b, s.first, s.last, p, layout());
+    }
+    [[nodiscard]] virtual keyboard::Layout layout() const { return {}; }
+};
 class DropdownPainter : public Painter<DropdownState> {};
 
 class StepperPainter : public Painter<StepperState> {

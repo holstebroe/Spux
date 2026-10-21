@@ -9,6 +9,14 @@ Graphics::Graphics(uint32_t* buffer, uint32_t width, uint32_t height, int scale)
     : buffer_(buffer), logicalWidth_(width), logicalHeight_(height), scale_(scale) {
     bufferWidth_ = logicalWidth_ * scale_;
     bufferHeight_ = logicalHeight_ * scale_;
+    clearClip();
+}
+
+void Graphics::setClip(int bx0, int by0, int bx1, int by1) {
+    clipX0_ = std::max(0, bx0);
+    clipY0_ = std::max(0, by0);
+    clipX1_ = std::min(static_cast<int>(bufferWidth_), bx1);
+    clipY1_ = std::min(static_cast<int>(bufferHeight_), by1);
 }
 
 void Graphics::clear(uint32_t color) {
@@ -19,7 +27,7 @@ void Graphics::clear(uint32_t color) {
 }
 
 void Graphics::blendPixel(int bx, int by, uint32_t srcColor) {
-    if (bx < 0 || bx >= static_cast<int>(bufferWidth_) || by < 0 || by >= static_cast<int>(bufferHeight_)) {
+    if (bx < clipX0_ || bx >= clipX1_ || by < clipY0_ || by >= clipY1_) {
         return;
     }
 

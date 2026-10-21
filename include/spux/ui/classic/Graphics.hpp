@@ -32,6 +32,15 @@ public:
     int getScale() const { return scale_; }
     uint32_t* getBuffer() { return buffer_; }
 
+    // Limits blendPixel (and so every drawing call) to [bx0, bx1) x [by0, by1) in buffer coordinates; the
+    // default is the whole buffer. The box is clamped to the buffer.
+    void setClip(int bx0, int by0, int bx1, int by1);
+    void clearClip() { setClip(0, 0, static_cast<int>(bufferWidth_), static_cast<int>(bufferHeight_)); }
+    int clipX0() const { return clipX0_; }
+    int clipY0() const { return clipY0_; }
+    int clipX1() const { return clipX1_; }
+    int clipY1() const { return clipY1_; }
+
     uint32_t getWidth() const { return logicalWidth_; }
     uint32_t getHeight() const { return logicalHeight_; }
 
@@ -42,6 +51,7 @@ private:
     int scale_{1};
     uint32_t bufferWidth_{0};
     uint32_t bufferHeight_{0};
+    int clipX0_{0}, clipY0_{0}, clipX1_{0}, clipY1_{0};
 };
 
 } // namespace spux::inline v1::ui::classic

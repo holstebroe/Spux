@@ -34,7 +34,7 @@ target_include_directories(clap_glue_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 # spux_core and spux_dsp (header-only). The kernel test reads and, with SPUX_UPDATE_GOLDEN=1, writes
 # tests/kernels/ in the source tree.
 foreach(t math_test pcg32_test smoothing_test filters_test halfband_test blep_test saturator_test noise_drift_test
-          dsp_kernel_test)
+          modulation_test dsp_kernel_test)
   spux_add_test(${t} spux_dsp)
   target_compile_definitions(${t} PRIVATE SPUX_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 endforeach()
@@ -92,3 +92,16 @@ foreach(t ui_modern_test gpu_renderer_test)
   target_include_directories(${t} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_definitions(${t} PRIVATE SPUX_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 endforeach()
+
+# spux_ui_classic: the shaded renderer and ClassicStyle (ui_classic_style_test). Golden frames are quarter-size
+# portable pixmaps in tests/golden/, compared by structural similarity.
+spux_add_test(ui_classic_style_test spux_ui_classic)
+target_include_directories(ui_classic_style_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(ui_classic_style_test PRIVATE SPUX_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+
+# spux_widget_gallery: renders an image of every control per flavor (docs/WIDGETS.md). Not a test.
+add_executable(spux_widget_gallery gallery/WidgetGallery.cpp)
+target_link_libraries(spux_widget_gallery PRIVATE spux_ui_classic spux_ui_modern spux_doctest)
+target_include_directories(spux_widget_gallery PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(spux_widget_gallery PRIVATE SPUX_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+spux_target_flags(spux_widget_gallery)
