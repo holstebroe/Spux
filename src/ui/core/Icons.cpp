@@ -30,28 +30,6 @@ void drawIcon(IRenderer& r, const Rect& area, Color color, float width, const vo
 
 } // namespace
 
-const char* waveName(Wave w) {
-    switch (w) {
-    case Wave::Sine:
-        return "Sine";
-    case Wave::Triangle:
-        return "Triangle";
-    case Wave::Saw:
-        return "Saw";
-    case Wave::SawDown:
-        return "Saw down";
-    case Wave::Square:
-        return "Square";
-    case Wave::Pulse:
-        return "Pulse";
-    case Wave::Noise:
-        return "Noise";
-    case Wave::SampleHold:
-        return "Sample and hold";
-    }
-    return "";
-}
-
 void drawWave(IRenderer& r, Wave w, const Rect& area, Color color, float width) {
     if (area.empty())
         return;

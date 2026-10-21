@@ -13,6 +13,7 @@
 
 namespace classic_test {
 
+using namespace spux;
 using namespace spux::ui;
 using namespace spux::ui::classic;
 using namespace testparams;

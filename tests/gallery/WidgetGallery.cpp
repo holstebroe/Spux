@@ -20,6 +20,7 @@
 
 namespace {
 
+using namespace spux;
 using namespace spux::ui;
 
 constexpr int kZoom = 2;

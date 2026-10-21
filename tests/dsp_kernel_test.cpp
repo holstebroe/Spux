@@ -13,10 +13,13 @@
 #include "spux/core/Smoothing.hpp"
 #include "spux/dsp/Biquad.hpp"
 #include "spux/dsp/Blep.hpp"
+#include "spux/dsp/Chorus.hpp"
 #include "spux/dsp/DcBlock.hpp"
 #include "spux/dsp/DelayLine.hpp"
 #include "spux/dsp/Drift.hpp"
+#include "spux/dsp/Envelope.hpp"
 #include "spux/dsp/Halfband.hpp"
+#include "spux/dsp/Lfo.hpp"
 #include "spux/dsp/Noise.hpp"
 #include "spux/dsp/OnePole.hpp"
 #include "spux/dsp/Saturator.hpp"
@@ -266,6 +269,70 @@ TEST_CASE("kernel references") {
         for (int i = 0; i < 4096; ++i)
             y.push_back(static_cast<float>(d.step()));
         refs.check("ou_drift", y);
+    }
+
+    // modulation sources, noise colors and the chorus
+    {
+        Adsr<float> env;
+        env.prepare(kFs);
+        env.setAttack(0.004);
+        env.setDecay(0.02);
+        env.setSustain(0.4f);
+        env.setRelease(0.03);
+        std::vector<float> y;
+        for (int i = 0; i < 4096; ++i) {
+            if (i == 0 || i == 2200)
+                env.gateOn();
+            if (i == 1200 || i == 3400)
+                env.gateOff();
+            env.tick();
+            y.push_back(env.value());
+            y.push_back(env.shaped(0.6f));
+        }
+        refs.check("adsr", y);
+    }
+    {
+        std::vector<float> y;
+        for (int w = 0; w < kWaveCount; ++w) {
+            Lfo<float> lfo;
+            lfo.prepare(kFs);
+            lfo.setRate(37.0);
+            lfo.setWave(static_cast<Wave>(w));
+            lfo.seed(Pcg32(5 + w, 3));
+            for (int i = 0; i < 1024; ++i)
+                y.push_back(lfo.tick());
+        }
+        refs.check("lfo", y);
+    }
+    {
+        Chorus<float> ch;
+        ch.prepare(kFs);
+        ch.setRate(0.8);
+        ch.setDepthMs(5.0);
+        ch.setMix(0.6f);
+        std::vector<float> y;
+        for (size_t i = 0; i < x.size(); ++i) {
+            float l = x[i], r = x[x.size() - 1 - i];
+            ch.process(l, r);
+            y.push_back(l);
+            y.push_back(r);
+        }
+        refs.check("chorus", y);
+    }
+    {
+        BrownNoise<float> b;
+        b.prepare(kFs);
+        b.seed(Pcg32(12, 1));
+        CrackleNoise<float> c;
+        c.prepare(kFs);
+        c.setRate(800.0);
+        c.seed(Pcg32(13, 2));
+        std::vector<float> y;
+        for (int i = 0; i < 4096; ++i) {
+            y.push_back(b.tick());
+            y.push_back(c.tick());
+        }
+        refs.check("noise_colors", y);
     }
 }
 

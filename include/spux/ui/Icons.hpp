@@ -5,10 +5,11 @@
 //   void drawGear(IRenderer& r, const Rect& area, Color c, float width, const void* data) { ... }
 //   g.button("settings", rect, "", {.icon = {drawGear}});
 //
-// The built-in set is the waveforms nearly every oscillator wants (Wave): waveIcon(Wave::Saw) is the Icon, and
-// drawWave draws one directly (a view, a background).
+// The built-in set is the waveforms nearly every oscillator wants (Wave, spux/core/Wave.hpp): waveIcon(Wave::Saw) is
+// the Icon, and drawWave draws one directly (a view, a background).
 #pragma once
 
+#include "spux/core/Wave.hpp"
 #include "spux/ui/IRenderer.hpp"
 
 namespace spux::inline v1::ui {
@@ -28,11 +29,6 @@ struct Icon {
     friend bool operator==(const Icon&, const Icon&) = default;
 };
 
-// One period (or two teeth, steps) of the common oscillator shapes.
-enum class Wave { Sine, Triangle, Saw, SawDown, Square, Pulse, Noise, SampleHold };
-inline constexpr int kWaveCount = 8;
-
-[[nodiscard]] const char* waveName(Wave w);
 // The wave drawn as a line `width` thick, centered in `area` with room for the stroke.
 void drawWave(IRenderer& r, Wave w, const Rect& area, Color color, float width = 1.5f);
 // The built-in icon of a wave.
