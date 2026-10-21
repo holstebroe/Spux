@@ -2,10 +2,11 @@
 //
 //   spux_widget_gallery <output directory>
 //
-// The names are <look>_<control>.png: classic (slate), silver (the Classic silver look), modern (the Modern style on
-// the software renderer) and core for what every flavor draws the same (the waveform icons). Controls are drawn
-// through their painters on the look's own background, at twice their size.
-// The test helpers use doctest's CHECK; the gallery is not a test, so they compile to nothing.
+// The names are <look>_<control>.png: classic (slate), silver (the Classic silver look), forge (the Classic forge
+// look), modern (the Modern style on the software renderer), retro_silver, retro_tracker and retro_forge (the three
+// Retro looks) and core for what every flavor draws the same (the waveform icons). Controls are drawn through their
+// painters on the look's own background, at twice their size; <look>_page.png of a Retro look is the whole showcase
+// page. The test helpers use doctest's CHECK; the gallery is not a test, so they compile to nothing.
 #define DOCTEST_CONFIG_DISABLE
 
 #include <cstdio>
@@ -17,6 +18,7 @@
 #include "ui/ClassicSupport.hpp"
 #include "ui/ModernSupport.hpp"
 #include "ui/PngWriter.hpp"
+#include "ui/RetroSupport.hpp"
 
 namespace {
 
@@ -263,6 +265,32 @@ void classicGallery(const std::string& dir, const char* look, classic::ClassicCo
     }
 }
 
+void retroGallery(const std::string& dir, const std::string& look, retro::RetroConfig cfg) {
+    const bool trims = cfg.trims.on;
+    cfg.trims.on = false; // the trims of a page would cut through these small canvases
+    retro::RetroStyle style(cfg);
+    for (const Entry& e : kEntries) {
+        retro::PixelRenderer r(e.w, e.h, *cfg.font, cfg.titleFont);
+        r.clear(cfg.theme.colors.background);
+        // the surface under the control, as a page would have it
+        PanelState surface;
+        surface.theme = &style.theme;
+        style.panel.paint(r, {0, 0, e.w, e.h}, surface);
+        if (e.overlay)
+            drawOverlay(e.name, style, r, e.w, e.h);
+        else
+            drawControl(e.name, style, r, {4, 4, e.w - 8, e.h - 8});
+        save(dir, look + "_" + e.name, r.frame(), e.w, e.h);
+    }
+    // the whole showcase page of the look
+    retro_test::Host host;
+    retro::PixelRenderer page(retro_test::kPageW, retro_test::kPageH, *cfg.font, cfg.titleFont);
+    cfg.trims.on = trims;
+    retro::RetroStyle pageStyle(cfg);
+    retro_test::showcaseFrame(page, host, pageStyle);
+    save(dir, look + "_page", page.frame(), retro_test::kPageW, retro_test::kPageH);
+}
+
 void modernGallery(const std::string& dir) {
     modern::ModernStyle style;
     auto atlas = modern::SoftRenderer::makeFontAtlas();
@@ -331,6 +359,9 @@ int main(int argc, char** argv) {
     classicGallery(dir, "classic", classic::ClassicConfig::slate());
     classicGallery(dir, "silver", classic::ClassicConfig::silver());
     classicGallery(dir, "forge", classic::ClassicConfig::forge());
+    retroGallery(dir, "retro_silver", retro::RetroConfig::silver());
+    retroGallery(dir, "retro_tracker", retro::RetroConfig::tracker());
+    retroGallery(dir, "retro_forge", retro::RetroConfig::forge());
     modernGallery(dir);
     coreGallery(dir);
     std::printf("%d images in %s\n", g_written, dir.c_str());

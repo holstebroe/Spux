@@ -107,7 +107,7 @@ target_compile_definitions(ui_retro_test PRIVATE SPUX_TEST_DATA_DIR="${CMAKE_CUR
 
 # spux_widget_gallery: renders an image of every control per flavor (docs/WIDGETS.md). Not a test.
 add_executable(spux_widget_gallery gallery/WidgetGallery.cpp)
-target_link_libraries(spux_widget_gallery PRIVATE spux_ui_classic spux_ui_modern spux_doctest)
+target_link_libraries(spux_widget_gallery PRIVATE spux_ui_classic spux_ui_retro spux_ui_modern spux_doctest)
 target_include_directories(spux_widget_gallery PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(spux_widget_gallery PRIVATE SPUX_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 spux_target_flags(spux_widget_gallery)

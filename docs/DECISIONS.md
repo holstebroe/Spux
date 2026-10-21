@@ -251,4 +251,19 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   `Gui::readout`, the dropdown `drag` option, `presetBar`, and `StdButtonVariant` (arrows and the display button, numbered from
   100 so every flavor draws them and a helper such as the preset bar works in all). Kept in the plugin: the ladder and
   Sallen-Key filters, the morphing PolyBLEP oscillator, the power-supply sag, the routing summary text.
-
+- 2026-10-21: migration step 7, the Retro flavor (`spux_ui_retro`: `PixelRenderer`, `RetroStyle`, `RetroConfig`, `BitmapFont`). No
+  decision changed; U11 (Retro in whole steps) is not built. Choices within the guidelines: the renderer is integer on `CpuLayers`
+  at scale 1 (a point lies in the pixel it is in, a shape covers the pixels whose centers it contains, lines are Bresenham with a
+  square brush, blends round), so a cached frame equals an uncached one exactly and the golden frames are full-size pixmaps
+  compared pixel by pixel with 0.2 % allowed (libm moves a tick or an arc by a pixel on some toolchains); the effect extensions
+  are the pixel-art versions (stamped arcs, ordered dither for glow, radial gradient and shadow, a bevel for the glass panel, a
+  segmented bar), not smoothed ones. A bitmap font is a table of row bytes, three faces in objects of their own (5x7, 7-pixel
+  panel, pt2 8x8 with its BSD 3-Clause license in its folder), so a program links only the faces of its look; each shipped look
+  (`silver()`, `tracker()`, `forge()`) is also its own object for that reason, and the config's fonts must outlive the style.
+  `RetroStyle`'s painters draw only on a `PixelRenderer` (U4, as Classic's on `ShadedRenderer`), take the layout conventions of
+  Classic (a knob is a square with a row above and below, on is the lever down, the default accent is no color of its own) so a
+  page moves between flavors, and every standard painter exists. The 5x7 face is the table three plugins share plus five
+  punctuation glyphs from a fourth that the others lack; the 7-pixel face has only digits, capitals, `-` and `.` and is used for
+  panel titles. Compared with the plugins' own drawing, text, lines and bevels are identical to the last pixel, Acidus's lever and
+  panel trims too, its knob within 2 of 255 in the blended shadow; the Syrebas and Gritbaal knob is a simpler drawing and is not
+  reproduced exactly (MIGRATION.md, "Retro style").
