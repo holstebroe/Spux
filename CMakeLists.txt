@@ -75,7 +75,6 @@ spux_module(spux_params DEPENDS spux_core)
 spux_module(spux_state DEPENDS spux_core)
 spux_module(spux_clap DEPENDS spux_params spux_state clap)
 spux_module(spux_midi DEPENDS spux_core)
-spux_module(spux_ui_retro DEPENDS spux_ui_core)
 spux_module(spux_presetbrowser DEPENDS spux_ui_core spux_state)
 spux_module(spux_testing DEPENDS spux_core spux_dsp spux_doctest)    # header-only: WAV, loudness, metrics, hashes, null test
 
@@ -164,6 +163,21 @@ target_link_libraries(spux_ui_classic PUBLIC spux_ui_core)
 set_target_properties(spux_ui_classic PROPERTIES POSITION_INDEPENDENT_CODE ON)
 spux_target_flags(spux_ui_classic)
 spux_ui_optimize(spux_ui_classic)
+
+# spux_ui_retro: the Retro flavor. PixelRenderer (integer pixels, bitmap text), RetroStyle (painters configured by a
+# RetroConfig) and the bitmap fonts. STATIC, one object per part: each font and each look is its own object, so a
+# plugin links only the faces of the look it uses. CPU drawing only.
+add_library(spux_ui_retro STATIC
+  ${SPUX_ROOT}/src/ui/retro/Font5x7.cpp
+  ${SPUX_ROOT}/src/ui/retro/FontPanel7.cpp
+  ${SPUX_ROOT}/src/ui/retro/pt2/FontPt2.cpp)
+add_library(spux::spux_ui_retro ALIAS spux_ui_retro)
+target_include_directories(spux_ui_retro PUBLIC ${SPUX_ROOT}/include)
+target_compile_features(spux_ui_retro PUBLIC cxx_std_20)
+target_link_libraries(spux_ui_retro PUBLIC spux_ui_core)
+set_target_properties(spux_ui_retro PROPERTIES POSITION_INDEPENDENT_CODE ON)
+spux_target_flags(spux_ui_retro)
+spux_ui_optimize(spux_ui_retro)
 
 # spux_platform: native child window (X11, Win32, none elsewhere). Sources, so STATIC; it is not part of
 # `all` of a plugin that never links it. The OS libraries are public because a plugin links the window
