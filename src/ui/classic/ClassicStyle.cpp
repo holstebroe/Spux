@@ -23,6 +23,9 @@ bool hasOwnColor(const Theme& t, Argb accent) { return accent != 0 && accent != 
 
 bool isBipolar(const params::ParamInfo* p) { return p && p->min < 0.0 && p->max > 0.0; }
 
+// Straight-alpha blend of two ARGB colors.
+Argb mixArgb(Argb a, Argb b, float t) { return ui::mix(a, b, t); }
+
 // A line of text centered in a row of the given height starting at rowTop.
 float capTopIn(float rowTop, float rowH, float cap) { return rowTop + (rowH - cap) * 0.5f; }
 
@@ -30,8 +33,9 @@ float capTopIn(float rowTop, float rowH, float cap) { return rowTop + (rowH - ca
 
 // --- LED -------------------------------------------------------------------------------------------------
 
-void drawLed(ShadedRenderer& r, Point c, float radius, Argb color, bool lit) {
+void drawLed(ShadedRenderer& r, Point c, float radius, Argb color, bool lit, float level) {
     Graphics g = r.graphics();
+    const float k = lit ? clamp01(level) : 0.f; // how lit
     const float s = static_cast<float>(g.getScale());
     const Color base = fromArgb(color);
     const float halo = lit ? radius * 2.4f : radius + 1.5f;
@@ -40,7 +44,7 @@ void drawLed(ShadedRenderer& r, Point c, float radius, Argb color, bool lit) {
         const float bezelR = radius + 1.2f;
         if (d > radius + 1.5f) {
             // The glow of a lit lamp falls off over the panel.
-            const float a = lit ? 0.38f * (1.f - smoothstep(radius, halo, d)) : 0.f;
+            const float a = 0.38f * k * (1.f - smoothstep(radius, halo, d));
             return a > 0.004f ? toArgb(base, a) : 0u;
         }
         if (d > radius - 0.2f) {
@@ -51,9 +55,10 @@ void drawLed(ShadedRenderer& r, Point c, float radius, Argb color, bool lit) {
         }
         // The lens: dark glass, or a hot core fading to the color at the rim.
         const float t = d / std::max(radius, 1e-3f);
-        Color col = lit ? mix(Color{1.f, 1.f, 0.95f}, base, clamp01(0.25f + 0.9f * t)) : scale(base, 0.22f - 0.06f * t);
+        const Color dark = scale(base, 0.22f - 0.06f * t);
+        Color col = mix(dark, mix(Color{1.f, 1.f, 0.95f}, base, clamp01(0.25f + 0.9f * t)), k);
         const float hl = clamp01(1.f - std::hypot(dx + 0.35f * radius, dy + 0.4f * radius) / (0.55f * radius));
-        col = mix(col, Color{1.f, 1.f, 1.f}, (lit ? 0.25f : 0.22f) * hl * hl);
+        col = mix(col, Color{1.f, 1.f, 1.f}, (0.22f + 0.03f * k) * hl * hl);
         return toArgb(col, 1.f);
     });
 }
@@ -585,9 +590,13 @@ void ClassicSelector::paint(IRenderer& rr, const Rect& b, const SelectorState& s
         for (int i = 0; i < n; ++i) {
             const float y = static_cast<float>(b.y) + 4.f + step * (static_cast<float>(i) + 0.5f);
             const bool sel = i == s.index;
-            const std::string label = stepLabel(s, i);
-            r->ink(ShadedRenderer::labelFont(), label.c_str(), slotX + 9.f, y - 2.6f, 5.2f,
-                   sel ? c.inkOn : (i == s.hotIndex ? c.ink : c.inkDim));
+            const Argb tint = sel ? c.inkOn : (i == s.hotIndex ? c.ink : c.inkDim);
+            if (s.icons && s.icons[i]) {
+                s.icons[i](*r, {static_cast<int>(slotX + 9.f), static_cast<int>(y - 4.f), 16, 8}, tint, 1.2f);
+            } else {
+                const std::string label = stepLabel(s, i);
+                r->ink(ShadedRenderer::labelFont(), label.c_str(), slotX + 9.f, y - 2.6f, 5.2f, tint);
+            }
             drawLineAA(g, slotX + 3.5f, y, slotX + 6.5f, y, 0.8f, c.inkDim);
             if (sel) {
                 const float hw = 5.f, hh = 4.f;
@@ -602,10 +611,17 @@ void ClassicSelector::paint(IRenderer& rr, const Rect& b, const SelectorState& s
             const bool sel = i == s.index;
             paintButtonFace(g, static_cast<float>(cl.x), static_cast<float>(cl.y), static_cast<float>(cl.right()),
                             static_cast<float>(cl.bottom()), c.button.radius * 0.75f, sel, i == s.hotIndex, false, c);
-            const std::string label = stepLabel(s, i);
-            r->inkCentered(
-                ShadedRenderer::labelFont(), label.c_str(), static_cast<float>(cl.x) + static_cast<float>(cl.w) * 0.5f,
-                capTopIn(static_cast<float>(cl.y), static_cast<float>(cl.h), 5.f), 5.f, sel ? c.inkOn : c.ink, c.wear);
+            const Argb tint = sel ? c.inkOn : c.ink;
+            if (s.icons && s.icons[i]) {
+                const int ih = std::max(4, std::min(14, cl.h - 8));
+                const int iw = std::min(ih * 2, std::max(4, cl.w - 8));
+                s.icons[i](*r, {cl.x + (cl.w - iw) / 2, cl.y + (cl.h - ih) / 2, iw, ih}, tint, 1.4f);
+            } else {
+                const std::string label = stepLabel(s, i);
+                r->inkCentered(ShadedRenderer::labelFont(), label.c_str(),
+                               static_cast<float>(cl.x) + static_cast<float>(cl.w) * 0.5f,
+                               capTopIn(static_cast<float>(cl.y), static_cast<float>(cl.h), 5.f), 5.f, tint, c.wear);
+            }
         }
     }
     if (s.focused)
@@ -657,15 +673,6 @@ void ClassicButton::paint(IRenderer& rr, const Rect& b, const ButtonState& s) co
         }
         break;
     }
-    case kButtonLed: {
-        const float radius = std::max(2.5f, std::min(4.f, (y1 - y0) * 0.5f - 2.f));
-        const Argb color = s.accent ? s.accent : theme.colors.accent;
-        drawLed(*r, {x0 + radius + 3.f, cy}, radius, color, s.on);
-        if (s.label && *s.label)
-            r->ink(ShadedRenderer::labelFont(), s.label, x0 + 2.f * radius + 8.f, capTopIn(y0, y1 - y0, c.labelCap),
-                   c.labelCap, s.on ? c.ink : c.inkDim, c.wear);
-        break;
-    }
     default: {
         const bool arrow = s.variant == kButtonArrowLeft || s.variant == kButtonArrowRight;
         softShadow(g, x0, y0, x1, y1, c.button.radius, 3.f, 0.5f, 1.f, 2.f);
@@ -674,9 +681,22 @@ void ClassicButton::paint(IRenderer& rr, const Rect& b, const ButtonState& s) co
             const float k = s.variant == kButtonArrowLeft ? -1.f : 1.f;
             drawLineAA(g, cx - 3.f * k, cy - 5.f, cx + 3.f * k, cy, 1.6f, 0xFFE8E8E2);
             drawLineAA(g, cx + 3.f * k, cy, cx - 3.f * k, cy + 5.f, 1.6f, 0xFFE8E8E2);
-        } else if (s.label && *s.label) {
-            r->inkCentered(ShadedRenderer::labelFont(), s.label, cx, capTopIn(y0, y1 - y0, 5.f), 5.f,
-                           s.on ? c.inkOn : c.ink, c.wear);
+        } else {
+            const Argb ink = s.on ? c.inkOn : c.ink;
+            const bool text = s.label && *s.label;
+            float textX = cx;
+            if (s.icon) {
+                // the icon alone is centered; beside a label it takes the left end
+                const int ih = std::max(4, std::min(14, b.h - 10));
+                const int iw = std::min(ih * 2, std::max(4, b.w - 10));
+                const float ix = text ? x0 + 6.f : cx - static_cast<float>(iw) * 0.5f;
+                s.icon(*r, {static_cast<int>(ix), static_cast<int>(cy - static_cast<float>(ih) * 0.5f), iw, ih}, ink,
+                       1.4f);
+                textX = x0 + 6.f + static_cast<float>(iw) + (x1 - x0 - 6.f - static_cast<float>(iw)) * 0.5f;
+            }
+            if (text)
+                r->inkCentered(ShadedRenderer::labelFont(), s.label, textX, capTopIn(y0, y1 - y0, 5.f), 5.f, ink,
+                               c.wear);
         }
         break;
     }
@@ -729,6 +749,303 @@ void ClassicPanel::paint(IRenderer& rr, const Rect& b, const PanelState& s) cons
         r->inkCentered(ShadedRenderer::labelFont(), s.title, cx, static_cast<float>(b.y) + 3.f, c.titleCap, c.ink,
                        c.wear);
     }
+    r->popClip();
+}
+
+// --- lamp ------------------------------------------------------------------------------------------------
+
+void ClassicLed::paint(IRenderer& rr, const Rect& b, const LedState& s) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    const ClassicConfig& c = cfg();
+    const Theme& theme = themeOf(s.theme, c);
+    const float y0 = static_cast<float>(b.y), x0 = static_cast<float>(b.x);
+    const float h = static_cast<float>(b.h), cy = y0 + h * 0.5f;
+    const float radius = std::clamp(h * 0.5f - 2.f, 2.5f, 4.5f);
+    r->pushClip(b.expand(margin()));
+    drawLed(*r, {x0 + radius + 3.f, cy}, radius, s.accent ? s.accent : theme.colors.accent, s.on, s.level);
+    if (s.label && *s.label)
+        r->ink(ShadedRenderer::labelFont(), s.label, x0 + 2.f * radius + 9.f, capTopIn(y0, h, c.labelCap), c.labelCap,
+               s.on ? c.ink : c.inkDim, c.wear);
+    r->popClip();
+}
+
+// --- keyboard --------------------------------------------------------------------------------------------
+
+void ClassicKeyboard::paint(IRenderer& rr, const Rect& b, const KeyboardState& s) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r || b.empty())
+        return;
+    const ClassicConfig& c = cfg();
+    const Theme& theme = themeOf(s.theme, c);
+    const keyboard::Layout lay = layout();
+    const Color accent = fromArgb(s.accent ? s.accent : theme.colors.accent);
+    const float top = static_cast<float>(b.y), h = static_cast<float>(b.h);
+    r->pushClip(b.expand(margin()));
+    Graphics g = r->graphics();
+    // The felt strip behind the keys, then the white keys, then the black ones over them.
+    shadeBox(g, static_cast<float>(b.x), top, static_cast<float>(b.right()), top + 3.f,
+             [felt = c.keyboardFelt](float, float) { return felt; });
+    for (int k = s.first; k <= s.last; ++k) {
+        if (keyboard::isBlack(k))
+            continue;
+        const keyboard::KeyRect kr = keyboard::keyRect(b, s.first, s.last, k, lay);
+        const bool down = s.down && s.down[k], sounding = s.lit && s.lit[k];
+        const bool hot = s.hotKey == k && !down;
+        const float x0 = kr.x0 + 0.5f, x1 = kr.x1 - 0.5f;
+        shadeBox(g, x0, top + 3.f, x1, top + h, [&](float xx, float y) {
+            const float v = (y - top) / h;
+            Color col = down ? Color{0.80f, 0.76f, 0.62f} : Color{0.94f, 0.92f, 0.86f};
+            if (sounding)
+                col = mix(col, accent, 0.45f);
+            col = scale(col, 0.88f + 0.12f * v);
+            if (hot)
+                col = scale(col, 1.04f);
+            if (xx - x0 < 1.f || x1 - xx < 1.f)
+                col = scale(col, 0.7f);
+            if (y > top + h - 4.f)
+                col = scale(col, down ? 0.7f : 0.82f);
+            return toArgb(col, 1.f);
+        });
+    }
+    for (int k = s.first; k <= s.last; ++k) {
+        if (!keyboard::isBlack(k))
+            continue;
+        const keyboard::KeyRect kr = keyboard::keyRect(b, s.first, s.last, k, lay);
+        const bool down = s.down && s.down[k], sounding = s.lit && s.lit[k];
+        const float cx = 0.5f * (kr.x0 + kr.x1), bw = kr.x1 - kr.x0;
+        softShadow(g, kr.x0, top + 3.f, kr.x1, kr.y1, 1.f, 2.5f, 0.5f, 1.f, 1.5f);
+        shadeBox(g, kr.x0, top + 3.f, kr.x1, kr.y1, [&](float xx, float y) {
+            const float v = (y - top) / (kr.y1 - top);
+            Color col = down ? Color{0.28f, 0.22f, 0.12f} : Color{0.06f, 0.06f, 0.065f};
+            if (sounding)
+                col = mix(col, scale(accent, 0.6f), 0.6f);
+            col = scale(col, 1.f + 0.6f * (1.f - std::fabs((xx - cx) / (bw * 0.5f))) * (v > 0.85f ? 2.f : 0.4f));
+            return toArgb(col, 1.f);
+        });
+    }
+    r->popClip();
+}
+
+// --- display widgets -------------------------------------------------------------------------------------
+
+namespace {
+
+// The recessed display of a dropdown, a stepper and a text field.
+void paintDisplay(Graphics& g, const Rect& b, bool hot, Argb edgeOverride, const ClassicConfig& c) {
+    const Color edge = edgeOverride ? fromArgb(edgeOverride) : c.display.edge;
+    shadeRoundRect(g, static_cast<float>(b.x), static_cast<float>(b.y), static_cast<float>(b.right()),
+                   static_cast<float>(b.bottom()), c.display.radius, [&](float, float v, float d) {
+                       Color col = mix(c.display.top, c.display.bottom, 0.5f + 0.5f * v);
+                       if (hot)
+                           col = scale(col, 1.4f);
+                       return toArgb(mix(col, edge, smoothstep(-1.5f, -0.5f, d)), 1.f);
+                   });
+}
+
+// Text in the display font, shrunk to fit `room` and centered on `cx` (or starting at x with align left).
+void displayText(ShadedRenderer& r, const char* text, float x, float room, bool centered, const Rect& b, Argb ink,
+                 float cap) {
+    while (cap > 4.5f && ShadedRenderer::inkWidth(ShadedRenderer::displayFont(), text, cap) > room)
+        cap -= 0.25f;
+    const float capTop = capTopIn(static_cast<float>(b.y), static_cast<float>(b.h), cap);
+    if (centered)
+        r.inkCentered(ShadedRenderer::displayFont(), text, x, capTop, cap, ink);
+    else
+        r.ink(ShadedRenderer::displayFont(), text, x, capTop, cap, ink);
+}
+
+} // namespace
+
+void ClassicDropdown::paint(IRenderer& rr, const Rect& b, const DropdownState& s) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    const ClassicConfig& c = cfg();
+    const Theme& theme = themeOf(s.theme, c);
+    r->pushClip(b);
+    Graphics g = r->graphics();
+    paintDisplay(g, b, s.hot && !s.open, s.open ? theme.colors.focus : 0u, c);
+    float tx = static_cast<float>(b.x) + 8.f;
+    if (s.label && *s.label) {
+        r->ink(ShadedRenderer::labelFont(), s.label, tx,
+               capTopIn(static_cast<float>(b.y), static_cast<float>(b.h), 5.f), 5.f, c.inkDim);
+        tx += ShadedRenderer::inkWidth(ShadedRenderer::labelFont(), s.label, 5.f) + 8.f;
+    }
+    displayText(*r, s.valueText ? s.valueText : "", tx, static_cast<float>(b.right()) - tx - 20.f, false, b,
+                c.display.ink, c.valueCap);
+    const float cx = static_cast<float>(b.right()) - 11.f,
+                cy = static_cast<float>(b.y) + static_cast<float>(b.h) * 0.5f;
+    drawLineAA(g, cx - 3.5f, cy - 1.5f, cx, cy + 2.f, 1.4f, c.inkDim);
+    drawLineAA(g, cx, cy + 2.f, cx + 3.5f, cy - 1.5f, 1.4f, c.inkDim);
+    if (s.focused)
+        r->strokeRoundRect(b.inset(1), c.display.radius, withAlpha(theme.colors.focus, 0.9f), 1.0f);
+    r->popClip();
+}
+
+void ClassicStepper::paint(IRenderer& rr, const Rect& b, const StepperState& s) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    const ClassicConfig& c = cfg();
+    const Theme& theme = themeOf(s.theme, c);
+    r->pushClip(b);
+    Graphics g = r->graphics();
+    paintDisplay(g, b, false, 0u, c);
+    for (int k = 0; k < 2; ++k) {
+        const Rect part = (k == 0 ? minusPart(b) : plusPart(b)).inset(1);
+        const bool hot = s.hotPart == (k == 0 ? -1 : 1);
+        paintButtonFace(g, static_cast<float>(part.x), static_cast<float>(part.y), static_cast<float>(part.right()),
+                        static_cast<float>(part.bottom()), c.button.radius * 0.75f, false, hot, false, c);
+        const Point mid = part.center();
+        drawLineAA(g, mid.x - 3.5f, mid.y, mid.x + 3.5f, mid.y, 1.5f, 0xFFE8E8E2);
+        if (k == 1)
+            drawLineAA(g, mid.x, mid.y - 3.5f, mid.x, mid.y + 3.5f, 1.5f, 0xFFE8E8E2);
+    }
+    std::string text = s.valueText ? s.valueText : "";
+    if (s.label && *s.label)
+        text = std::string(s.label) + " " + text;
+    const Rect lo = minusPart(b), hi = plusPart(b);
+    displayText(*r, text.c_str(), static_cast<float>(lo.right()) + static_cast<float>(hi.x - lo.right()) * 0.5f,
+                static_cast<float>(hi.x - lo.right()) - 6.f, true, b, c.display.ink, c.valueCap);
+    if (s.focused)
+        r->strokeRoundRect(b.inset(1), c.display.radius, withAlpha(theme.colors.focus, 0.9f), 1.0f);
+    r->popClip();
+}
+
+void ClassicTextField::paint(IRenderer& rr, const Rect& b, const TextFieldState& s) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    const ClassicConfig& c = cfg();
+    const Theme& theme = themeOf(s.theme, c);
+    r->pushClip(b);
+    Graphics g = r->graphics();
+    paintDisplay(g, b, false, theme.colors.focus, c);
+    const std::string shown = std::string(s.text ? s.text : "") + (s.caret ? "_" : " ");
+    displayText(*r, shown.c_str(), static_cast<float>(b.x) + 8.f, static_cast<float>(b.w) - 16.f, false, b,
+                c.display.ink, c.valueCap);
+    r->popClip();
+}
+
+// --- popup and tooltip -----------------------------------------------------------------------------------
+
+namespace {
+
+constexpr int kPopupPad = 4, kSeparatorH = 7;
+
+// A panel with a soft shadow, a flat fill and a light edge.
+void paintFloating(ShadedRenderer& r, const Rect& b, Argb fill, const ClassicConfig& c) {
+    Graphics g = r.graphics();
+    softShadow(g, static_cast<float>(b.x), static_cast<float>(b.y), static_cast<float>(b.right()),
+               static_cast<float>(b.bottom()), 3.f, 6.f, 0.7f, 1.f, 2.f);
+    shadeRoundRect(g, static_cast<float>(b.x), static_cast<float>(b.y), static_cast<float>(b.right()),
+                   static_cast<float>(b.bottom()), 3.f, [&](float, float, float d) {
+                       return mixArgb(fill, toArgb(c.display.edge, 1.f), smoothstep(-1.5f, -0.5f, d));
+                   });
+}
+
+} // namespace
+
+Rect ClassicPopup::layout(IRenderer& r, const PopupState& s, int viewW, int viewH, std::vector<Rect>& rects) const {
+    const Theme::Metrics& m = s.theme->metrics;
+    const std::vector<PopupItem>& items = *s.items;
+    const int n = static_cast<int>(items.size());
+    const int cols = std::max(1, s.columns);
+    const int rows = std::max(1, (n + cols - 1) / cols);
+    float maxW = static_cast<float>(s.anchor.w);
+    for (const PopupItem& it : items)
+        if (!it.separator)
+            maxW = std::max(maxW, r.textWidthPx(it.label.c_str(), m.popupPx) + 28.f);
+    const int itemW = static_cast<int>(std::ceil(maxW));
+    // column-major, so a long list reads down its columns
+    std::vector<int> colY(static_cast<std::size_t>(cols), 0);
+    rects.assign(static_cast<std::size_t>(n), Rect{});
+    for (int i = 0; i < n; ++i) {
+        const int col = i / rows;
+        const int h = items[static_cast<std::size_t>(i)].separator ? kSeparatorH : m.popupRow;
+        rects[static_cast<std::size_t>(i)] = {kPopupPad + col * itemW, kPopupPad + colY[static_cast<std::size_t>(col)],
+                                              itemW, h};
+        colY[static_cast<std::size_t>(col)] += h;
+    }
+    const int w = itemW * cols + kPopupPad * 2, h = *std::max_element(colY.begin(), colY.end()) + kPopupPad * 2;
+    int x = s.anchor.x, y = s.anchor.empty() ? s.anchor.y : s.anchor.bottom() + 3;
+    if (y + h > viewH - 4)
+        y = std::max(4, s.anchor.y - h - (s.anchor.empty() ? 0 : 3));
+    if (x + w > viewW - 4)
+        x = std::max(4, viewW - 4 - w);
+    for (Rect& it : rects) {
+        it.x += x;
+        it.y += y;
+    }
+    return {x, y, w, h};
+}
+
+void ClassicPopup::paint(IRenderer& rr, const Rect& b, const PopupState& s) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    const ClassicConfig& c = cfg();
+    const Theme& t = themeOf(s.theme, c);
+    r->pushClip(b.expand(margin()));
+    paintFloating(*r, b, t.colors.popup, c);
+    const float px = t.metrics.popupPx, cap = px * 0.7f;
+    const std::vector<PopupItem>& items = *s.items;
+    for (std::size_t i = 0; i < items.size() && s.itemRects && i < s.itemRects->size(); ++i) {
+        const Rect& cell = (*s.itemRects)[i];
+        const PopupItem& it = items[i];
+        if (it.separator) {
+            r->fillRect({cell.x + 6, cell.y + cell.h / 2, cell.w - 12, 1}, t.colors.hairline);
+            continue;
+        }
+        const bool hot = static_cast<int>(i) == s.hot && it.enabled;
+        if (hot)
+            r->fillRoundRect(cell.inset(1), 2.f, withAlpha(t.colors.accent, 0.35f));
+        if (static_cast<int>(i) == s.selected)
+            r->fillCircle(
+                {static_cast<float>(cell.x) + 9.f, static_cast<float>(cell.y) + static_cast<float>(cell.h) * 0.5f},
+                2.5f, t.colors.focus);
+        r->pushClip(cell);
+        r->ink(ShadedRenderer::labelFont(), it.label.c_str(), static_cast<float>(cell.x) + 18.f,
+               capTopIn(static_cast<float>(cell.y), static_cast<float>(cell.h), cap), cap,
+               !it.enabled ? t.colors.textFaint : (hot ? t.colors.text : t.colors.textDim));
+        r->popClip();
+    }
+    r->popClip();
+}
+
+Rect ClassicTooltip::layout(IRenderer& r, const TooltipState& s, int viewW, int viewH) const {
+    const bool body = s.text && *s.text;
+    const float w = std::max(ShadedRenderer::inkWidth(ShadedRenderer::labelFont(), s.title ? s.title : "", 6.5f),
+                             body ? ShadedRenderer::inkWidth(ShadedRenderer::labelFont(), s.text, 5.5f) : 0.f) +
+                    16.f;
+    const int iw = std::min(static_cast<int>(std::ceil(w)), std::max(0, viewW - 8)), ih = body ? 34 : 22;
+    int x = static_cast<int>(s.pointer.x) + 12, y = static_cast<int>(s.pointer.y) + 16;
+    if (x + iw > viewW - 4)
+        x = std::max(4, viewW - 4 - iw);
+    if (y + ih > viewH - 4)
+        y = std::max(4, static_cast<int>(s.pointer.y) - ih - 12);
+    (void)r;
+    return {x, y, iw, ih};
+}
+
+void ClassicTooltip::paint(IRenderer& rr, const Rect& b, const TooltipState& s) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    const ClassicConfig& c = cfg();
+    const Theme& t = themeOf(s.theme, c);
+    r->pushClip(b.expand(margin()));
+    paintFloating(*r, b, t.colors.tooltip, c);
+    r->pushClip(b.inset(3, 0));
+    const bool body = s.text && *s.text;
+    r->ink(ShadedRenderer::labelFont(), s.title ? s.title : "", static_cast<float>(b.x) + 8.f,
+           static_cast<float>(b.y) + (body ? 7.f : 8.f), 6.5f, t.colors.text);
+    if (body)
+        r->ink(ShadedRenderer::labelFont(), s.text, static_cast<float>(b.x) + 8.f, static_cast<float>(b.y) + 21.f, 5.5f,
+               t.colors.textDim);
+    r->popClip();
     r->popClip();
 }
 

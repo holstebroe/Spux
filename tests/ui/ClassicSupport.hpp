@@ -57,8 +57,8 @@ inline void showcaseWidgets(CGui& g) {
     g.button("next", {494, 140, 36, 22}, "", {.variant = kButtonArrowRight});
     g.button("capOff", {540, 140, 30, 30}, "STR\n1", {.on = false, .accent = kAmber, .variant = kButtonCap});
     g.button("capOn", {578, 140, 30, 30}, "STR\n2", {.on = true, .accent = kAmber, .variant = kButtonCap});
-    g.button("ledOff", {450, 184, 80, 22}, "OFF", {.on = false, .accent = kRed, .variant = kButtonLed});
-    g.button("ledOn", {540, 184, 80, 22}, "ON", {.on = true, .accent = kGreen, .variant = kButtonLed});
+    g.led("ledOff", {450, 184, 76, 22}, false, {.label = "OFF", .accent = kRed});
+    g.led("ledOn", {544, 184, 76, 22}, true, {.label = "ON", .accent = kGreen});
 
     // toggles and selectors (the same parameter twice, so the second one in an id scope)
     // a lever wants room for its plate and label, a rocker is a small key
@@ -75,8 +75,18 @@ inline void showcaseWidgets(CGui& g) {
     g.selector(P_quality, {270, 236, 200, 28}, {.labels = kQuality});
     g.popId();
     g.pushId("row2");
-    g.selector(P_quality, {270, 276, 200, 28}, {.accent = kAmber});
+    static const Icon kWaves[3] = {waveIcon(Wave::Sine), waveIcon(Wave::Saw), waveIcon(Wave::Square)};
+    g.selector(P_quality, {270, 276, 200, 28}, {.icons = kWaves, .accent = kAmber});
     g.popId();
+
+    // displays, icon buttons and the keyboard
+    g.dropdown(P_quality, {484, 232, 130, 24}, "TYPE");
+    g.stepper(P_transpose, {484, 264, 130, 24}, "SEMI");
+    g.button("tri", {484, 300, 60, 24}, "", {.icon = waveIcon(Wave::Triangle)});
+    g.button("noise", {554, 300, 60, 24}, "NOISE", {.on = true, .icon = waveIcon(Wave::Noise)});
+    static std::uint8_t sounding[128] = {};
+    sounding[52] = sounding[56] = sounding[59] = 1;
+    g.keyboard("keys", {24, 318, 440, 60}, {.first = 48, .last = 71, .lit = sounding});
 }
 
 // The showcase as an editor root view: the surface and the frames in the background, widgets every frame.

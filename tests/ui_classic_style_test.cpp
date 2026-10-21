@@ -298,6 +298,79 @@ TEST_CASE("every painter draws inside its bounds plus its margin, in both looks"
                                  style.panel.paint(r, b, s);
                              }});
 
+        for (int on = 0; on < 2; ++on)
+            cases.push_back({"led", style.led.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                                 LedState s;
+                                 s.theme = th;
+                                 s.on = on != 0;
+                                 s.level = on ? 0.6f : 1.0f;
+                                 s.label = "A LAMP WITH A LONG LABEL";
+                                 s.accent = own;
+                                 style.led.paint(r, b, s);
+                             }});
+        for (int v = 0; v < 3; ++v)
+            cases.push_back({"keyboard", style.keyboard.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                                 std::uint8_t down[128] = {}, sounding[128] = {};
+                                 down[v == 1 ? 49 : 48] = 1;
+                                 sounding[52] = sounding[v == 2 ? 70 : 66] = 1;
+                                 KeyboardState s;
+                                 s.theme = th;
+                                 s.first = v == 2 ? 47 : 48; // a keyboard may begin on a black key
+                                 s.last = v == 2 ? 70 : 71;
+                                 s.down = down;
+                                 s.lit = sounding;
+                                 s.hotKey = v == 0 ? 50 : -1;
+                                 s.accent = own;
+                                 style.keyboard.paint(r, b, s);
+                             }});
+        for (int open = 0; open < 2; ++open) {
+            cases.push_back({"dropdown", style.dropdown.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                                 DropdownState s;
+                                 s.theme = th;
+                                 s.label = "TYPE";
+                                 s.valueText = "A value text that is much too long";
+                                 s.open = open != 0;
+                                 s.hot = open == 0;
+                                 s.focused = true;
+                                 style.dropdown.paint(r, b, s);
+                             }});
+            cases.push_back({"stepper", style.stepper.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                                 StepperState s;
+                                 s.theme = th;
+                                 s.label = "Semitones";
+                                 s.valueText = "+12 st and then some";
+                                 s.hotPart = open ? 1 : -1;
+                                 s.focused = true;
+                                 style.stepper.paint(r, b, s);
+                             }});
+        }
+        cases.push_back({"text field", style.textField.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                             TextFieldState s;
+                             s.theme = th;
+                             s.text = "Some typed text that is much too long for the field";
+                             s.caret = true;
+                             style.textField.paint(r, b, s);
+                         }});
+        cases.push_back({"icons", style.button.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                             ButtonState s;
+                             s.theme = th;
+                             s.icon = waveIcon(Wave::Saw);
+                             s.label = "SAW WITH A LONG LABEL";
+                             style.button.paint(r, b, s);
+                             s.label = "";
+                             s.variant = kButtonCap;
+                             style.button.paint(r, b, s);
+                             const Icon icons[3] = {waveIcon(Wave::Sine), waveIcon(Wave::Pulse), waveIcon(Wave::Noise)};
+                             SelectorState se;
+                             se.theme = th;
+                             se.count = 3;
+                             se.index = 1;
+                             se.icons = icons;
+                             style.selector.paint(r, b, se);
+                             se.vertical = true;
+                             style.selector.paint(r, b, se);
+                         }});
+
         const Rect sizes[] = {{60, 50, 120, 100}, {70, 60, 70, 40}, {60, 60, 150, 28}, {80, 70, 3, 3}};
         for (const PaintCase& pc : cases)
             for (const Rect& b : sizes) {
@@ -346,21 +419,173 @@ TEST_CASE("a painter on another renderer draws nothing") {
     PanelState p;
     p.theme = &style.theme;
     style.panel.paint(r, {0, 0, 80, 80}, p);
+    LedState l;
+    l.theme = &style.theme;
+    style.led.paint(r, {0, 0, 80, 20}, l);
+    KeyboardState kb;
+    kb.theme = &style.theme;
+    style.keyboard.paint(r, {0, 0, 80, 40}, kb);
+    DropdownState dd;
+    dd.theme = &style.theme;
+    style.dropdown.paint(r, {0, 0, 80, 20}, dd);
+    StepperState st;
+    st.theme = &style.theme;
+    style.stepper.paint(r, {0, 0, 80, 20}, st);
+    TextFieldState tf;
+    tf.theme = &style.theme;
+    style.textField.paint(r, {0, 0, 80, 20}, tf);
     CHECK(r.calls == 0);
 }
 
-TEST_CASE("the lamp: lit is brighter than unlit and glows beyond its lens") {
-    auto render = [](bool lit) {
+TEST_CASE("the lamp: lit is brighter than unlit, glows beyond its lens, and follows its level") {
+    auto render = [](bool lit, float level = 1.0f) {
         ShadedRenderer r(60, 60, 2);
         r.clear(rgb(40, 40, 44));
-        drawLed(r, {30.0f, 30.0f}, 4.0f, rgb(255, 40, 30), lit);
+        drawLed(r, {30.0f, 30.0f}, 4.0f, rgb(255, 40, 30), lit, level);
         return r.frame();
     };
     const auto off = render(false), on = render(true);
+    const auto dim = render(true, 0.4f);
+    CHECK(((at(dim, 60, 30, 30) >> 16) & 255u) < ((at(on, 60, 30, 30) >> 16) & 255u));
+    CHECK(((at(dim, 60, 30, 30) >> 16) & 255u) > ((at(off, 60, 30, 30) >> 16) & 255u));
     CHECK(((at(on, 60, 30, 30) >> 16) & 255u) > ((at(off, 60, 30, 30) >> 16) & 255u) + 80);
     CHECK(((at(on, 60, 30, 37) >> 16) & 255u) > ((at(off, 60, 30, 37) >> 16) & 255u)); // the halo
     CHECK(at(on, 60, 30, 48) == rgb(40, 40, 44));                                      // and it ends
     CHECK(diffCount(on, render(true)) == 0);
+}
+
+TEST_CASE("popup and tooltip: layout stays in view, items are placed, painting stays inside, in both looks") {
+    for (int look = 0; look < 2; ++look) {
+        ClassicStyle style(look ? ClassicConfig::silver() : ClassicConfig::slate());
+        ShadedRenderer r(400, 260, 2);
+        std::vector<PopupItem> items;
+        for (int i = 0; i < 18; ++i)
+            items.push_back({"Item number " + std::to_string(i)});
+        items.insert(items.begin() + 3, PopupItem{"", true, true});
+        items.push_back({"Disabled", false, false});
+        PopupState ps;
+        ps.theme = &style.theme;
+        ps.items = &items;
+        ps.anchor = {350, 230, 40, 20};
+        ps.columns = 3;
+        ps.selected = 2;
+        std::vector<Rect> rects;
+        const Rect box = style.popup.layout(r, ps, 400, 260, rects);
+        CHECK(Rect{0, 0, 400, 260}.intersect(box) == box);
+        REQUIRE(rects.size() == items.size());
+        for (const Rect& it : rects)
+            CHECK(box.intersect(it) == it);
+        CHECK(rects[3].h < rects[2].h); // the separator is a thin row
+        ps.itemRects = &rects;
+        ps.hot = 5;
+        r.clear(rgb(77, 88, 99));
+        style.popup.paint(r, box, ps);
+        const auto px = r.frame();
+        const Rect allowed = box.expand(style.popup.margin());
+        int outside = 0, inside = 0;
+        for (int y = 0; y < 260; ++y)
+            for (int x = 0; x < 400; ++x) {
+                const bool changed = at(px, 400, x, y) != rgb(77, 88, 99);
+                outside += !allowed.contains(x, y) && changed;
+                inside += allowed.contains(x, y) && changed;
+            }
+        CHECK(outside == 0);
+        CHECK(inside > 5000);
+
+        TooltipState ts;
+        ts.theme = &style.theme;
+        ts.title = "Cutoff";
+        ts.text = "1.20 kHz   modulatable";
+        ts.pointer = {390, 250};
+        const Rect tip = style.tooltip.layout(r, ts, 400, 260);
+        CHECK(Rect{0, 0, 400, 260}.intersect(tip) == tip);
+        CHECK_FALSE(tip.contains(390, 250)); // not under the pointer
+        r.clear(rgb(77, 88, 99));
+        style.tooltip.paint(r, tip, ts);
+        const auto tp = r.frame();
+        const Rect tipAllowed = tip.expand(style.tooltip.margin());
+        int tipOutside = 0;
+        for (int y = 0; y < 260; ++y)
+            for (int x = 0; x < 400; ++x)
+                tipOutside += !tipAllowed.contains(x, y) && at(tp, 400, x, y) != rgb(77, 88, 99);
+        CHECK(tipOutside == 0);
+        // a long body never makes the tooltip wider than the view
+        ts.text = "a very long description of a parameter that is much wider than this small view could ever hold";
+        const Rect wide = style.tooltip.layout(r, ts, 200, 260);
+        CHECK(Rect{0, 0, 200, 260}.intersect(wide) == wide);
+    }
+}
+
+// --- icons ---------------------------------------------------------------------------------------------------
+
+namespace {
+int customCalls = 0;
+Rect customArea;
+const void* customData = nullptr;
+void customIcon(IRenderer& r, const Rect& area, Argb c, float width, const void* data) {
+    ++customCalls;
+    customArea = area;
+    customData = data;
+    r.fillRect(area.inset(2), withAlpha(c, width > 0 ? 1.0f : 0.0f));
+}
+} // namespace
+
+TEST_CASE("icons: every wave draws inside its area and differs from the others; a plugin's own icon is called") {
+    std::vector<std::vector<std::uint32_t>> frames;
+    for (int w = 0; w < kWaveCount; ++w) {
+        ShadedRenderer r(60, 40, 2);
+        r.clear(rgb(0, 0, 0));
+        const Rect area{10, 10, 40, 20};
+        drawWave(r, static_cast<Wave>(w), area, rgb(255, 255, 255), 1.5f);
+        const auto px = r.frame();
+        int on = 0, outside = 0;
+        for (int y = 0; y < 40; ++y)
+            for (int x = 0; x < 60; ++x)
+                if (at(px, 60, x, y) != rgb(0, 0, 0)) {
+                    ++on;
+                    outside += !area.contains(x, y);
+                }
+        INFO(waveName(static_cast<Wave>(w)));
+        CHECK(on > 30);
+        CHECK(outside == 0);
+        frames.push_back(px);
+    }
+    for (int a = 0; a < kWaveCount; ++a)
+        for (int b = a + 1; b < kWaveCount; ++b)
+            CHECK(diffCount(frames[static_cast<std::size_t>(a)], frames[static_cast<std::size_t>(b)]) > 20);
+    // the built-in icon is the wave, on any renderer
+    ShadedRenderer r(60, 40, 2), q(60, 40, 2);
+    r.clear(rgb(0, 0, 0));
+    q.clear(rgb(0, 0, 0));
+    waveIcon(Wave::Triangle)(r, {10, 10, 40, 20}, rgb(255, 255, 255), 1.5f);
+    drawWave(q, Wave::Triangle, {10, 10, 40, 20}, rgb(255, 255, 255), 1.5f);
+    CHECK(diffCount(r.frame(), q.frame()) == 0);
+    CHECK(waveIcon(Wave::Saw) == waveIcon(Wave::Saw));
+    CHECK_FALSE(waveIcon(Wave::Saw) == waveIcon(Wave::Sine));
+    CHECK_FALSE(Icon{});
+    uitest::TestRenderer plain(60, 40);
+    waveIcon(Wave::Sine)(plain, {0, 0, 60, 40}, rgb(255, 255, 255)); // draws through the basics of any renderer
+    CHECK(plain.calls > 0);
+
+    // a plugin's own icon goes where the built-in ones go
+    int token = 0;
+    Icon mine{customIcon, &token};
+    ClassicStyle style;
+    ShadedRenderer rr(100, 50, 2);
+    ButtonState s;
+    s.theme = &style.theme;
+    s.icon = mine;
+    style.button.paint(rr, {10, 10, 80, 30}, s);
+    CHECK(customCalls == 1);
+    CHECK(customData == &token);
+    CHECK(Rect{10, 10, 80, 30}.intersect(customArea) == customArea);
+    const Icon steps[2] = {mine, waveIcon(Wave::Sine)};
+    SelectorState se;
+    se.theme = &style.theme;
+    se.count = 2;
+    se.icons = steps;
+    style.selector.paint(rr, {10, 10, 80, 30}, se);
+    CHECK(customCalls == 2);
 }
 
 // --- geometry the interaction asks for ----------------------------------------------------------------------
@@ -467,6 +692,108 @@ TEST_CASE(
     gui.onMouseUp(50.0f, 266.0f, MouseButton::Left);
     frame();
     CHECK(host.plainOf(P_mono) != mono);
+}
+
+// --- the keyboard --------------------------------------------------------------------------------------------
+
+TEST_CASE("keyboard geometry: white keys tile the bounds, black keys sit between and above, hit tests agree") {
+    const Rect b{10, 20, 140, 60}; // C3 to B3: seven white keys, 20 px each
+    CHECK(keyboard::whiteKeys(48, 59) == 7);
+    CHECK(keyboard::isBlack(49));
+    CHECK_FALSE(keyboard::isBlack(48));
+    CHECK(keyboard::isBlack(-11)); // C# an octave below zero
+    const auto c = keyboard::keyRect(b, 48, 59, 48);
+    const auto d = keyboard::keyRect(b, 48, 59, 50);
+    CHECK(c.x0 == doctest::Approx(10.0f));
+    CHECK(c.x1 == doctest::Approx(30.0f));
+    CHECK(d.x0 == doctest::Approx(30.0f));
+    const auto cs = keyboard::keyRect(b, 48, 59, 49);
+    CHECK(cs.black);
+    CHECK(0.5f * (cs.x0 + cs.x1) == doctest::Approx(30.0f)); // between C and D
+    CHECK(cs.y1 < static_cast<float>(b.bottom()));
+    CHECK(keyboard::keyAt(b, 48, 59, {30.0f, 30.0f}) == 49); // the black key wins where it covers
+    CHECK(keyboard::keyAt(b, 48, 59, {30.0f, 70.0f}) == 50); // below it, the white key
+    CHECK(keyboard::keyAt(b, 48, 59, {12.0f, 70.0f}) == 48);
+    CHECK(keyboard::keyAt(b, 48, 59, {149.0f, 70.0f}) == 59);
+    CHECK(keyboard::keyAt(b, 48, 59, {5.0f, 70.0f}) == -1);
+    // every white key hit in its middle lower half is that key
+    for (int k = 48; k <= 59; ++k) {
+        if (keyboard::isBlack(k))
+            continue;
+        const auto r = keyboard::keyRect(b, 48, 59, k);
+        CHECK(keyboard::keyAt(b, 48, 59, {0.5f * (r.x0 + r.x1), 75.0f}) == k);
+    }
+}
+
+TEST_CASE("keyboard through the Gui: a press plays a key with a velocity, a glide moves on, a release lets go") {
+    Host host;
+    ClassicStyle style;
+    ShadedRenderer r(400, 100, 1);
+    CGui gui(host, style);
+    gui.setCaching(false);
+    const Rect b{10, 10, 280, 80}; // C3 to B4
+    KeyboardEvents last;
+    auto frame = [&](const KeyboardOptions& o = {.first = 48, .last = 71}) {
+        r.clear(style.theme.colors.background);
+        gui.begin(r, 1.0, 0.016f, 400, 100);
+        last = gui.keyboard("kb", b, o);
+        gui.end();
+        return last;
+    };
+    frame();
+    CHECK(last.pressed == -1);
+    gui.onMouseDown(20.0f, 80.0f, MouseButton::Left, false); // C3, near the foot of the key
+    auto ev = frame();
+    CHECK(ev.pressed == 48);
+    CHECK(ev.velocity > 0.9f);
+    CHECK(ev.held == 48);
+    CHECK(frame().pressed == -1);  // nothing new while it is held
+    gui.onMouseMove(40.0f, 80.0f); // glide to the next white key
+    ev = frame();
+    CHECK(ev.released == 48);
+    CHECK(ev.pressed == 50);
+    CHECK(ev.held == 50);
+    gui.onMouseUp(40.0f, 80.0f, MouseButton::Left);
+    ev = frame();
+    CHECK(ev.released == 50);
+    CHECK(ev.held == -1);
+    // without glide the first key stays held
+    gui.onMouseDown(20.0f, 14.0f, MouseButton::Left, false);
+    KeyboardOptions still{.first = 48, .last = 71, .glide = false};
+    ev = frame(still);
+    CHECK(ev.pressed == 48);
+    CHECK(ev.velocity < 0.4f); // the top of the key
+    gui.onMouseMove(80.0f, 80.0f);
+    ev = frame(still);
+    CHECK(ev.pressed == -1);
+    CHECK(ev.held == 48);
+    gui.onMouseUp(80.0f, 80.0f, MouseButton::Left);
+    CHECK(frame(still).released == 48);
+    // a click that is over before the next frame still plays and releases the key
+    gui.onMouseDown(20.0f, 80.0f, MouseButton::Left, false);
+    gui.onMouseUp(20.0f, 80.0f, MouseButton::Left);
+    ev = frame();
+    CHECK(ev.pressed == 48);
+    CHECK(ev.released == 48);
+    // a press outside every key does nothing
+    gui.onMouseDown(5.0f, 5.0f, MouseButton::Left, false);
+    CHECK(frame().pressed == -1);
+    gui.onMouseUp(5.0f, 5.0f, MouseButton::Left);
+    frame();
+
+    // sounding and held keys change what is drawn
+    std::uint8_t sounding[128] = {};
+    sounding[52] = 1;
+    ShadedRenderer a(400, 100, 2), c(400, 100, 2);
+    for (ShadedRenderer* rr : {&a, &c}) {
+        rr->clear(rgb(0, 0, 0));
+        CGui g2(host, style);
+        g2.setCaching(false);
+        g2.begin(*rr, 1.0, 0.016f, 400, 100);
+        g2.keyboard("kb", b, {.first = 48, .last = 71, .lit = rr == &c ? sounding : nullptr});
+        g2.end();
+    }
+    CHECK(diffCount(a.frame(), c.frame()) > 100);
 }
 
 // --- the looks -----------------------------------------------------------------------------------------------
@@ -659,7 +986,7 @@ TEST_CASE("the editor shell: cached frames equal uncached frames, and only what 
         CHECK(ed.gui().idCollisions() == 0);
         CHECK_FALSE(ed.frame(false, 0.1));
 
-        host.set(P_transpose, 7.0);
+        host.set(P_osc_a_phase_motion_rate, 1.0);
         REQUIRE(ed.frame(false, 0.2));
         CHECK(ed.gui().paintedCount() == 1);
         CHECK(ed.lastDirty().w < kPageW / 2); // one knob and what it overlaps, not the page
@@ -667,7 +994,7 @@ TEST_CASE("the editor shell: cached frames equal uncached frames, and only what 
 
         // the same state drawn from scratch
         Host host2;
-        host2.set(P_transpose, 7.0);
+        host2.set(P_osc_a_phase_motion_rate, 1.0);
         ShadedRenderer r(kPageW, kPageH, 2);
         showcaseFrame(r, host2, style, 0.2);
         const auto fresh = r.frame();

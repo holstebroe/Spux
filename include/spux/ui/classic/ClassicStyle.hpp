@@ -18,9 +18,8 @@
 //     the lever's handle and a cap button;
 //   - a Panel without a title is the surface (the slate gradient or the worn paint) and takes the whole of
 //     its bounds; a titled panel is a frame, an outline with the title cut into its top line;
-//   - a button's label may hold a newline for a cap button's two lines; the stepper, dropdown, text field,
-//     popup and tooltip painters are not provided yet, so a page that uses those widgets does not compile
-//     against this style (a plugin can pass its own painter per call).
+//   - a button's label may hold a newline for a cap button's two lines; an icon (Icons.hpp) is drawn in
+//     the ink of the label, beside it or alone, and replaces the label of a selector's step.
 #pragma once
 
 #include <functional>
@@ -32,8 +31,9 @@
 
 namespace spux::inline v1::ui::classic {
 
-// A round lamp, centered on `center`: dark glass with a bezel when unlit, a glowing lens with a halo when lit.
-void drawLed(ShadedRenderer& r, Point center, float radius, Argb color, bool lit);
+// A round lamp, centered on `center`: dark glass with a bezel when unlit, a glowing lens with a halo when lit
+// (`level` 0..1 scales the glow).
+void drawLed(ShadedRenderer& r, Point center, float radius, Argb color, bool lit, float level = 1.0f);
 
 // A renderer factory for Editor<ClassicStyle>: a ShadedRenderer at the given supersampling.
 inline std::function<std::unique_ptr<IRenderer>(int, int)> classicRenderer(int supersample = 2) {
@@ -104,10 +104,65 @@ public:
     void paint(IRenderer& r, const Rect& bounds, const PanelState& s) const override;
 };
 
+// A lamp with its label to the right.
+class ClassicLed final : public LedPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const LedState& s) const override;
+    [[nodiscard]] Margin margin() const override { return Margin::all(6); }
+};
+
+// A piano keyboard: a felt strip, ivory keys and black keys with shadows; held keys are pressed, sounding keys
+// take the accent.
+class ClassicKeyboard final : public KeyboardPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const KeyboardState& s) const override;
+    [[nodiscard]] Margin margin() const override { return {0, 0, 2, 3}; }
+};
+
+// A recessed display with the label, the value and a chevron.
+class ClassicDropdown final : public DropdownPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const DropdownState& s) const override;
+};
+
+// [-] and [+] buttons at the ends of a recessed display.
+class ClassicStepper final : public StepperPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const StepperState& s) const override;
+};
+
+class ClassicTextField final : public TextFieldPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const TextFieldState& s) const override;
+};
+
+// A dark list panel with a soft shadow; the shadow reaches outside the popup (margin()).
+class ClassicPopup final : public PopupPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    Rect layout(IRenderer& r, const PopupState& s, int viewW, int viewH, std::vector<Rect>& itemRects) const override;
+    void paint(IRenderer& r, const Rect& bounds, const PopupState& s) const override;
+    [[nodiscard]] Margin margin() const override { return {4, 4, 8, 9}; }
+};
+
+class ClassicTooltip final : public TooltipPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    Rect layout(IRenderer& r, const TooltipState& s, int viewW, int viewH) const override;
+    void paint(IRenderer& r, const Rect& bounds, const TooltipState& s) const override;
+    [[nodiscard]] Margin margin() const override { return {4, 4, 8, 9}; }
+};
+
 struct ClassicStyle {
     explicit ClassicStyle(const ClassicConfig& c = ClassicConfig::slate())
         : theme(c.theme), config_(c), knob(config_), slider(config_), toggle(config_), selector(config_),
-          button(config_), panel(config_) {}
+          button(config_), led(config_), keyboard(config_), dropdown(config_), stepper(config_), panel(config_),
+          textField(config_), popup(config_), tooltip(config_) {}
     ClassicStyle(const ClassicStyle&) = delete;
     ClassicStyle& operator=(const ClassicStyle&) = delete;
 
@@ -129,7 +184,14 @@ public:
     ClassicToggle toggle;
     ClassicSelector selector;
     ClassicButton button;
+    ClassicLed led;
+    ClassicKeyboard keyboard;
+    ClassicDropdown dropdown;
+    ClassicStepper stepper;
     ClassicPanel panel;
+    ClassicTextField textField;
+    ClassicPopup popup;
+    ClassicTooltip tooltip;
 };
 
 } // namespace spux::inline v1::ui::classic

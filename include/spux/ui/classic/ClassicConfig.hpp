@@ -21,11 +21,10 @@ enum class PanelSurface { Slate, Worn };
 
 // Values of ButtonState::variant that ClassicStyle draws.
 enum ButtonVariant : int {
-    kButtonPlain = 0,      // a dark rounded button with a light edge; a bright edge when on
-    kButtonCap = 1,        // a colored cap (the accent), lit when on; a label with a newline is two lines
-    kButtonArrowLeft = 2,  // a plain button with a chevron
-    kButtonArrowRight = 3, //
-    kButtonLed = 4         // a lamp (the accent, lit when on) with the label to its right
+    kButtonPlain = 0,     // a dark rounded button with a light edge; a bright edge when on
+    kButtonCap = 1,       // a colored cap (the accent), lit when on; a label with a newline is two lines
+    kButtonArrowLeft = 2, // a plain button with a chevron
+    kButtonArrowRight = 3 //
 };
 
 struct ClassicConfig {
@@ -57,6 +56,16 @@ struct ClassicConfig {
         float capW = 21.0f, capH = 11.0f;
     } slider;
 
+    // The recessed display of a dropdown, a stepper's value and a text field: a dark glass with a light edge.
+    struct Display {
+        Color top{0.045f, 0.05f, 0.055f}, bottom{0.085f, 0.09f, 0.10f}, edge{0.30f, 0.315f, 0.33f};
+        Argb ink = 0xFFF0F2F3; // the text on it
+        float radius = 4.0f;
+    } display;
+
+    // The felt strip along the top of a keyboard, behind the keys.
+    Argb keyboardFelt = 0xFF5A1E1A;
+
     struct Button {
         Color top{0.215f, 0.225f, 0.24f}, bottom{0.125f, 0.13f, 0.14f}; // face, top to bottom
         Color edge{0.30f, 0.315f, 0.33f}, edgeOn{0.88f, 0.90f, 0.92f};  // outline idle and on
@@ -80,9 +89,13 @@ inline ClassicConfig ClassicConfig::slate() {
     k.focus = rgb(230, 235, 240);
     k.track = rgb(0, 0, 0, 120);
     k.hairline = rgb(255, 255, 255, 40);
+    k.popup = rgb(18, 20, 23, 250);
+    k.tooltip = rgb(14, 16, 18, 245);
     c.theme.metrics.labelPx = 8.5f;
     c.theme.metrics.valuePx = 11.0f;
     c.theme.metrics.titlePx = 9.0f;
+    c.theme.metrics.popupPx = 9.0f;
+    c.theme.metrics.popupRow = 18;
     return c;
 }
 
@@ -106,6 +119,10 @@ inline ClassicConfig ClassicConfig::silver() {
     c.button.bottom = {0.58f, 0.59f, 0.60f};
     c.button.edge = {0.38f, 0.39f, 0.40f};
     c.button.edgeOn = {0.10f, 0.45f, 0.14f};
+    c.display.top = {0.02f, 0.055f, 0.03f};
+    c.display.bottom = {0.03f, 0.08f, 0.045f};
+    c.display.edge = {0.38f, 0.39f, 0.40f};
+    c.display.ink = 0xFF45E86A;
     Theme::Colors& k = c.theme.colors;
     k.background = rgb(200, 201, 198);
     k.text = c.ink;
@@ -115,9 +132,13 @@ inline ClassicConfig ClassicConfig::silver() {
     k.focus = rgb(21, 122, 28);
     k.track = rgb(0, 0, 0, 90);
     k.hairline = rgb(0, 0, 0, 50);
+    k.popup = rgb(226, 227, 224, 252);
+    k.tooltip = rgb(236, 237, 234, 248);
     c.theme.metrics.labelPx = 9.5f;
     c.theme.metrics.valuePx = 11.0f;
     c.theme.metrics.titlePx = 9.5f;
+    c.theme.metrics.popupPx = 9.5f;
+    c.theme.metrics.popupRow = 18;
     return c;
 }
 
