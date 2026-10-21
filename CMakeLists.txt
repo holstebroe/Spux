@@ -137,7 +137,8 @@ add_library(spux_ui_core STATIC
   ${SPUX_ROOT}/src/ui/core/CpuLayers.cpp
   ${SPUX_ROOT}/src/ui/core/Gui.cpp
   ${SPUX_ROOT}/src/ui/core/Editor.cpp
-  ${SPUX_ROOT}/src/ui/core/Live.cpp)
+  ${SPUX_ROOT}/src/ui/core/Live.cpp
+  ${SPUX_ROOT}/src/ui/core/Icons.cpp)
 add_library(spux::spux_ui_core ALIAS spux_ui_core)
 target_include_directories(spux_ui_core PUBLIC ${SPUX_ROOT}/include)
 target_compile_features(spux_ui_core PUBLIC cxx_std_20)

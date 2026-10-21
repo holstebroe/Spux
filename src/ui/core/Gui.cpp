@@ -72,6 +72,10 @@ std::uint64_t keyOf(const ToggleState& s) {
     h << static_cast<const WidgetState&>(s) << s.paramId << s.on << s.label << static_cast<std::uint32_t>(s.accent);
     return h.value();
 }
+std::uint64_t iconKey(const Icon& i) {
+    return static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(i.draw)) * 31 +
+           static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(i.data));
+}
 std::uint64_t keyOf(const SelectorState& s) {
     StateHash h;
     h << static_cast<const WidgetState&>(s) << s.paramId << s.count << s.index << s.hotIndex << s.vertical
@@ -79,11 +83,28 @@ std::uint64_t keyOf(const SelectorState& s) {
     if (s.labels)
         for (int i = 0; i < s.count; ++i)
             h << s.labels[i];
+    if (s.icons)
+        for (int i = 0; i < s.count; ++i)
+            h << iconKey(s.icons[i]);
     return h.value();
 }
 std::uint64_t keyOf(const ButtonState& s) {
     StateHash h;
-    h << static_cast<const WidgetState&>(s) << s.label << s.on << static_cast<std::uint32_t>(s.accent) << s.variant;
+    h << static_cast<const WidgetState&>(s) << s.label << s.on << static_cast<std::uint32_t>(s.accent) << s.variant
+      << iconKey(s.icon);
+    return h.value();
+}
+std::uint64_t keyOf(const LedState& s) {
+    StateHash h;
+    h << static_cast<const WidgetState&>(s) << s.label << s.on << static_cast<double>(s.level)
+      << static_cast<std::uint32_t>(s.accent);
+    return h.value();
+}
+std::uint64_t keyOf(const KeyboardState& s) {
+    StateHash h;
+    h << static_cast<const WidgetState&>(s) << s.first << s.last << s.hotKey << static_cast<std::uint32_t>(s.accent);
+    for (int k = s.first; k <= s.last && k < 128; ++k)
+        h << static_cast<int>((s.down && s.down[k] ? 1 : 0) | (s.lit && s.lit[k] ? 2 : 0));
     return h.value();
 }
 std::uint64_t keyOf(const DropdownState& s) {
@@ -731,8 +752,73 @@ bool GuiCore::buttonImpl(const char* idText, const Rect& b, const char* label, c
     s.on = o.on;
     s.accent = o.accent ? o.accent : accent();
     s.variant = o.variant;
+    s.icon = o.icon;
     paintWidget(id, b, p, s, keyOf(s));
     return click;
+}
+
+void GuiCore::ledImpl(const char* idText, const Rect& b, bool on, const LedOptions& o, const LedPainter& p) {
+    const std::uint64_t id = hashId(idText, hashId(static_cast<std::uint64_t>(kLed), scope()));
+    LedState s;
+    s.theme = theme_;
+    s.label = o.label ? o.label : "";
+    s.on = on;
+    s.level = o.level;
+    s.accent = o.accent ? o.accent : accent();
+    paintWidget(id, b, p, s, keyOf(s));
+}
+
+KeyboardEvents GuiCore::keyboardImpl(const char* idText, const Rect& b, const KeyboardOptions& o,
+                                     const KeyboardPainter& p) {
+    const std::uint64_t id = hashId(idText, hashId(static_cast<std::uint64_t>(kKeyboard), scope()));
+    KeyboardState s;
+    s.theme = theme_;
+    s.first = o.first;
+    s.last = std::min(o.last, 127);
+    s.lit = o.lit;
+    s.accent = o.accent ? o.accent : accent();
+    KeyboardEvents ev;
+    auto velocityAt = [&](float y) {
+        const float t = b.h > 0 ? (y - static_cast<float>(b.y)) / static_cast<float>(b.h) : 1.0f;
+        return 0.3f + 0.7f * std::clamp(t, 0.0f, 1.0f);
+    };
+    if (pressedIn(b)) {
+        const int key = p.keyAt(b, s, {downX_, downY_});
+        if (key >= 0) {
+            ev.pressed = key;
+            ev.velocity = velocityAt(downY_);
+            active_ = id;
+            activeParam_ = kNoParamId;
+            keyboardKey_ = key;
+            if (!leftDown_) { // pressed and let go between two frames
+                ev.released = key;
+                keyboardKey_ = -1;
+            }
+        }
+    } else if (active_ == id) {
+        if (!leftDown_) {
+            ev.released = keyboardKey_;
+            keyboardKey_ = -1;
+        } else if (o.glide) {
+            const int key = p.keyAt(b, s, {mx_, my_});
+            if (key >= 0 && key != keyboardKey_) {
+                ev.released = keyboardKey_;
+                ev.pressed = key;
+                ev.velocity = velocityAt(my_);
+                keyboardKey_ = key;
+            }
+        }
+    }
+    if (active_ == id && keyboardKey_ >= 0)
+        ev.held = keyboardKey_;
+    std::uint8_t down[128] = {};
+    if (ev.held >= 0)
+        down[ev.held] = 1;
+    s.down = down;
+    s.hotKey = hovered(b) ? p.keyAt(b, s, {mx_, my_}) : -1;
+    s.hot = s.hotKey >= 0;
+    paintWidget(id, b, p, s, keyOf(s));
+    return ev;
 }
 
 GuiCore::TextResult GuiCore::textFieldImpl(const char* idText, const Rect& b, std::string& text, std::size_t maxBytes,
@@ -1107,6 +1193,7 @@ void GuiCore::selectorImpl(std::uint32_t paramId, const Rect& b, const SelectorO
     s.count = count;
     s.vertical = o.vertical;
     s.labels = o.labels;
+    s.icons = o.icons;
     s.index = static_cast<int>(std::lround(plainAt(idx) - info.min));
     for (int i = 0; i < count; ++i) {
         const Rect c = p.cell(b, s, i);

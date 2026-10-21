@@ -92,6 +92,7 @@ struct ToggleOptions {
 
 struct SelectorOptions {
     const char* const* labels = nullptr; // one per step; null: the parameter's enum labels
+    const Icon* icons = nullptr;         // one per step, shown in place of the labels
     Color accent = 0;
     bool vertical = false;
     int wheel = 0; // steps per notch up (+1, -1), 0: no wheel
@@ -102,7 +103,32 @@ struct ButtonOptions {
     bool on = false; // selected (a tab, a lit button)
     Color accent = 0;
     int variant = 0;
+    Icon icon = {};
     const ButtonPainter* painter = nullptr;
+};
+
+struct LedOptions {
+    const char* label = nullptr; // printed beside the lamp
+    Color accent = 0;
+    float level = 1.0f; // brightness of a lit lamp
+    const LedPainter* painter = nullptr;
+};
+
+struct KeyboardOptions {
+    int first = 36, last = 96;         // the keys shown (MIDI notes)
+    const std::uint8_t* lit = nullptr; // 128 flags: the notes that sound, shown pressed
+    bool glide = true;                 // dragging across keys plays them in turn
+    Color accent = 0;
+    const KeyboardPainter* painter = nullptr;
+};
+
+// What the pointer did on a keyboard this frame: the key it pressed, the key it let go (both -1 for none; a
+// glide has both, and so has a click shorter than a frame), the velocity of the press (0.3 at the top of a key to 1 at
+// its foot) and the key it holds.
+struct KeyboardEvents {
+    int pressed = -1, released = -1;
+    float velocity = 0.0f;
+    int held = -1;
 };
 
 // What happened to a custom interactive area this frame (views, handles, keyboards, ribbons).
@@ -237,7 +263,9 @@ protected:
         kButton,
         kText,
         kPanel,
-        kTextField
+        kTextField,
+        kLed,
+        kKeyboard
     };
 
     void knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& o, const KnobPainter& p);
@@ -248,6 +276,8 @@ protected:
     void stepperImpl(std::uint32_t paramId, const Rect& b, const char* label, const StepperPainter& p);
     bool buttonImpl(const char* id, const Rect& b, const char* label, const ButtonOptions& o, const ButtonPainter& p);
     void panelImpl(const Rect& b, const char* title, Color accent, const PanelPainter& p);
+    void ledImpl(const char* id, const Rect& b, bool on, const LedOptions& o, const LedPainter& p);
+    KeyboardEvents keyboardImpl(const char* id, const Rect& b, const KeyboardOptions& o, const KeyboardPainter& p);
     enum class TextResult { Editing, Commit, Cancel };
     TextResult textFieldImpl(const char* id, const Rect& b, std::string& text, std::size_t maxBytes,
                              const TextFieldPainter& p);
@@ -319,6 +349,7 @@ private:
 
     // widget state
     std::uint64_t active_ = 0, focus_ = 0, editing_ = 0;
+    int keyboardKey_ = -1; // the key the pointer holds on the active keyboard
     std::uint64_t hoverId_ = 0;
     double hoverSince_ = 0.0;
     double dragStart_ = 0.0;
@@ -395,6 +426,14 @@ public:
     // True when pressed this frame (or Enter while focused).
     bool button(const char* id, const Rect& b, const char* label, const ButtonOptions& o = {}) {
         return buttonImpl(id, b, label, o, o.painter ? *o.painter : static_cast<const ButtonPainter&>(style_.button));
+    }
+    // A lamp; it takes no input.
+    void led(const char* id, const Rect& b, bool on, const LedOptions& o = {}) {
+        ledImpl(id, b, on, o, o.painter ? *o.painter : static_cast<const LedPainter&>(style_.led));
+    }
+    // A piano keyboard that reports the keys the pointer plays; the plugin sends the notes.
+    KeyboardEvents keyboard(const char* id, const Rect& b, const KeyboardOptions& o = {}) {
+        return keyboardImpl(id, b, o, o.painter ? *o.painter : static_cast<const KeyboardPainter&>(style_.keyboard));
     }
     void panel(const Rect& b, const char* title, Color accent = 0) {
         panelImpl(b, title, accent, static_cast<const PanelPainter&>(style_.panel));

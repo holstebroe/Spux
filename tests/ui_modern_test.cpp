@@ -252,6 +252,49 @@ TEST_CASE("every painter draws inside its bounds plus its margin") {
                                  s.accent = rgb(255, 186, 84);
                                  style.button.paint(r, b, s);
                              }});
+    for (int on = 0; on < 2; ++on)
+        cases.push_back({"led", style.led.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                             LedState s;
+                             s.theme = th;
+                             s.on = on != 0;
+                             s.level = on ? 0.6f : 1.0f;
+                             s.label = "A LAMP WITH A LONG LABEL";
+                             s.accent = rgb(214, 58, 46);
+                             style.led.paint(r, b, s);
+                         }});
+    for (int v = 0; v < 3; ++v)
+        cases.push_back({"keyboard", style.keyboard.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                             std::uint8_t down[128] = {}, sounding[128] = {};
+                             down[48] = 1;
+                             sounding[52] = sounding[v == 2 ? 70 : 66] = 1;
+                             KeyboardState s;
+                             s.theme = th;
+                             s.first = v == 2 ? 47 : 48;
+                             s.last = v == 2 ? 70 : 71;
+                             s.down = down;
+                             s.lit = sounding;
+                             s.hotKey = v == 0 ? 50 : -1;
+                             s.accent = rgb(255, 186, 84);
+                             style.keyboard.paint(r, b, s);
+                         }});
+    cases.push_back({"icons", style.button.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                         ButtonState s;
+                         s.theme = th;
+                         s.icon = waveIcon(Wave::Saw);
+                         s.label = "SAW WITH A LONG LABEL";
+                         style.button.paint(r, b, s);
+                         s.label = "";
+                         style.button.paint(r, b, s);
+                         const Icon icons[3] = {waveIcon(Wave::Sine), waveIcon(Wave::Pulse), waveIcon(Wave::Noise)};
+                         SelectorState se;
+                         se.theme = th;
+                         se.count = 3;
+                         se.index = 1;
+                         se.icons = icons;
+                         style.selector.paint(r, b, se);
+                         se.vertical = true;
+                         style.selector.paint(r, b, se);
+                     }});
     cases.push_back({"dropdown", style.dropdown.margin(), [&](IRenderer& r, const Rect& b) {
                          DropdownState s;
                          s.theme = th;

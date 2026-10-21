@@ -305,6 +305,12 @@ void ModernSelector::paint(IRenderer& r, const Rect& b, const SelectorState& s) 
         } else if (hot) {
             r.fillRoundRect(face, fr, hairline(0.08f));
         }
+        if (s.icons && s.icons[i]) {
+            const int ih = std::max(4, std::min(16, cell.h - 10)), iw = std::min(ih * 2, std::max(4, cell.w - 10));
+            s.icons[i](r, {cell.x + (cell.w - iw) / 2, cell.y + (cell.h - ih) / 2, iw, ih},
+                       on ? s.accent : (hot ? t.colors.text : t.colors.textDim), 1.6f);
+            continue;
+        }
         char fallback[24];
         const char* text = "";
         std::string enumText;
@@ -345,11 +351,86 @@ void ModernButton::paint(IRenderer& r, const Rect& b, const ButtonState& s) cons
         r.fillRoundRect(b, rad, hairline(fillA));
         r.strokeRoundRect(b, rad, hairline(s.hot ? (chip ? 0.28f : 0.3f) : (chip ? 0.12f : 0.14f)), c.shape.stroke);
     }
-    r.drawTextPx(fitText(r, s.label, px, f(b.w) - (chip ? 14.0f : 12.0f), FontWeight::Bold).c_str(),
-                 f(b.x) + f(b.w) * 0.5f, capY(f(b.y), f(b.h), px),
-                 s.on ? s.accent : (s.hot ? t.colors.text : t.colors.textDim), px, Align::Center, FontWeight::Bold);
+    const Color ink = s.on ? s.accent : (s.hot ? t.colors.text : t.colors.textDim);
+    float textX = f(b.x) + f(b.w) * 0.5f, room = f(b.w) - (chip ? 14.0f : 12.0f);
+    if (s.icon) {
+        // alone it is centered; beside a label it takes the left end
+        const bool text = s.label && *s.label;
+        const int ih = std::max(4, std::min(16, b.h - 10)), iw = std::min(ih * 2, std::max(4, b.w - 12));
+        const int ix = text ? b.x + 8 : b.x + (b.w - iw) / 2;
+        s.icon(r, {ix, b.y + (b.h - ih) / 2, iw, ih}, ink, 1.6f);
+        if (text) {
+            textX = f(ix + iw) + (f(b.right() - ix - iw)) * 0.5f;
+            room = f(b.right() - ix - iw) - 10.0f;
+        }
+    }
+    if (s.label && *s.label)
+        r.drawTextPx(fitText(r, s.label, px, room, FontWeight::Bold).c_str(), textX, capY(f(b.y), f(b.h), px), ink, px,
+                     Align::Center, FontWeight::Bold);
     if (s.focused)
         focusRing(r, c, t, b, rad, s.accent);
+    r.popClip();
+}
+
+// --- lamp ------------------------------------------------------------------------------------------------
+
+void ModernLed::paint(IRenderer& r, const Rect& b, const LedState& s) const {
+    const ModernConfig& c = cfg();
+    const Theme& t = *s.theme;
+    const float cy = f(b.y) + f(b.h) * 0.5f, rad = std::clamp(f(b.h) * 0.5f - 4.0f, 3.0f, 5.0f);
+    const Point at{f(b.x) + rad + 4.0f, cy};
+    const float k = s.on ? std::clamp(s.level, 0.0f, 1.0f) : 0.0f;
+    r.pushClip(b.expand(margin()));
+    r.fillCircle(at, rad + 1.5f, withAlpha(rgb(0, 0, 0), 0.45f));
+    r.fillCircle(at, rad, mix(withAlpha(s.accent, 0.22f), s.accent, k));
+    if (k > 0.0f) {
+        if (c.effects.glow) {
+            lit(r, c, 1.8f * k);
+            r.drawGlow(at, rad * 3.2f, halo(c, s.accent, 0.7f * k));
+            unlit(r);
+        }
+        r.fillCircle({at.x - rad * 0.25f, at.y - rad * 0.3f}, rad * 0.35f, withAlpha(kWhite, 0.55f * k));
+    }
+    if (s.label && *s.label) {
+        const float px = t.metrics.labelPx + 0.5f;
+        r.drawTextPx(fitText(r, s.label, px, f(b.w) - rad * 2.0f - 14.0f, FontWeight::Bold).c_str(), at.x + rad + 8.0f,
+                     capY(f(b.y), f(b.h), px), s.on ? t.colors.text : t.colors.textDim, px, Align::Left,
+                     FontWeight::Bold);
+    }
+    r.popClip();
+}
+
+// --- keyboard --------------------------------------------------------------------------------------------
+
+void ModernKeyboard::paint(IRenderer& r, const Rect& b, const KeyboardState& s) const {
+    const ModernConfig& c = cfg();
+    const Theme& t = *s.theme;
+    const keyboard::Layout lay = layout();
+    r.pushClip(b);
+    r.fillRect(b, withAlpha(rgb(0, 0, 0), 0.4f));
+    for (int pass = 0; pass < 2; ++pass)
+        for (int k = s.first; k <= s.last; ++k) {
+            if (keyboard::isBlack(k) != (pass == 1))
+                continue;
+            const keyboard::KeyRect kr = keyboard::keyRect(b, s.first, s.last, k, lay);
+            const bool down = s.down && s.down[k], sounding = s.lit && s.lit[k];
+            const Rect cell{static_cast<int>(kr.x0) + 1, static_cast<int>(kr.y0), static_cast<int>(kr.x1 - kr.x0) - 1,
+                            static_cast<int>(kr.y1 - kr.y0) - 1};
+            Color col = pass == 1 ? rgb(24, 28, 42) : rgb(214, 220, 236);
+            if (s.hotKey == k && !down)
+                col = pass == 1 ? rgb(40, 46, 66) : rgb(232, 238, 252);
+            if (down || sounding)
+                col = mix(col, s.accent, down ? 0.7f : 0.55f);
+            r.fillRoundRect(cell, 3.0f, col);
+            if (pass == 1)
+                r.strokeRoundRect(cell, 3.0f, hairline(0.18f), c.shape.stroke);
+            if (sounding && c.effects.glow) {
+                lit(r, c, 1.4f);
+                r.fillRoundRect(cell.inset(1), 2.0f, halo(c, s.accent, 0.35f));
+                unlit(r);
+            }
+        }
+    (void)t;
     r.popClip();
 }
 
