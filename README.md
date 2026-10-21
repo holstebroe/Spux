@@ -12,7 +12,7 @@ spux is unrelated to SPUC ("Signal Processing using C++", a GPL DSP library).
 
 ## Status
 
-Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4), the parameters, state and CLAP glue (step 5) the immediate-mode UI core (step 6, its acceptance gate in `docs/UI_GATE.md`) the Modern flavor (step 7: GPU and software renderers, `ModernStyle`, generic views, the editor's GPU path) and the Classic flavor (step 7: `ShadedRenderer`, `ClassicStyle`) are extracted. Start with:
+Design phase. The CMake skeleton, flags and CI exist (migration step 1); the Classic drawing code (step 2), the native window and GL context (step 3), the testing, MIDI and packaging utilities (step 3a), the core and DSP building blocks (step 4), the parameters, state and CLAP glue (step 5) the immediate-mode UI core (step 6, its acceptance gate in `docs/UI_GATE.md`) the Modern flavor (step 7: GPU and software renderers, `ModernStyle`, generic views, the editor's GPU path) and the Classic flavor (step 7: `ShadedRenderer`, `ClassicStyle`) are extracted; `docs/WIDGETS.md` shows every control per flavor. Start with:
 
 - `docs/DESIGN_GUIDELINES.md`: how spux is built and how plugins use it (the rules).
 - `docs/DECISIONS.md`: every decision, with status and reason.

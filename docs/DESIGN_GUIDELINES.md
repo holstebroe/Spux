@@ -278,8 +278,9 @@ are unaffected.
 ### Painters and themes [U8]
 
 - One painter interface per widget type (`KnobPainter`, `SliderPainter`, `TogglePainter`,
-  `SelectorPainter`, `ButtonPainter`, `DropdownPainter`, `StepperPainter`, `PanelPainter`,
-  `TextFieldPainter`, `PopupPainter`, `TooltipPainter`; `spux/ui/Painters.hpp`). A painter receives the
+  `SelectorPainter`, `ButtonPainter`, `LedPainter`, `KeyboardPainter`, `DropdownPainter`, `StepperPainter`,
+  `PanelPainter`, `TextFieldPainter`, `PopupPainter`, `TooltipPainter`; `spux/ui/Painters.hpp`). A widget with a
+  distinct purpose gets its own interface (the lamp is not a button variant). A painter receives the
   renderer, the bounds and a state struct (value, hot, active, focused, modulation, label). It may answer
   geometry questions the interaction needs (a knob's depth handle, a selector's cells, a popup's rows).
 - A flavor implements the painters it supports. A plugin that uses a widget its flavor lacks fails to
@@ -288,6 +289,19 @@ are unaffected.
   A plugin can supply its own theme values.
 - Every painter draws inside the bounds it is given (plus the declared margin), so incremental redraws
   stay clean.
+
+### Icons and the keyboard
+
+- An **`Icon`** (`spux/ui/Icons.hpp`) is a function `draw(renderer, area, color, width, data)` and a pointer to what it
+  draws. Buttons take `icon`, selectors `icons`; a plugin supplies its own by writing one function. The built-in set is the
+  waveforms (`Wave`: sine, triangle, saw, saw down, square, pulse, noise, sample and hold; `waveIcon`, `drawWave`). Icons draw
+  through the basics of `IRenderer` only, so every flavor shows every icon.
+- The **keyboard** (`Gui::keyboard`) draws and hits through one geometry (`keyboard::keyRect`, `keyAt`: white keys tile the
+  bounds, black keys sit above the joints), reports what the pointer did (`KeyboardEvents`: pressed, released, velocity from
+  the height of the press, glide across keys) and shows the plugin's sounding notes (`KeyboardOptions::lit`). It sends no
+  notes: the plugin does. Things that belong to one plugin (a ribbon, paddles) are not shared widgets; the plugin builds
+  them on `Gui::view` and `Gui::interact`.
+- `docs/WIDGETS.md` lists every control per flavor with an image, and what is not done.
 
 ### Editing helpers [U9]
 
@@ -356,8 +370,7 @@ spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per wid
   by the config, never by a widget's state, so the interaction's idea of the dial and the drawing always agree.
 - **Conventions for what a painter state cannot say**: the theme's default accent means "no color of its own" (bare metal knob,
   dark fader cap, neutral rocker key); any other accent colors the cap. A `Panel` with no title is the surface and takes its
-  whole bounds; a titled one is a frame with the title cut into its top line. A lamp is a button variant (`kButtonLed`) or
-  `drawLed`.
+  whole bounds; a titled one is a frame with the title cut into its top line.
 - **Frames that must not change by accident**: the golden frames in `tests/golden/` (`classic_*`) and, for the looks
   inherited from existing plugins, the canvases of `classic_compat_*`. Regenerate them (`SPUX_UPDATE_GOLDEN=1`) only when a
   change of look is intended, and say so in the commit.

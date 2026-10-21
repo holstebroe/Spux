@@ -186,7 +186,7 @@ plugin-specific views and page code.
    (an `IRenderer` on `CpuLayers`, supersample 1 to 4, default 2 with the box filter; analytic edges for the basics, clip for
    everything including text and shading; the shading helpers: `graphics()`, `ink`, `inkCentered`, `wornPanel` with a per-renderer
    cache, the two atlas fonts), `ClassicStyle` (`ClassicKnob`, `ClassicSlider`, `ClassicToggle`, `ClassicSelector`,
-   `ClassicButton`, `ClassicPanel`, and `drawLed`) with `ClassicConfig` (`slate()`, `silver()`), and `classicRenderer()` for
+   `ClassicButton`, `ClassicPanel`, `drawLed`) with `ClassicConfig` (`slate()`, `silver()`), and `classicRenderer()` for
    `Editor<ClassicStyle>`. `ClassicDraw` gained `shadeRoundRect` and `softShadow` (the third copies: Tannhauser, Tearwash and
    Acidus each had them) and `Graphics` a clip (`setClip`; the default is the whole buffer, so the golden hash of the drawing
    code is unchanged). Tests: `ui_classic_style_test` (renderer primitives and clipping, the worn-panel cache, every painter
@@ -203,8 +203,17 @@ plugin-specific views and page code.
    GCC -O2 on x64 Linux, with the standard library, the same kind of probe as for Modern: eight widgets drawn once): `ClassicStyle` on
    `ShadedRenderer` 210 KB, against 109 KB for the core `Gui` with a plain test style and 244 KB for `ModernStyle` on `SoftRenderer`; the two
    font tables are in `ShadedRenderer`'s object, so a program that draws on it carries both.
-   Left: the stepper, dropdown, text field, popup and tooltip painters (Tannhauser's LCD and preset readout, the Tearwash
-   preset menu); a modulation display on the Classic knob; Classic scaling in steps (U11); Retro.
+   **Second round of the same session** (after review): the LED is a painter interface of its own (`LedPainter`, `LedState`,
+   `Gui::led`; `ClassicLed`, `ModernLed`); the Classic dropdown, stepper, text field, popup and tooltip painters (a recessed
+   display, `[-] [+]` buttons, a floating dark list with shadow); a **keyboard** widget in the core (`KeyboardPainter`,
+   `KeyboardState`, the shared geometry in `keyboard::`, `Gui::keyboard` reporting press, release, velocity and glide; painters
+   in both flavors); **icons** (`spux/ui/Icons.hpp`: `Icon` is a function and a pointer, so a plugin writes its own; the built-in
+   set is the waveforms, `Wave`, `waveIcon`, `drawWave`; buttons take `icon`, selectors `icons`, in both flavors). The tone and
+   rocker, paddle, ribbon and LCD of Tannhauser stay plugin territory. `docs/WIDGETS.md` is the status table of every control
+   per flavor with an image of each, from `spux_widget_gallery`. The pixel comparison with the plugins is unchanged (Tannhauser
+   0 of 255; Acidus identical outside its printed symbols).
+   Left: Retro; Classic spectrum, traces and curve editor; a modulation display on the Classic knob; Classic scaling in steps (U11);
+   cascading submenus (U9); Tearwash's faders (slot width, two-sided scale).
 8. Plumeflow and Lumeoid move onto spux (Lumeoid's GPU UI starts on spux directly).
 
 lexwash starts on spux from its first line.
@@ -292,8 +301,10 @@ from its own copy, is kept here.
   - Tearwash: its look is the slate look with `knob.ticks = false`, `slider.capW = 28`, `capH = 15` and `button.radius` 4 or 5; its
     faders also print a tick scale on both sides and a slot 4 wide, which `ClassicStyle` does not offer yet, so it was not
     switched or compared.
-  - Not provided yet: painters for the dropdown, stepper, text field, popup and tooltip; a page that uses those widgets does not
-    compile against `ClassicStyle` until they exist (or a plugin passes its own painter).
+  - Tannhauser's LCD becomes a `dropdown` or a plain display drawn by the plugin; its preset menu is the popup; the keyboard is
+    `Gui::keyboard` (keys 36 to 96; the felt strip is `ClassicConfig::keyboardFelt`); the waveform symbols printed on the
+    panel are `Wave` icons, or the plugin's own `Icon`.
+  - Acidus's printed waveform symbols can be `drawWave` calls in its background; its switch has no symbols of its own.
 - **Modern UI**: `GpuRenderer`, `FontAtlas`, the shaders, `InterFont` (byte for byte, namespace only) and
   `tools/make_fonts.py` come from Plumeflow `ui/` and `tools/`; `cmake/EmbedShaders.cmake` is
   `spux_embed_shaders` (it takes the output file; the raw string delimiter is `SPX`). `SoftRenderer` replaces

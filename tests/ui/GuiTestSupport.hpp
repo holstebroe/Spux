@@ -134,7 +134,7 @@ inline int luma(std::uint32_t p) { return static_cast<int>(((p >> 16) & 255u) + 
 // Compares a frame with its stored golden (a quarter-size ppm in tests/golden/). SPUX_UPDATE_GOLDEN=1 writes it.
 // A missing golden is reported, not failed, so a new case can be added before its file exists.
 inline void checkGolden(const std::string& name, const std::vector<std::uint32_t>& frame, int w, int h,
-                        double minSimilarity) {
+                        [[maybe_unused]] double minSimilarity) {
     const std::string path = std::string(SPUX_TEST_DATA_DIR) + "/golden/" + name + ".ppm";
     const auto small = quarter(frame, w, h);
     if (std::getenv("SPUX_UPDATE_GOLDEN")) {
@@ -150,7 +150,7 @@ inline void checkGolden(const std::string& name, const std::vector<std::uint32_t
     }
     REQUIRE(rw == w / 4);
     REQUIRE(rh == h / 4);
-    const double s = ssim(small, ref, rw, rh);
+    [[maybe_unused]] const double s = ssim(small, ref, rw, rh);
     INFO(name << " similarity " << s);
     CHECK(s >= minSimilarity);
 }

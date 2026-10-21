@@ -231,3 +231,12 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   on the config, not on the state, so `hitArea()` and the drawing agree (the rows for label and value are fixed). The label
   font backs `drawText` and Regular text, the display font Bold, both in one translation unit.
   `GuiTestSupport.hpp` (the test host and the golden-frame helpers) came out of `ModernSupport.hpp`, used by both flavors' tests.
+- 2026-10-21: the Classic flavor, second round (by the author's review). No decision changed. The lamp is its own painter
+  interface (`LedPainter`, `Gui::led`), not a button variant: it has a distinct purpose and takes no input. Added to the core:
+  `Icon` and the built-in waveform icons (a plugin supplies its own with one function; buttons and selectors take them in
+  both flavors) and the keyboard widget (`KeyboardPainter`, `Gui::keyboard`, one shared key geometry for drawing and hits;
+  it reports events and sends no notes). Plugin-specific widgets (a ribbon, paddles) are not generalized: plugins draw their
+  own with `Gui::view`, `Gui::interact` and their own backgrounds. The Classic dropdown, stepper, text field, popup and tooltip
+  painters were added, and `docs/WIDGETS.md` holds the per-flavor status of every control, with images made by
+  `spux_widget_gallery`.
+
