@@ -21,11 +21,9 @@ enum class PanelSurface { Slate, Worn };
 
 // Values of ButtonState::variant that ClassicStyle draws.
 enum ButtonVariant : int {
-    kButtonPlain = 0,     // a dark rounded button with a light edge; a bright edge when on
-    kButtonCap = 1,       // a colored cap (the accent), lit when on; a label with a newline is two lines
-    kButtonArrowLeft = 2, // a plain button with a chevron
-    kButtonArrowRight = 3 //
-};
+    kButtonPlain = 0, // a dark rounded button with a light edge; a bright edge when on
+    kButtonCap = 1    // a colored cap (the accent), lit when on; a label with a newline is two lines
+}; // the arrows and the display button are core variants (StdButtonVariant, Painters.hpp)
 
 struct ClassicConfig {
     Theme theme;
@@ -48,9 +46,42 @@ struct ClassicConfig {
         float topRow = 12.0f, bottomRow = 10.0f;
         bool labelBelow = true; // the label goes in the bottom row and the value in the top row; else the reverse
         bool showValue = true;  // the value text is drawn at all
+        float startDeg = 120.0f, sweepDeg = 300.0f; // the dial: 7 o'clock, clockwise (degrees, 0 = 3 o'clock)
+
+        // Circular indicators around the dial (instead of, or with, the printed ticks): a track, the value arc (from
+        // the center for a bipolar knob), the live modulated value on an arc outside it, ticks at the ends, and the
+        // highlight of a pickable knob. The dial's room grows to hold them.
+        struct Arc {
+            bool on = false;
+            float gap = 5.0f, width = 2.0f,
+                  modGap = 3.0f; // distance from the dial, thickness, step out for the mod arc
+            Argb track = 0xFF3A2010, value = 0xFFFF4500, mod = 0xFF00E5FF, endTick = 0xFF8C5224,
+                 centerTick = 0xFFFF8A00, pick = 0xFF00E5FF;
+        } arc;
+
+        // The knurled knob's metal: albedo of the foot ring, the grip, the chamfer and the top (silver by default);
+        // a pointer color draws a glowing pointer line on the top instead of the incised one, a bezel color a ring
+        // around the foot.
+        Color metalFoot{0.15f, 0.15f, 0.16f}, metalGrip{0.62f, 0.63f, 0.65f}, metalChamfer{0.78f, 0.79f, 0.80f},
+            metalTop{0.80f, 0.81f, 0.82f};
+        Argb pointer = 0, pointerTip = 0xFFFFCC00, bezel = 0;
     } knob;
 
     ToggleShape toggle = ToggleShape::Rocker;
+    // The lever switch: plate and handle albedo, and a lamp beside it that is lit when the switch is on.
+    struct Lever {
+        Color plate{0.74f, 0.75f, 0.76f}, handle{0.86f, 0.87f, 0.88f};
+        bool lamp = false;
+    } lever;
+
+    // The frame of a titled panel: an outline with the title cut into it, or a forged plate (a dark gradient, a
+    // trim line inside the edge, rivets in the corners and the title on a plate on the top edge).
+    struct Frame {
+        bool plate = false;
+        Argb trim = 0xFF8C5224, titleInk = 0; // 0: the ink
+        Color fillTop{0.125f, 0.137f, 0.149f}, fillBottom{0.07f, 0.078f, 0.086f};
+        bool rivets = true;
+    } frame;
 
     struct Slider {
         float capW = 21.0f, capH = 11.0f;
@@ -76,6 +107,9 @@ struct ClassicConfig {
     static ClassicConfig slate();
     // The silver look: worn silver paint, black ink, knurled metal knobs, lever switches.
     static ClassicConfig silver();
+    // The forge look: forged iron plates with copper trim and rivets, dark gunmetal knobs with value and modulation
+    // arcs, amber lettering, cyan for what is live.
+    static ClassicConfig forge();
 };
 
 inline ClassicConfig ClassicConfig::slate() {
@@ -138,6 +172,63 @@ inline ClassicConfig ClassicConfig::silver() {
     c.theme.metrics.valuePx = 11.0f;
     c.theme.metrics.titlePx = 9.5f;
     c.theme.metrics.popupPx = 9.5f;
+    c.theme.metrics.popupRow = 18;
+    return c;
+}
+
+inline ClassicConfig ClassicConfig::forge() {
+    ClassicConfig c;
+    c.ink = 0xFFD89A40;
+    c.inkDim = 0xFF8A6A3A;
+    c.frameInk = 0xFF8C5224;
+    c.valueInk = 0xFFFFCC00;
+    c.inkOn = 0xFFFFCC00;
+    c.wear = 0.0f;
+    c.surfaceLight = {0.082f, 0.086f, 0.094f};
+    c.surfaceDark = {0.066f, 0.070f, 0.078f};
+    c.knob.shape = KnobShape::Knurled;
+    c.knob.ticks = false;
+    c.knob.topRow = 15.0f;
+    c.knob.bottomRow = 0.0f;
+    c.knob.labelBelow = false;
+    c.knob.showValue = false;
+    c.knob.startDeg = 135.0f;
+    c.knob.sweepDeg = 270.0f;
+    c.knob.arc.on = true;
+    c.knob.metalFoot = {0.07f, 0.075f, 0.08f};
+    c.knob.metalGrip = {0.19f, 0.205f, 0.22f};
+    c.knob.metalChamfer = {0.25f, 0.27f, 0.29f};
+    c.knob.metalTop = {0.15f, 0.16f, 0.175f};
+    c.knob.pointer = 0xFFFF3300;
+    c.knob.bezel = 0xFF8C5224;
+    c.toggle = ToggleShape::Lever;
+    c.lever.plate = {0.16f, 0.17f, 0.18f};
+    c.lever.handle = {0.62f, 0.40f, 0.22f};
+    c.lever.lamp = true;
+    c.frame.plate = true;
+    c.display.top = {0.055f, 0.063f, 0.07f};
+    c.display.bottom = {0.07f, 0.078f, 0.086f};
+    c.display.edge = {0.55f, 0.32f, 0.14f};
+    c.display.ink = 0xFFFFCC00;
+    c.button.top = {0.165f, 0.176f, 0.188f};
+    c.button.bottom = {0.10f, 0.106f, 0.114f};
+    c.button.edge = {0.55f, 0.32f, 0.14f};
+    c.button.edgeOn = {1.0f, 0.54f, 0.0f};
+    c.button.radius = 2.0f;
+    Theme::Colors& k = c.theme.colors;
+    k.background = rgb(20, 21, 23);
+    k.text = c.ink;
+    k.textDim = c.inkDim;
+    k.textFaint = c.frameInk;
+    k.accent = rgb(184, 188, 192);
+    k.focus = rgb(0, 229, 255);
+    k.popup = rgb(14, 16, 18, 250);
+    k.tooltip = rgb(10, 12, 14, 245);
+    k.hairline = rgb(140, 82, 36, 120);
+    c.theme.metrics.labelPx = 8.5f;
+    c.theme.metrics.valuePx = 11.0f;
+    c.theme.metrics.titlePx = 9.0f;
+    c.theme.metrics.popupPx = 9.0f;
     c.theme.metrics.popupRow = 18;
     return c;
 }

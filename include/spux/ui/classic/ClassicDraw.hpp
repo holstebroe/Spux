@@ -102,6 +102,9 @@ template <class F> void shadeBox(Graphics& g, float x0, float y0, float x1, floa
     }
 }
 
+// A rivet head: a small steel dome lit from the upper left, centered on (cx, cy).
+void drawRivet(Graphics& g, float cx, float cy, float radius);
+
 // Anti-aliased line with round caps, `width` logical pixels wide.
 void drawLineAA(Graphics& g, float x0, float y0, float x1, float y1, float width, uint32_t argb);
 

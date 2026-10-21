@@ -89,6 +89,12 @@ void ModernKnob::paint(IRenderer& r, const Rect& b, const KnobState& s) const {
     const float lo = std::min(a0, a1), hi = std::max(a0, a1);
 
     r.pushClip(b);
+    if (s.pickable) {
+        // can be picked now (a modulation target, MIDI learn): a ring in the modulation color around the dial
+        lit(r, c, 1.6f);
+        r.strokeCircle({cx, cy}, g.ringRadius + 5.0f, withAlpha(t.colors.modulation, 0.95f), 2.2f);
+        unlit(r);
+    }
     if (s.label && *s.label)
         r.drawTextPx(fitText(r, s.label, labelPx, f(b.w) - 4.0f, FontWeight::Bold).c_str(), cx, f(b.y),
                      hot ? t.colors.text : t.colors.textDim, labelPx, Align::Center, FontWeight::Bold);
@@ -341,6 +347,33 @@ void ModernButton::paint(IRenderer& r, const Rect& b, const ButtonState& s) cons
     const bool chip = s.variant == kButtonChip;
     const float px = chip ? t.metrics.valuePx - 0.5f : t.metrics.valuePx;
     r.pushClip(b);
+    if (s.variant == kButtonArrowLeft || s.variant == kButtonArrowRight) {
+        r.fillRoundRect(b, rad, hairline(s.active ? 0.2f : s.hot ? 0.13f : 0.07f));
+        r.strokeRoundRect(b, rad, hairline(s.hot ? 0.3f : 0.14f), c.shape.stroke);
+        const Point m = b.center();
+        const float k = s.variant == kButtonArrowLeft ? -1.0f : 1.0f;
+        const Color col = s.hot ? t.colors.text : t.colors.textDim;
+        r.drawLine({m.x + 2.0f * k, m.y - 4.0f}, {m.x - 2.0f * k, m.y}, col, 1.8f);
+        r.drawLine({m.x - 2.0f * k, m.y}, {m.x + 2.0f * k, m.y + 4.0f}, col, 1.8f);
+        if (s.focused)
+            focusRing(r, c, t, b, rad, s.accent);
+        r.popClip();
+        return;
+    }
+    if (s.variant == kButtonDisplay) {
+        r.fillRoundRect(b, c.shape.fieldRadius, hairline(s.hot ? 0.12f : 0.07f));
+        r.strokeRoundRect(b, c.shape.fieldRadius,
+                          s.active ? withAlpha(t.colors.accent, 0.8f) : hairline(s.hot ? 0.3f : 0.14f), c.shape.stroke);
+        r.drawTextPx(fitText(r, s.label, px, f(b.w) - 34.0f).c_str(), f(b.x) + f(b.w) * 0.5f - 6.0f,
+                     capY(f(b.y), f(b.h), px), t.colors.text, px, Align::Center);
+        const float ax = f(b.right()) - 13.0f, ay = f(b.y) + f(b.h) * 0.5f;
+        r.drawLine({ax - 3.5f, ay - 1.5f}, {ax, ay + 2.0f}, t.colors.textDim, 1.6f);
+        r.drawLine({ax, ay + 2.0f}, {ax + 3.5f, ay - 1.5f}, t.colors.textDim, 1.6f);
+        if (s.focused)
+            focusRing(r, c, t, b, c.shape.fieldRadius, s.accent);
+        r.popClip();
+        return;
+    }
     if (s.on) {
         if (chip && c.shape.controlShadow > 0.0f && c.effects.glow)
             r.drawShadow(b, rad, c.shape.controlShadow, halo(c, s.accent, 0.35f));
@@ -431,6 +464,56 @@ void ModernKeyboard::paint(IRenderer& r, const Rect& b, const KeyboardState& s) 
             }
         }
     (void)t;
+    r.popClip();
+}
+
+// --- tabs and readout ------------------------------------------------------------------------------------
+
+void ModernTabs::paint(IRenderer& r, const Rect& b, const TabsState& s) const {
+    const ModernConfig& c = cfg();
+    const Theme& t = *s.theme;
+    const float px = t.metrics.labelPx + 0.5f;
+    r.pushClip(b);
+    for (int i = 0; i < s.count; ++i) {
+        const Rect cell = this->cell(b, s, i).inset(2, 1);
+        const bool on = i == s.index, hot = i == s.hotIndex;
+        const float rad = f(cell.h) * 0.5f;
+        if (on) {
+            r.fillRoundRect(cell, rad, withAlpha(s.accent, 0.3f));
+            r.strokeRoundRect(cell, rad, withAlpha(s.accent, 0.9f), c.shape.stroke);
+        } else if (hot) {
+            r.fillRoundRect(cell, rad, hairline(0.08f));
+        }
+        const char* text = s.labels && s.labels[i] ? s.labels[i] : "";
+        r.drawTextPx(fitText(r, text, px, f(cell.w) - 8.0f, FontWeight::Bold).c_str(), f(cell.x) + f(cell.w) * 0.5f,
+                     capY(f(cell.y), f(cell.h), px), on ? s.accent : (hot ? t.colors.text : t.colors.textDim), px,
+                     Align::Center, FontWeight::Bold);
+    }
+    if (s.focused)
+        focusRing(r, c, t, b, f(b.h) * 0.5f, s.accent);
+    r.popClip();
+}
+
+void ModernReadout::paint(IRenderer& r, const Rect& b, const ReadoutState& s) const {
+    const ModernConfig& c = cfg();
+    const Theme& t = *s.theme;
+    const float px = t.metrics.valuePx;
+    r.pushClip(b);
+    r.fillRoundRect(b, c.shape.fieldRadius, hairline(0.05f));
+    r.strokeRoundRect(b, c.shape.fieldRadius, hairline(0.12f), c.shape.stroke);
+    const float y = capY(f(b.y), f(b.h), px);
+    if (s.idle) {
+        r.drawTextPx(fitText(r, s.name, px, f(b.w) - 20.0f).c_str(), f(b.x) + 10.0f, y, t.colors.textFaint, px);
+    } else {
+        const std::string line = std::string(s.name) + ": " + s.value;
+        r.drawTextPx(fitText(r, line, px, f(b.w) - 20.0f, FontWeight::Bold).c_str(), f(b.x) + 10.0f, y, t.colors.text,
+                     px, Align::Left, FontWeight::Bold);
+        if (s.hint && *s.hint) {
+            const float lw = r.textWidthPx(line.c_str(), px, FontWeight::Bold), hw = r.textWidthPx(s.hint, px);
+            if (lw + hw + 36.0f < f(b.w))
+                r.drawTextPx(s.hint, f(b.right()) - 10.0f, y, t.colors.textDim, px, Align::Right);
+        }
+    }
     r.popClip();
 }
 

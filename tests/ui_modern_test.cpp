@@ -295,6 +295,50 @@ TEST_CASE("every painter draws inside its bounds plus its margin") {
                          se.vertical = true;
                          style.selector.paint(r, b, se);
                      }});
+    cases.push_back({"tabs", style.tabs.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                         static const char* const names[3] = {"LFO 1", "A VERY LONG TAB NAME", "MOD"};
+                         TabsState s;
+                         s.theme = th;
+                         s.count = 3;
+                         s.index = 1;
+                         s.hotIndex = 2;
+                         s.labels = names;
+                         s.focused = true;
+                         s.accent = rgb(255, 186, 84);
+                         style.tabs.paint(r, b, s);
+                     }});
+    for (int idle = 0; idle < 2; ++idle)
+        cases.push_back({"readout", style.readout.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                             ReadoutState s;
+                             s.theme = th;
+                             s.idle = idle != 0;
+                             s.name = idle ? "TOUCH A CONTROL TO SEE ITS VALUE HERE" : "A LONG PARAMETER NAME";
+                             s.value = "-12.5 dB and then some";
+                             s.hint = "Drag up or down; shift for fine";
+                             style.readout.paint(r, b, s);
+                         }});
+    for (int v : {kButtonArrowLeft, kButtonArrowRight, kButtonDisplay})
+        cases.push_back(
+            {"button v=" + std::to_string(v), style.button.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                 ButtonState s;
+                 s.theme = th;
+                 s.variant = v;
+                 s.hot = true;
+                 s.active = true;
+                 s.focused = true;
+                 s.label = "A PRESET NAME THAT IS FAR TOO LONG";
+                 s.accent = rgb(255, 186, 84);
+                 style.button.paint(r, b, s);
+             }});
+    cases.push_back({"pickable knob", style.knob.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                         KnobState s;
+                         s.theme = th;
+                         s.pickable = true;
+                         s.value = 0.5;
+                         s.label = "CUTOFF";
+                         s.accent = rgb(255, 186, 84);
+                         style.knob.paint(r, b, s);
+                     }});
     cases.push_back({"dropdown", style.dropdown.margin(), [&](IRenderer& r, const Rect& b) {
                          DropdownState s;
                          s.theme = th;

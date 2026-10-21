@@ -27,9 +27,11 @@ struct Host final : StoreEditorHost<kCount> {
     EditQueue queue;
     int flushes = 0;
     ModulationHost* mod = nullptr;
+    PresetHost* presetHost = nullptr;
     Host() : StoreEditorHost(store, queue) {}
     void requestFlush() override { ++flushes; }
     ModulationHost* modulation() override { return mod; }
+    PresetHost* presets() override { return presetHost; }
     double plainOf(std::uint32_t id) { return store.plain(kTable.indexOf(id)); }
     void set(std::uint32_t id, double plain) { store.setPlain(kTable.indexOf(id), plain); }
     std::vector<ParamEdit::Kind> drain() {

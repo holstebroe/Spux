@@ -89,7 +89,8 @@ public:
     [[nodiscard]] Rect cell(const Rect& b, const SelectorState& s, int i) const override;
 };
 
-// See ButtonVariant. The shadow reaches outside the bounds (margin()).
+// See ButtonVariant and StdButtonVariant (arrows, the display button). The shadow reaches outside the bounds
+// (margin()).
 class ClassicButton final : public ButtonPainter, detail::PainterBase {
 public:
     using PainterBase::PainterBase;
@@ -158,11 +159,25 @@ public:
     [[nodiscard]] Margin margin() const override { return {4, 4, 8, 9}; }
 };
 
+// A row of tabs: button faces, the selected one lit in the on edge and ink.
+class ClassicTabs final : public TabsPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const TabsState& s) const override;
+};
+
+// The name and value of the parameter under the pointer in a recessed display, the hint right of it.
+class ClassicReadout final : public ReadoutPainter, detail::PainterBase {
+public:
+    using PainterBase::PainterBase;
+    void paint(IRenderer& r, const Rect& bounds, const ReadoutState& s) const override;
+};
+
 struct ClassicStyle {
     explicit ClassicStyle(const ClassicConfig& c = ClassicConfig::slate())
         : theme(c.theme), config_(c), knob(config_), slider(config_), toggle(config_), selector(config_),
-          button(config_), led(config_), keyboard(config_), dropdown(config_), stepper(config_), panel(config_),
-          textField(config_), popup(config_), tooltip(config_) {}
+          button(config_), led(config_), tabs(config_), readout(config_), keyboard(config_), dropdown(config_),
+          stepper(config_), panel(config_), textField(config_), popup(config_), tooltip(config_) {}
     ClassicStyle(const ClassicStyle&) = delete;
     ClassicStyle& operator=(const ClassicStyle&) = delete;
 
@@ -185,6 +200,8 @@ public:
     ClassicSelector selector;
     ClassicButton button;
     ClassicLed led;
+    ClassicTabs tabs;
+    ClassicReadout readout;
     ClassicKeyboard keyboard;
     ClassicDropdown dropdown;
     ClassicStepper stepper;

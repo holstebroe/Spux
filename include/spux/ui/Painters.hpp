@@ -57,7 +57,8 @@ struct KnobState : WidgetState {
     bool caret = false;   // the entry caret is visible this frame
     bool bipolar = false; // the arc starts at the center
     bool large = false;
-    bool dimmed = false; // shown but overridden (a tempo-synced rate)
+    bool dimmed = false;   // shown but overridden (a tempo-synced rate)
+    bool pickable = false; // can be picked right now (a modulation target, MIDI learn): the painter highlights it
     bool showValue = true;
     Color accent = 0;
     ModulationView mod;
@@ -177,6 +178,32 @@ inline int keyAt(const Rect& b, int first, int last, Point p, const Layout& l = 
 }
 } // namespace keyboard
 
+// Button variants every flavor draws, so a helper (the preset bar) works in all of them. A flavor's own variants
+// are numbered from 0 upward; these start at 100.
+enum StdButtonVariant : int {
+    kButtonArrowLeft = 100,  // a chevron pointing left (previous)
+    kButtonArrowRight = 101, // and right (next)
+    kButtonDisplay = 102     // a recessed display of the label that opens something when pressed
+};
+
+// A row of tabs, one selected.
+struct TabsState : WidgetState {
+    int count = 0;
+    int index = 0;
+    int hotIndex = -1;
+    const char* const* labels = nullptr;
+    Color accent = 0;
+};
+
+// What the pointer is on: the parameter's name and value, and its hint, or the idle text.
+struct ReadoutState : WidgetState {
+    const char* name = "";
+    const char* value = "";
+    const char* hint = "";
+    bool idle = false; // no parameter: `name` is the idle text
+    Color accent = 0;
+};
+
 struct DropdownState : WidgetState {
     const params::ParamInfo* param = nullptr;
     const char* label = "";
@@ -266,6 +293,17 @@ public:
 
 class ButtonPainter : public Painter<ButtonState> {};
 class LedPainter : public Painter<LedState> {};
+class ReadoutPainter : public Painter<ReadoutState> {};
+
+class TabsPainter : public Painter<TabsState> {
+public:
+    // The part of the bounds that picks tab i; the default divides the bounds evenly along the row.
+    [[nodiscard]] virtual Rect cell(const Rect& b, const TabsState& s, int i) const {
+        const int n = s.count > 0 ? s.count : 1;
+        const int x0 = b.x + b.w * i / n, x1 = b.x + b.w * (i + 1) / n;
+        return {x0, b.y, x1 - x0, b.h};
+    }
+};
 
 class KeyboardPainter : public Painter<KeyboardState> {
 public:

@@ -54,9 +54,10 @@ private:
 std::uint64_t keyOf(const KnobState& s) {
     StateHash h;
     h << static_cast<const WidgetState&>(s) << s.paramId << s.value << s.label << s.valueText << s.editing
-      << (s.editing ? s.editText : "") << (s.editing && s.caret) << s.bipolar << s.large << s.dimmed << s.showValue
-      << static_cast<std::uint32_t>(s.accent) << s.mod.any << s.mod.base << s.mod.shared << s.mod.voiceCount
-      << s.mod.armed << s.mod.armedRoute << s.mod.armedDepth << s.mod.overHandle << s.mod.handleActive;
+      << (s.editing ? s.editText : "") << (s.editing && s.caret) << s.bipolar << s.large << s.dimmed << s.pickable
+      << s.showValue << static_cast<std::uint32_t>(s.accent) << s.mod.any << s.mod.base << s.mod.shared
+      << s.mod.voiceCount << s.mod.armed << s.mod.armedRoute << s.mod.armedDepth << s.mod.overHandle
+      << s.mod.handleActive;
     for (int v = 0; v < s.mod.voiceCount; ++v)
         h << s.mod.voices[v];
     return h.value();
@@ -92,6 +93,20 @@ std::uint64_t keyOf(const ButtonState& s) {
     StateHash h;
     h << static_cast<const WidgetState&>(s) << s.label << s.on << static_cast<std::uint32_t>(s.accent) << s.variant
       << iconKey(s.icon);
+    return h.value();
+}
+std::uint64_t keyOf(const TabsState& s) {
+    StateHash h;
+    h << static_cast<const WidgetState&>(s) << s.count << s.index << s.hotIndex << static_cast<std::uint32_t>(s.accent);
+    if (s.labels)
+        for (int i = 0; i < s.count; ++i)
+            h << s.labels[i];
+    return h.value();
+}
+std::uint64_t keyOf(const ReadoutState& s) {
+    StateHash h;
+    h << static_cast<const WidgetState&>(s) << s.name << s.value << s.hint << s.idle
+      << static_cast<std::uint32_t>(s.accent);
     return h.value();
 }
 std::uint64_t keyOf(const LedState& s) {
@@ -1023,6 +1038,7 @@ void GuiCore::knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& 
     s.caret = s.editing && caretOn(time_);
     s.bipolar = o.bipolar;
     s.large = o.large;
+    s.pickable = o.pickable;
     s.dimmed = o.dimmed;
     s.showValue = o.showValue;
     s.accent = o.accent ? o.accent : accent();
@@ -1221,7 +1237,7 @@ void GuiCore::selectorImpl(std::uint32_t paramId, const Rect& b, const SelectorO
     paintWidget(id, b, p, s, keyOf(s));
 }
 
-void GuiCore::dropdownImpl(std::uint32_t paramId, const Rect& b, const char* label, const DropdownPainter& p) {
+void GuiCore::dropdownImpl(std::uint32_t paramId, const Rect& b, const DropdownOptions& o, const DropdownPainter& p) {
     const std::size_t idx = indexOf(paramId);
     if (idx == params::kNoParam || b.empty())
         return;
@@ -1236,7 +1252,27 @@ void GuiCore::dropdownImpl(std::uint32_t paramId, const Rect& b, const char* lab
     const bool press = pressedIn(b);
     if (press)
         focus_ = id;
-    if (press || (focused(id) && keyPressed(KeyEvent::Key::Enter))) {
+    bool open = press && !o.drag; // a draggable one opens on release, when it was not dragged
+    if (o.drag) {
+        if (press) {
+            active_ = id;
+            activeParam_ = paramId;
+            dragStart_ = plainAt(idx);
+            dragStartY_ = downY_;
+            dragMoved_ = false;
+            beginAt(idx);
+        }
+        if (active_ == id) {
+            const double steps = std::round(static_cast<double>(dragStartY_ - my_) / std::max(1.0f, o.dragPixels));
+            if (std::fabs(my_ - dragStartY_) > 3.0f)
+                dragMoved_ = true;
+            if (leftDown_ && dragMoved_)
+                valueAt(idx, std::clamp(dragStart_ + steps, info.min, info.max));
+            if (!leftDown_ && !dragMoved_)
+                open = true;
+        }
+    }
+    if (open || (focused(id) && keyPressed(KeyEvent::Key::Enter))) {
         std::vector<PopupItem> items;
         const std::size_t n = info.kind == ParamKind::Enum
                                   ? params::enumCount(info)
@@ -1255,10 +1291,58 @@ void GuiCore::dropdownImpl(std::uint32_t paramId, const Rect& b, const char* lab
     s.theme = theme_;
     s.param = &info;
     s.hot = hot;
+    s.active = active_ == id && leftDown_ && dragMoved_;
     s.focused = focused(id);
-    s.label = label ? label : "";
+    s.label = o.label ? o.label : "";
     s.valueText = formatAt(idx, plainAt(idx));
     s.open = popupOpen_ && popup_.id == id;
+    paintWidget(id, b, p, s, keyOf(s));
+}
+
+int GuiCore::tabsImpl(const char* idText, const Rect& b, const char* const* labels, int count, int current,
+                      const TabsOptions& o, const TabsPainter& p) {
+    const std::uint64_t id = hashId(idText, hashId(static_cast<std::uint64_t>(kTabs), scope()));
+    TabsState s;
+    s.theme = theme_;
+    s.count = count;
+    s.labels = labels;
+    s.accent = o.accent ? o.accent : accent();
+    int result = std::clamp(current, 0, std::max(0, count - 1));
+    for (int i = 0; i < count; ++i) {
+        const Rect c = p.cell(b, s, i);
+        if (hovered(c))
+            s.hotIndex = i;
+        if (pressedIn(c)) {
+            result = i;
+            focus_ = id;
+        }
+    }
+    s.index = result;
+    s.focused = focused(id);
+    registerFocus(id);
+    paintWidget(id, b, p, s, keyOf(s));
+    return result;
+}
+
+void GuiCore::readoutImpl(const char* idText, const Rect& b, const ReadoutOptions& o, const ReadoutPainter& p) {
+    const std::uint64_t id = hashId(idText, hashId(static_cast<std::uint64_t>(kReadout), scope()));
+    ReadoutState s;
+    s.theme = theme_;
+    s.accent = o.accent ? o.accent : accent();
+    std::string value;
+    const std::uint32_t pid = activeParam_ != kNoParamId ? activeParam_ : hoveredParam_;
+    const std::size_t idx = pid == kNoParamId ? params::kNoParam : indexOf(pid);
+    if (idx == params::kNoParam) {
+        s.idle = true;
+        s.name = o.idle ? o.idle : "";
+        paintWidget(id, b, p, s, keyOf(s));
+        return;
+    }
+    s.name = host_.paramTable()[idx].name;
+    value = formatAt(idx, plainAt(idx));
+    s.value = value.c_str();
+    const char* hint = host_.paramHint(idx);
+    s.hint = hint ? hint : "";
     paintWidget(id, b, p, s, keyOf(s));
 }
 

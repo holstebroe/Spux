@@ -28,6 +28,12 @@ int diffCount(const std::vector<std::uint32_t>& a, const std::vector<std::uint32
     return n;
 }
 
+// The three shipped looks.
+ClassicConfig lookConfig(int look) {
+    return look == 0 ? ClassicConfig::slate() : look == 1 ? ClassicConfig::silver() : ClassicConfig::forge();
+}
+std::string lookName(int look) { return look == 0 ? "classic_slate" : look == 1 ? "classic_silver" : "classic_forge"; }
+
 int lumaAt(const std::vector<std::uint32_t>& px, int w, int x, int y) { return ui_test::luma(at(px, w, x, y)); }
 
 } // namespace
@@ -202,8 +208,8 @@ struct PaintCase {
 } // namespace
 
 TEST_CASE("every painter draws inside its bounds plus its margin, in both looks") {
-    for (int look = 0; look < 2; ++look) {
-        ClassicStyle style(look ? ClassicConfig::silver() : ClassicConfig::slate());
+    for (int look = 0; look < 3; ++look) {
+        ClassicStyle style(lookConfig(look));
         const Theme* th = &style.theme;
         const Argb own = rgb(232, 150, 40);
         const params::ParamInfo* info = &kInfos[0]; // quality: Enum
@@ -226,6 +232,10 @@ TEST_CASE("every painter draws inside its bounds plus its margin, in both looks"
                      s.editing = v == 5;
                      s.editText = "-12.5 dB entered long text";
                      s.caret = true;
+                     s.pickable = v == 2 || v == 4;
+                     s.mod.any = v >= 3;
+                     s.mod.base = 0.4;
+                     s.mod.shared = v == 4 ? 0.1 : 0.9;
                      style.knob.paint(r, b, s);
                  }});
         for (int vertical = 0; vertical < 2; ++vertical)
@@ -371,6 +381,41 @@ TEST_CASE("every painter draws inside its bounds plus its margin, in both looks"
                              style.selector.paint(r, b, se);
                          }});
 
+        cases.push_back({"tabs", style.tabs.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                             static const char* const labels[3] = {"LFO 1", "A VERY LONG TAB NAME", "MOD"};
+                             TabsState s;
+                             s.theme = th;
+                             s.count = 3;
+                             s.index = 1;
+                             s.hotIndex = 2;
+                             s.labels = labels;
+                             s.focused = true;
+                             s.accent = own;
+                             style.tabs.paint(r, b, s);
+                         }});
+        for (int idle = 0; idle < 2; ++idle)
+            cases.push_back({"readout", style.readout.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                                 ReadoutState s;
+                                 s.theme = th;
+                                 s.idle = idle != 0;
+                                 s.name = idle ? "TOUCH A CONTROL TO SEE ITS VALUE HERE" : "A LONG PARAMETER NAME";
+                                 s.value = "-12.5 dB and then some";
+                                 s.hint = "Drag up or down; shift for fine";
+                                 style.readout.paint(r, b, s);
+                             }});
+        for (int v : {kButtonArrowLeft, kButtonArrowRight, kButtonDisplay})
+            cases.push_back(
+                {"button v=" + std::to_string(v), style.button.margin(), [=, &style](IRenderer& r, const Rect& b) {
+                     ButtonState s;
+                     s.theme = th;
+                     s.variant = v;
+                     s.hot = true;
+                     s.active = true;
+                     s.focused = true;
+                     s.label = "A PRESET NAME THAT IS FAR TOO LONG";
+                     style.button.paint(r, b, s);
+                 }});
+
         const Rect sizes[] = {{60, 50, 120, 100}, {70, 60, 70, 40}, {60, 60, 150, 28}, {80, 70, 3, 3}};
         for (const PaintCase& pc : cases)
             for (const Rect& b : sizes) {
@@ -434,6 +479,13 @@ TEST_CASE("a painter on another renderer draws nothing") {
     TextFieldState tf;
     tf.theme = &style.theme;
     style.textField.paint(r, {0, 0, 80, 20}, tf);
+    TabsState tb;
+    tb.theme = &style.theme;
+    tb.count = 2;
+    style.tabs.paint(r, {0, 0, 80, 20}, tb);
+    ReadoutState ro;
+    ro.theme = &style.theme;
+    style.readout.paint(r, {0, 0, 80, 20}, ro);
     CHECK(r.calls == 0);
 }
 
@@ -455,8 +507,8 @@ TEST_CASE("the lamp: lit is brighter than unlit, glows beyond its lens, and foll
 }
 
 TEST_CASE("popup and tooltip: layout stays in view, items are placed, painting stays inside, in both looks") {
-    for (int look = 0; look < 2; ++look) {
-        ClassicStyle style(look ? ClassicConfig::silver() : ClassicConfig::slate());
+    for (int look = 0; look < 3; ++look) {
+        ClassicStyle style(lookConfig(look));
         ShadedRenderer r(400, 260, 2);
         std::vector<PopupItem> items;
         for (int i = 0; i < 18; ++i)
@@ -796,6 +848,191 @@ TEST_CASE("keyboard through the Gui: a press plays a key with a velocity, a glid
     CHECK(diffCount(a.frame(), c.frame()) > 100);
 }
 
+// --- tabs, readout, dropdown drag, preset bar, pick -----------------------------------------------------------
+
+TEST_CASE("tabs: a press selects and the page keeps the state; the readout shows what the pointer is on") {
+    Host host;
+    ClassicStyle style;
+    ShadedRenderer r(400, 120, 1);
+    CGui gui(host, style);
+    gui.setCaching(false);
+    static const char* const labels[3] = {"ONE", "TWO", "THREE"};
+    int tab = 0;
+    const Rect bar{10, 10, 300, 20}, knob{10, 40, 64, 80};
+    auto frame = [&] {
+        r.clear(style.theme.colors.background);
+        gui.begin(r, 1.0, 0.016f, 400, 120);
+        tab = gui.tabs("tabs", bar, labels, 3, tab);
+        gui.knob(P_out_gain, knob, {.label = "GAIN"});
+        gui.readout("readout", {100, 90, 200, 20}, {.idle = "IDLE"});
+        gui.end();
+    };
+    frame();
+    CHECK(tab == 0);
+    TabsState probe;
+    probe.count = 3;
+    const Rect third = style.tabs.cell(bar, probe, 2);
+    gui.onMouseDown(static_cast<float>(third.x + 5), static_cast<float>(third.y + 5), MouseButton::Left, false);
+    frame();
+    gui.onMouseUp(static_cast<float>(third.x + 5), static_cast<float>(third.y + 5), MouseButton::Left);
+    frame();
+    CHECK(tab == 2);
+    gui.onMouseDown(static_cast<float>(bar.x - 5), 20.0f, MouseButton::Left, false); // outside: nothing
+    frame();
+    CHECK(tab == 2);
+    gui.onMouseUp(static_cast<float>(bar.x - 5), 20.0f, MouseButton::Left);
+    // the readout: the idle text, then the parameter under the pointer
+    ShadedRenderer idle(400, 120, 2), over(400, 120, 2);
+    CGui g1(host, style), g2(host, style);
+    g1.setCaching(false);
+    g2.setCaching(false);
+    auto draw = [&](CGui& g, ShadedRenderer& rr) {
+        rr.clear(style.theme.colors.background);
+        g.begin(rr, 1.0, 0.016f, 400, 120);
+        g.knob(P_out_gain, knob, {.label = "GAIN"});
+        g.readout("readout", {100, 90, 200, 20}, {.idle = "IDLE"});
+        g.end();
+    };
+    draw(g1, idle);
+    g2.onMouseMove(42.0f, 75.0f);
+    draw(g2, over);
+    int differ = 0;
+    const auto a = idle.frame(), b = over.frame();
+    for (int y = 90; y < 110; ++y)
+        for (int x = 100; x < 300; ++x)
+            differ += at(a, 400, x, y) != at(b, 400, x, y);
+    CHECK(differ > 100); // the text in the readout changed
+}
+
+TEST_CASE("dropdown: a press opens the list; with drag, a drag steps the value and a click still opens") {
+    Host host;
+    ClassicStyle style;
+    ShadedRenderer r(300, 200, 1);
+    CGui gui(host, style);
+    gui.setCaching(false);
+    const Rect b{20, 100, 120, 24};
+    auto frame = [&](bool drag) {
+        r.clear(style.theme.colors.background);
+        gui.begin(r, 1.0, 0.016f, 300, 200);
+        gui.dropdown(P_quality, b, DropdownOptions{.label = "TYPE", .drag = drag, .dragPixels = 10.0f});
+        gui.end();
+    };
+    // plain: a press opens the list
+    frame(false);
+    gui.onMouseDown(40.0f, 112.0f, MouseButton::Left, false);
+    frame(false);
+    CHECK(gui.popupOpen());
+    gui.onMouseUp(40.0f, 112.0f, MouseButton::Left);
+    gui.closePopup();
+    frame(false);
+    // draggable: dragging up two steps raises the value by two, in one gesture
+    host.set(P_quality, 0.0);
+    host.drain();
+    frame(true);
+    gui.onMouseDown(40.0f, 112.0f, MouseButton::Left, false);
+    frame(true);
+    CHECK_FALSE(gui.popupOpen());
+    gui.onMouseMove(40.0f, 91.0f);
+    frame(true);
+    CHECK(host.plainOf(P_quality) == 2.0);
+    gui.onMouseMove(40.0f, 140.0f); // and back down past the start: clamped at the range
+    frame(true);
+    CHECK(host.plainOf(P_quality) == 0.0);
+    gui.onMouseUp(40.0f, 140.0f, MouseButton::Left);
+    frame(true);
+    CHECK_FALSE(gui.popupOpen());
+    const auto kinds = host.drain();
+    REQUIRE(kinds.size() >= 3);
+    CHECK(kinds.front() == ParamEdit::Kind::Begin);
+    CHECK(kinds.back() == ParamEdit::Kind::End);
+    // a click without a drag opens the list on release
+    gui.onMouseDown(40.0f, 112.0f, MouseButton::Left, false);
+    frame(true);
+    CHECK_FALSE(gui.popupOpen());
+    gui.onMouseUp(40.0f, 112.0f, MouseButton::Left);
+    frame(true);
+    CHECK(gui.popupOpen());
+}
+
+TEST_CASE(
+    "preset bar: the arrows step through factory then user presets and wrap, the name opens the list, SAVE reports") {
+    Host host;
+    ShowPresets presets;
+    host.presetHost = &presets;
+    ClassicStyle style;
+    ShadedRenderer r(400, 80, 1);
+    CGui gui(host, style);
+    gui.setCaching(false);
+    const Rect bar{10, 10, 330, 22};
+    PresetBarResult last;
+    auto frame = [&] {
+        r.clear(style.theme.colors.background);
+        gui.begin(r, 1.0, 0.016f, 400, 80);
+        last = presetBar(gui, "p", bar);
+        gui.end();
+    };
+    auto click = [&](float x, float y) {
+        gui.onMouseDown(x, y, MouseButton::Left, false);
+        frame();
+        gui.onMouseUp(x, y, MouseButton::Left);
+        frame();
+    };
+    frame();
+    CHECK(presets.current == 1);
+    const float y = 21.0f;
+    click(19.0f, y); // previous
+    CHECK(presets.current == 0);
+    click(19.0f, y); // wraps to the last, the user's
+    CHECK(presets.current == 2);
+    const float nextX = static_cast<float>(bar.right() - 44 - 8 - 9); // before SAVE
+    click(nextX, y);
+    CHECK(presets.current == 0);
+    gui.onMouseDown(static_cast<float>(bar.right() - 20), y, MouseButton::Left, false);
+    frame();
+    CHECK(last.save);
+    gui.onMouseUp(static_cast<float>(bar.right() - 20), y, MouseButton::Left);
+    frame();
+    click(150.0f, y); // the name opens the list
+    CHECK(gui.popupOpen());
+    // without a preset host there is no bar
+    Host bare;
+    CGui g2(bare, style);
+    g2.setCaching(false);
+    r.clear(rgb(1, 2, 3));
+    g2.begin(r, 1.0, 0.016f, 400, 80);
+    const auto res = presetBar(g2, "p", bar);
+    g2.end();
+    CHECK_FALSE(res.save);
+    CHECK(at(r.frame(), 400, 100, 20) == rgb(1, 2, 3));
+}
+
+TEST_CASE(
+    "pick and modulation: a pickable knob and a modulated one differ from a plain one; only arcs show modulation") {
+    for (int look = 0; look < 3; ++look) {
+        ClassicStyle style(lookConfig(look));
+        auto render = [&](bool pick, bool mod) {
+            ShadedRenderer r(100, 110, 2);
+            r.clear(style.theme.colors.background);
+            KnobState s;
+            s.theme = &style.theme;
+            s.value = 0.4;
+            s.pickable = pick;
+            s.mod.any = mod;
+            s.mod.shared = 0.9;
+            style.knob.paint(r, {10, 10, 80, 90}, s);
+            return r.frame();
+        };
+        INFO(lookName(look));
+        const auto plain = render(false, false);
+        CHECK(diffCount(plain, render(true, false)) > 100);
+        const int modDiff = diffCount(plain, render(false, true));
+        if (look == 2)
+            CHECK(modDiff > 50);
+        else
+            CHECK(modDiff == 0);
+    }
+}
+
 // --- the looks -----------------------------------------------------------------------------------------------
 
 TEST_CASE("the config changes the look; configure() applies to the whole style") {
@@ -830,9 +1067,9 @@ TEST_CASE("the config changes the look; configure() applies to the whole style")
 
 TEST_CASE("showcase: deterministic, filled, golden frames in both looks, supersampling levels agree") {
     Host host;
-    for (int look = 0; look < 2; ++look) {
-        ClassicStyle style(look ? ClassicConfig::silver() : ClassicConfig::slate());
-        const std::string name = look ? "classic_silver" : "classic_slate";
+    for (int look = 0; look < 3; ++look) {
+        ClassicStyle style(lookConfig(look));
+        const std::string name = lookName(look);
         ShadedRenderer r(kPageW, kPageH, 2);
         showcaseFrame(r, host, style);
         const auto a = r.frame();
@@ -971,9 +1208,10 @@ TEST_CASE("the looks of two plugins, as laid out on their canvases, as golden fr
 }
 
 TEST_CASE("the editor shell: cached frames equal uncached frames, and only what changed is redrawn") {
-    for (int look = 0; look < 2; ++look) {
+    for (int look = 0; look < 3; ++look) {
         Host host;
-        ClassicStyle style(look ? ClassicConfig::silver() : ClassicConfig::slate());
+        attach(host);
+        ClassicStyle style(lookConfig(look));
         ShowRoot root;
         EditorOptions o;
         o.width = kPageW;
@@ -981,7 +1219,7 @@ TEST_CASE("the editor shell: cached frames equal uncached frames, and only what 
         Editor<ClassicStyle> ed(host, style, root, o, classicRenderer(2));
         ed.gui().setOverlapCheck(true);
         REQUIRE(ed.frame(false, 0.0));
-        INFO((look ? "silver" : "slate"));
+        INFO(lookName(look));
         CHECK(ed.gui().overlapCount() == 0);
         CHECK(ed.gui().idCollisions() == 0);
         CHECK_FALSE(ed.frame(false, 0.1));

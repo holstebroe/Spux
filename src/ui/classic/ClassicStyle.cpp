@@ -12,9 +12,11 @@ namespace spux::inline v1::ui::classic {
 
 namespace {
 
-constexpr float kStartAngle = 120.f * kPi / 180.f; // 7 o'clock
-constexpr float kTotalAngle = 300.f * kPi / 180.f; // to 5 o'clock
 constexpr int kGripRidges = 30;
+
+// The dial's start and sweep in radians.
+float startAngle(const ClassicConfig& c) { return c.knob.startDeg * kPi / 180.f; }
+float sweepAngle(const ClassicConfig& c) { return c.knob.sweepDeg * kPi / 180.f; }
 
 const Theme& themeOf(const Theme* t, const ClassicConfig& c) { return t ? *t : c.theme; }
 
@@ -30,6 +32,10 @@ Argb mixArgb(Argb a, Argb b, float t) { return ui::mix(a, b, t); }
 float capTopIn(float rowTop, float rowH, float cap) { return rowTop + (rowH - cap) * 0.5f; }
 
 } // namespace
+
+namespace {
+void paintDisplay(Graphics& g, const Rect& b, bool hot, Argb edgeOverride, const ClassicConfig& c);
+}
 
 // --- LED -------------------------------------------------------------------------------------------------
 
@@ -76,7 +82,9 @@ KnobGeo knobGeo(const Rect& b, const ClassicConfig& c) {
     const float availH = static_cast<float>(b.h) - k.topRow - k.bottomRow;
     // Room for the printed scale around the dial: the knurled knob's index square reaches 14 pixels beyond
     // its radius, and half a pixel more lets a knob centered on a pixel center (odd bounds) keep its radius.
-    const float room = k.shape == KnobShape::Knurled ? 15.5f : (k.ticks ? 10.f : 4.f);
+    float room = k.shape == KnobShape::Knurled ? (k.ticks ? 15.5f : 4.5f) : (k.ticks ? 10.f : 4.f);
+    if (k.arc.on) // the arcs and the pick highlight sit outside the dial
+        room = std::max(room, k.arc.gap + k.arc.modGap + k.arc.width + 1.5f);
     KnobGeo g;
     g.cx = static_cast<float>(b.x) + static_cast<float>(b.w) * 0.5f;
     g.cy = static_cast<float>(b.y) + k.topRow + availH * 0.5f;
@@ -90,11 +98,12 @@ void paintDiscKnob(ShadedRenderer& r, const KnobGeo& k, const KnobState& s, cons
     const float sc = static_cast<float>(g.getScale());
     const float cx = k.cx, cy = k.cy, R = k.radius;
     const bool hot = s.hot || s.active;
-    const float a = kStartAngle + kTotalAngle * static_cast<float>(std::clamp(s.value, 0.0, 1.0));
+    const float a0 = startAngle(c), sweep = sweepAngle(c);
+    const float a = a0 + sweep * static_cast<float>(std::clamp(s.value, 0.0, 1.0));
     const float px = std::cos(a), py = std::sin(a);
     if (c.knob.ticks) {
         for (int i = 0; i <= 10; ++i) {
-            const float t = kStartAngle + kTotalAngle * static_cast<float>(i) / 10.f;
+            const float t = a0 + sweep * static_cast<float>(i) / 10.f;
             const float len = (i % 5 == 0) ? 5.f : 3.f;
             drawLineAA(g, cx + std::cos(t) * (R + 4.f), cy + std::sin(t) * (R + 4.f),
                        cx + std::cos(t) * (R + 4.f + len), cy + std::sin(t) * (R + 4.f + len), 1.0f,
@@ -128,11 +137,12 @@ void paintKnurledKnob(ShadedRenderer& r, const KnobGeo& k, const KnobState& s, c
     Graphics g = r.graphics();
     const float sc = static_cast<float>(g.getScale());
     const float cx = k.cx, cy = k.cy, R = k.radius;
-    const float pointer = kStartAngle + kTotalAngle * static_cast<float>(std::clamp(s.value, 0.0, 1.0));
+    const float a0 = startAngle(c), sweep = sweepAngle(c);
+    const float pointer = a0 + sweep * static_cast<float>(std::clamp(s.value, 0.0, 1.0));
 
     if (c.knob.ticks) {
         for (int i = 0; i < 11; ++i) {
-            const float a = kStartAngle + kTotalAngle * static_cast<float>(i) / 10.f;
+            const float a = a0 + sweep * static_cast<float>(i) / 10.f;
             drawLineAA(g, cx + std::cos(a) * (R + 4.5f), cy + std::sin(a) * (R + 4.5f), cx + std::cos(a) * (R + 8.5f),
                        cy + std::sin(a) * (R + 8.5f), 1.4f, c.ink);
         }
@@ -156,12 +166,13 @@ void paintKnurledKnob(ShadedRenderer& r, const KnobGeo& k, const KnobState& s, c
 
     const bool hasCap = hasOwnColor(theme, s.accent);
     const Color cap = fromArgb(s.accent);
-    const Material foot{{0.15f, 0.15f, 0.16f}, 0.55f, 0.6f, 0.35f, 16.f};
-    const Material grip{{0.62f, 0.63f, 0.65f}, 0.32f, 0.78f, 0.50f, 14.f};
+    const ClassicConfig::Knob& kc = c.knob;
+    const Material foot{kc.metalFoot, 0.55f, 0.6f, 0.35f, 16.f};
+    const Material grip{kc.metalGrip, 0.32f, 0.78f, 0.50f, 14.f};
     const Material chamfer =
-        hasCap ? Material{cap, 0.38f, 0.72f, 0.40f, 30.f} : Material{{0.78f, 0.79f, 0.80f}, 0.30f, 0.75f, 0.55f, 28.f};
+        hasCap ? Material{cap, 0.38f, 0.72f, 0.40f, 30.f} : Material{kc.metalChamfer, 0.30f, 0.75f, 0.55f, 28.f};
     const Material top =
-        hasCap ? Material{cap, 0.40f, 0.68f, 0.30f, 40.f} : Material{{0.80f, 0.81f, 0.82f}, 0.34f, 0.70f, 0.40f, 22.f};
+        hasCap ? Material{cap, 0.40f, 0.68f, 0.30f, 40.f} : Material{kc.metalTop, 0.34f, 0.70f, 0.40f, 22.f};
     const float px = std::cos(pointer), py = std::sin(pointer);
 
     shadeBox(g, cx - rOut - 1, cy - rOut - 1, cx + rOut + 1, cy + rOut + 1, [&](float x, float y) {
@@ -217,7 +228,7 @@ void paintKnurledKnob(ShadedRenderer& r, const KnobGeo& k, const KnobState& s, c
         }
 
         // Incised pointer line across the top and chamfer: dark, with its far wall catching the light.
-        if (d < rCham - 0.4f && along > 0.12f * R) {
+        if (!kc.pointer && d < rCham - 0.4f && along > 0.12f * R) {
             const float w = 0.85f;
             const float core = clamp01((w - std::fabs(perp)) * sc + 0.5f);
             if (core > 0.f) {
@@ -233,6 +244,55 @@ void paintKnurledKnob(ShadedRenderer& r, const KnobGeo& k, const KnobState& s, c
         col = scale(col, 0.97f + 0.06f * (valueNoise(x * 1.7f, y * 1.7f, 21) - 0.5f));
         return toArgb(col, cov);
     });
+
+    if (kc.bezel)
+        r.strokeCircle({cx, cy}, rOut + 0.6f, kc.bezel, 1.0f);
+    if (kc.pointer) {
+        // A glowing pointer line from the center to the rim of the top, with a bright tip.
+        const float tip = rTop + 0.55f * (rCham - rTop);
+        drawLineAA(g, cx, cy, cx + px * tip, cy + py * tip, 1.8f, kc.pointer);
+        r.fillCircle({cx + px * tip, cy + py * tip}, 1.2f, kc.pointerTip);
+    }
+}
+
+// The circular indicators: the pick highlight under the dial, then the track, the value arc, the live modulated
+// arc and the end ticks around it.
+void paintKnobUnder(ShadedRenderer& r, const KnobGeo& k, const KnobState& s, const ClassicConfig& c) {
+    const ClassicConfig::Knob::Arc& a = c.knob.arc;
+    if (s.pickable) {
+        r.fillCircle({k.cx, k.cy}, k.radius + 3.f, withAlpha(a.pick, 0.55f));
+        r.strokeCircle({k.cx, k.cy}, k.radius + 4.f, a.pick, 1.2f);
+    }
+    if (!a.on)
+        return;
+    const float a0 = startAngle(c), sweep = sweepAngle(c), mid = a0 + 0.5f * sweep;
+    const float norm = static_cast<float>(std::clamp(s.value, 0.0, 1.0));
+    const float rr = k.radius + a.gap;
+    const Point ctr{k.cx, k.cy};
+    r.drawArc(ctr, rr, a0, a0 + sweep, a.track, a.width);
+    if (s.bipolar) {
+        const float av = a0 + sweep * norm;
+        if (std::fabs(norm - 0.5f) > 0.01f)
+            r.drawArc(ctr, rr, std::min(mid, av), std::max(mid, av), a.value, a.width);
+    } else if (norm > 0.01f) {
+        r.drawArc(ctr, rr, a0, a0 + sweep * norm, a.value, a.width);
+    }
+    if (s.mod.any) {
+        const float m = a0 + sweep * static_cast<float>(std::clamp(s.mod.shared, 0.0, 1.0));
+        const float ro = rr + a.modGap;
+        const float from = s.bipolar ? mid : a0;
+        if (std::fabs(m - from) > 0.01f)
+            r.drawArc(ctr, ro, std::min(from, m), std::max(from, m), a.mod, a.width);
+    }
+    Graphics g = r.graphics();
+    auto tick = [&](float ang, Argb col) {
+        drawLineAA(g, k.cx + std::cos(ang) * (rr - 1.f), k.cy + std::sin(ang) * (rr - 1.f),
+                   k.cx + std::cos(ang) * (rr + 2.f), k.cy + std::sin(ang) * (rr + 2.f), 1.f, col);
+    };
+    tick(a0, a.endTick);
+    tick(a0 + sweep, a.endTick);
+    if (s.bipolar)
+        tick(mid, a.centerTick);
 }
 
 } // namespace
@@ -253,6 +313,7 @@ void ClassicKnob::paint(IRenderer& rr, const Rect& b, const KnobState& s) const 
     const Theme& theme = themeOf(s.theme, c);
     const KnobGeo k = knobGeo(b, c);
     r->pushClip(b);
+    paintKnobUnder(*r, k, s, c);
     if (c.knob.shape == KnobShape::Knurled)
         paintKnurledKnob(*r, k, s, c, theme);
     else
@@ -436,7 +497,7 @@ void paintRocker(ShadedRenderer& r, const Rect& b, const ToggleState& s, const T
 }
 
 // A lever switch in an escutcheon plate: on is the lever down, off up.
-void paintLever(ShadedRenderer& r, const Rect& b, const ToggleState& s) {
+void paintLever(ShadedRenderer& r, const Rect& b, const ToggleState& s, const ClassicConfig& c) {
     Graphics g = r.graphics();
     const float sc = static_cast<float>(g.getScale());
     const float cx = static_cast<float>(b.x) + static_cast<float>(b.w) * 0.5f;
@@ -447,9 +508,9 @@ void paintLever(ShadedRenderer& r, const Rect& b, const ToggleState& s) {
         const float a = 0.38f * (1.f - smoothstep(-2.f, 4.f, d));
         return a > 0.f ? toArgb({0.05f, 0.05f, 0.04f}, a) : 0u;
     });
-    const Material plate{{0.74f, 0.75f, 0.76f}, 0.35f, 0.70f, 0.45f, 20.f};
+    const Material plate{c.lever.plate, 0.35f, 0.70f, 0.45f, 20.f};
     const Material slot{{0.07f, 0.07f, 0.08f}, 0.5f, 0.7f, 0.2f, 10.f};
-    const Material lever{{0.86f, 0.87f, 0.88f}, 0.30f, 0.72f, 0.55f, 26.f};
+    const Material lever{c.lever.handle, 0.30f, 0.72f, 0.55f, 26.f};
     const float leverY = cy + (s.on ? 9.f : -9.f);
     shadeBox(g, cx - 10, cy - 23, cx + 10, cy + 23, [&](float x, float y) {
         const float lx = x - cx, ly = y - cy;
@@ -505,7 +566,13 @@ void ClassicToggle::paint(IRenderer& rr, const Rect& b, const ToggleState& s) co
     const Theme& theme = themeOf(s.theme, c);
     r->pushClip(b);
     if (c.toggle == ToggleShape::Lever) {
-        paintLever(*r, b, s);
+        paintLever(*r, b, s, c);
+        if (c.lever.lamp) {
+            // a lamp beside the plate, lit when the switch is on
+            const float lx = static_cast<float>(b.x) + static_cast<float>(b.w) * 0.5f + 16.f;
+            drawLed(*r, {lx, static_cast<float>(b.y) + static_cast<float>(b.h) * 0.5f}, 2.6f,
+                    hasOwnColor(theme, s.accent) ? s.accent : 0xFFFF6A00u, s.on);
+        }
         // The label above the plate, when the bounds are taller than it.
         const float room = (static_cast<float>(b.h) - 46.f) * 0.5f;
         if (s.label && *s.label && room >= c.labelCap + 3.f)
@@ -673,6 +740,20 @@ void ClassicButton::paint(IRenderer& rr, const Rect& b, const ButtonState& s) co
         }
         break;
     }
+    case kButtonDisplay: {
+        // a recessed display of the label with a chevron, lit at its edge while pressed
+        paintDisplay(g, b, hot, s.active ? theme.colors.focus : 0u, c);
+        const std::string text = s.label ? s.label : "";
+        const float room = static_cast<float>(b.w) - 26.f;
+        float cap = c.valueCap;
+        while (cap > 4.5f && ShadedRenderer::inkWidth(ShadedRenderer::displayFont(), text.c_str(), cap) > room)
+            cap -= 0.25f;
+        r->inkCentered(ShadedRenderer::displayFont(), text.c_str(), cx - 5.f, capTopIn(y0, y1 - y0, cap), cap,
+                       c.display.ink);
+        drawLineAA(g, x1 - 12.f, cy - 1.5f, x1 - 8.5f, cy + 2.f, 1.4f, c.inkDim);
+        drawLineAA(g, x1 - 8.5f, cy + 2.f, x1 - 5.f, cy - 1.5f, 1.4f, c.inkDim);
+        break;
+    }
     default: {
         const bool arrow = s.variant == kButtonArrowLeft || s.variant == kButtonArrowRight;
         softShadow(g, x0, y0, x1, y1, c.button.radius, 3.f, 0.5f, 1.f, 2.f);
@@ -708,6 +789,36 @@ void ClassicButton::paint(IRenderer& rr, const Rect& b, const ButtonState& s) co
 
 // --- panel -----------------------------------------------------------------------------------------------
 
+namespace {
+
+// A forged plate: a dark border, a vertical gradient inside it, a trim line and a dark line inside that, rivets in
+// the corners and the title on a plate across the top edge.
+void paintPlate(ShadedRenderer& r, const Rect& b, const char* title, const ClassicConfig& c) {
+    const ClassicConfig::Frame& f = c.frame;
+    r.fillRect(b, 0xFF16181A);
+    r.fillGradientRect(b.inset(2), toArgb(f.fillTop, 1.f), toArgb(f.fillBottom, 1.f));
+    r.strokeRect(b.inset(3), f.trim, 1.0f);
+    r.strokeRect(b.inset(4), 0xFF1A1C1E, 1.0f);
+    if (f.rivets) {
+        Graphics g = r.graphics();
+        const float x0 = static_cast<float>(b.x) + 8.f, x1 = static_cast<float>(b.right()) - 8.f;
+        const float y0 = static_cast<float>(b.y) + 8.f, y1 = static_cast<float>(b.bottom()) - 8.f;
+        for (float y : {y0, y1})
+            for (float x : {x0, x1})
+                drawRivet(g, x, y, 3.f);
+    }
+    if (title && *title) {
+        const float tw = ShadedRenderer::inkWidth(ShadedRenderer::labelFont(), title, c.titleCap) + 12.f;
+        const Rect plate{b.x + (b.w - static_cast<int>(tw)) / 2, b.y, static_cast<int>(tw), 14};
+        r.fillRect(plate, 0xFF101214);
+        r.strokeRect(plate, f.trim, 1.0f);
+        r.inkCentered(ShadedRenderer::labelFont(), title, static_cast<float>(plate.x) + tw * 0.5f,
+                      static_cast<float>(b.y) + 3.5f, c.titleCap, f.titleInk ? f.titleInk : c.ink, c.wear);
+    }
+}
+
+} // namespace
+
 void ClassicPanel::paint(IRenderer& rr, const Rect& b, const PanelState& s) const {
     ShadedRenderer* r = asShaded(rr);
     if (!r)
@@ -735,6 +846,11 @@ void ClassicPanel::paint(IRenderer& rr, const Rect& b, const PanelState& s) cons
             r->fillRect({b.x, b.bottom() - std::min(2, b.h), b.w, std::min(2, b.h)}, 0xFF08090A);
         }
     } else {
+        if (c.frame.plate) {
+            paintPlate(*r, b, s.title, c);
+            r->popClip();
+            return;
+        }
         // A frame with the title cut into its top line.
         Graphics g = r->graphics();
         const float x0 = static_cast<float>(b.x) + 0.5f, y0 = static_cast<float>(b.y) + 6.5f;
@@ -1046,6 +1162,61 @@ void ClassicTooltip::paint(IRenderer& rr, const Rect& b, const TooltipState& s) 
         r->ink(ShadedRenderer::labelFont(), s.text, static_cast<float>(b.x) + 8.f, static_cast<float>(b.y) + 21.f, 5.5f,
                t.colors.textDim);
     r->popClip();
+    r->popClip();
+}
+
+// --- tabs and readout ------------------------------------------------------------------------------------
+
+void ClassicTabs::paint(IRenderer& rr, const Rect& b, const TabsState& s) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    const ClassicConfig& c = cfg();
+    const Theme& theme = themeOf(s.theme, c);
+    r->pushClip(b);
+    Graphics g = r->graphics();
+    for (int i = 0; i < s.count; ++i) {
+        const Rect cell = this->cell(b, s, i).inset(1);
+        const bool on = i == s.index;
+        paintButtonFace(g, static_cast<float>(cell.x), static_cast<float>(cell.y), static_cast<float>(cell.right()),
+                        static_cast<float>(cell.bottom()), c.button.radius, on, i == s.hotIndex, false, c);
+        const char* text = s.labels && s.labels[i] ? s.labels[i] : "";
+        r->inkCentered(ShadedRenderer::labelFont(), text,
+                       static_cast<float>(cell.x) + static_cast<float>(cell.w) * 0.5f,
+                       capTopIn(static_cast<float>(cell.y), static_cast<float>(cell.h), 5.f), 5.f,
+                       on ? c.inkOn : (i == s.hotIndex ? c.ink : c.inkDim), c.wear);
+    }
+    if (s.focused)
+        r->strokeRoundRect(b.inset(1), c.button.radius, withAlpha(theme.colors.focus, 0.9f), 1.0f);
+    r->popClip();
+}
+
+void ClassicReadout::paint(IRenderer& rr, const Rect& b, const ReadoutState& s) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    const ClassicConfig& c = cfg();
+    r->pushClip(b);
+    Graphics g = r->graphics();
+    paintDisplay(g, b, false, 0u, c);
+    const float x = static_cast<float>(b.x) + 8.f, h = static_cast<float>(b.h), y0 = static_cast<float>(b.y);
+    const AtlasFont& font = ShadedRenderer::labelFont();
+    const float cap = std::min(c.valueCap - 1.f, std::max(4.f, h - 8.f));
+    const float capTop = capTopIn(y0, h, cap);
+    if (s.idle) {
+        r->ink(font, s.name, x, capTop, cap, c.inkDim);
+    } else {
+        const std::string line = std::string(s.name) + ": " + s.value;
+        r->ink(font, line.c_str(), x, capTop, cap, c.display.ink);
+        if (s.hint && *s.hint) {
+            // the hint, dimmer and smaller, at the right when it fits
+            const float hc = std::max(4.f, cap - 1.5f);
+            const float lw = ShadedRenderer::inkWidth(font, line.c_str(), cap);
+            const float hw = ShadedRenderer::inkWidth(font, s.hint, hc);
+            if (x + lw + 16.f + hw < static_cast<float>(b.right()) - 8.f)
+                r->ink(font, s.hint, static_cast<float>(b.right()) - 8.f - hw, capTopIn(y0, h, hc), hc, c.inkDim);
+        }
+    }
     r->popClip();
 }
 

@@ -58,6 +58,7 @@ struct KnobOptions {
     Color accent = 0;                // 0: the current accent (Gui::setAccent)
     bool bipolar = false;
     bool large = false;
+    bool pickable = false; // highlighted as something that can be picked now (a modulation target, MIDI learn)
     bool showValue = true;
     bool dimmed = false;
     bool valueEntry = true;               // right-click or Enter types a value
@@ -105,6 +106,26 @@ struct ButtonOptions {
     int variant = 0;
     Icon icon = {};
     const ButtonPainter* painter = nullptr;
+};
+
+struct DropdownOptions {
+    const char* label = nullptr;
+    // A press and drag up or down steps through the values (a step per `dragPixels`); a press without a drag
+    // still opens the list.
+    bool drag = false;
+    float dragPixels = 14.0f;
+    const DropdownPainter* painter = nullptr;
+};
+
+struct TabsOptions {
+    Color accent = 0;
+    const TabsPainter* painter = nullptr;
+};
+
+struct ReadoutOptions {
+    const char* idle = ""; // shown when the pointer is on no parameter
+    Color accent = 0;
+    const ReadoutPainter* painter = nullptr;
 };
 
 struct LedOptions {
@@ -265,17 +286,22 @@ protected:
         kPanel,
         kTextField,
         kLed,
-        kKeyboard
+        kKeyboard,
+        kTabs,
+        kReadout
     };
 
     void knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& o, const KnobPainter& p);
     void sliderImpl(std::uint32_t paramId, const Rect& b, const SliderOptions& o, const SliderPainter& p);
     bool toggleImpl(std::uint32_t paramId, const Rect& b, const ToggleOptions& o, const TogglePainter& p);
     void selectorImpl(std::uint32_t paramId, const Rect& b, const SelectorOptions& o, const SelectorPainter& p);
-    void dropdownImpl(std::uint32_t paramId, const Rect& b, const char* label, const DropdownPainter& p);
+    void dropdownImpl(std::uint32_t paramId, const Rect& b, const DropdownOptions& o, const DropdownPainter& p);
     void stepperImpl(std::uint32_t paramId, const Rect& b, const char* label, const StepperPainter& p);
     bool buttonImpl(const char* id, const Rect& b, const char* label, const ButtonOptions& o, const ButtonPainter& p);
     void panelImpl(const Rect& b, const char* title, Color accent, const PanelPainter& p);
+    int tabsImpl(const char* id, const Rect& b, const char* const* labels, int count, int current, const TabsOptions& o,
+                 const TabsPainter& p);
+    void readoutImpl(const char* id, const Rect& b, const ReadoutOptions& o, const ReadoutPainter& p);
     void ledImpl(const char* id, const Rect& b, bool on, const LedOptions& o, const LedPainter& p);
     KeyboardEvents keyboardImpl(const char* id, const Rect& b, const KeyboardOptions& o, const KeyboardPainter& p);
     enum class TextResult { Editing, Commit, Cancel };
@@ -349,7 +375,8 @@ private:
 
     // widget state
     std::uint64_t active_ = 0, focus_ = 0, editing_ = 0;
-    int keyboardKey_ = -1; // the key the pointer holds on the active keyboard
+    int keyboardKey_ = -1;   // the key the pointer holds on the active keyboard
+    bool dragMoved_ = false; // the drag of the active dropdown left its dead zone
     std::uint64_t hoverId_ = 0;
     double hoverSince_ = 0.0;
     double dragStart_ = 0.0;
@@ -403,7 +430,10 @@ public:
     }
     // A button that opens a list of the values.
     void dropdown(std::uint32_t paramId, const Rect& b, const char* label = nullptr) {
-        dropdownImpl(paramId, b, label, static_cast<const DropdownPainter&>(style_.dropdown));
+        dropdown(paramId, b, DropdownOptions{.label = label});
+    }
+    void dropdown(std::uint32_t paramId, const Rect& b, const DropdownOptions& o) {
+        dropdownImpl(paramId, b, o, o.painter ? *o.painter : static_cast<const DropdownPainter&>(style_.dropdown));
     }
     // [-] value [+].
     void stepper(std::uint32_t paramId, const Rect& b, const char* label = nullptr) {
@@ -426,6 +456,18 @@ public:
     // True when pressed this frame (or Enter while focused).
     bool button(const char* id, const Rect& b, const char* label, const ButtonOptions& o = {}) {
         return buttonImpl(id, b, label, o, o.painter ? *o.painter : static_cast<const ButtonPainter&>(style_.button));
+    }
+    // A row of tabs; returns the tab selected after this frame (`current` unless one was pressed). The selection is
+    // the page's state, not a parameter.
+    int tabs(const char* id, const Rect& b, const char* const* labels, int count, int current,
+             const TabsOptions& o = {}) {
+        return tabsImpl(id, b, labels, count, current, o,
+                        o.painter ? *o.painter : static_cast<const TabsPainter&>(style_.tabs));
+    }
+    // The name, value and hint of the parameter being dragged or, failing that, the one under the pointer. Call it
+    // after the widgets of the page: it shows what they found this frame.
+    void readout(const char* id, const Rect& b, const ReadoutOptions& o = {}) {
+        readoutImpl(id, b, o, o.painter ? *o.painter : static_cast<const ReadoutPainter&>(style_.readout));
     }
     // A lamp; it takes no input.
     void led(const char* id, const Rect& b, bool on, const LedOptions& o = {}) {
