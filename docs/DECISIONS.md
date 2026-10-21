@@ -239,4 +239,16 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   own with `Gui::view`, `Gui::interact` and their own backgrounds. The Classic dropdown, stepper, text field, popup and tooltip
   painters were added, and `docs/WIDGETS.md` holds the per-flavor status of every control, with images made by
   `spux_widget_gallery`.
+- 2026-10-21: Gritbaal harvest (by the author's direction: Gritbaal is work in progress, so spux's concepts win and Gritbaal
+  changes; ask on a drastic change). No decision changed. New in `spux_dsp`: `Adsr`, `Lfo`, `Chorus`, `VoiceAllocator`,
+  `ModMatrix`, `BrownNoise`, `CrackleNoise`; `Wave` moves to `spux_core` (one enum for LFOs, icons and oscillators). Choices
+  within the guidelines: the modulation matrix is a **list of routes**, so a single-target control (one target and a depth
+  per source) and a multi-target control (a Vital-style source dragged onto many knobs, a level ring per route, macros) are
+  the same data and the UI shows both through `ModulationHost`; the allocator's rules are Tannhauser's key assigner with
+  Gritbaal's retrigger case (a re-struck key keeps its voice), mono and legato being limit 1; times mean times (attack is the
+  time to 1, decay and release the time to fall 60 dB); LFOs have no depth (an amount belongs to its route). New in the UI:
+  `KnobState::pickable` (modulation target or MIDI learn), knob arcs and the forge look in `ClassicConfig`, `Gui::tabs`,
+  `Gui::readout`, the dropdown `drag` option, `presetBar`, and `StdButtonVariant` (arrows and the display button, numbered from
+  100 so every flavor draws them and a helper such as the preset bar works in all). Kept in the plugin: the ladder and
+  Sallen-Key filters, the morphing PolyBLEP oscillator, the power-supply sag, the routing summary text.
 

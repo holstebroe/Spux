@@ -9,6 +9,7 @@ only in namespace and include guards, or not at all.
 | --- | --- | --- |
 | Classic drawing (`Graphics`, `Font`, `FileDialog`, `modern/ModernDraw`, `DisplayFont`, `LabelFont`) | Acidus, Tannhauser, Tearwash | Three copies; Tannhauser and Tearwash byte-identical. Renamed `modern/` to `classic/`. **Moved to `spux_ui_classic` (step 2); Tearwash migrated.** |
 | Classic CPU renderer | Plumeflow `ui/SoftRenderer` + the files above | Merge into one supersampled renderer with shading helpers. **Done (step 7, Classic): `ShadedRenderer` (the basics and the shading helpers over the Classic drawing code); Plumeflow's `SoftRenderer` became the Modern fallback (session 9), so only the Classic drawing code was merged into it.** |
+| Envelope, LFO, chorus, voice allocator, modulation routes, brown and crackle noise | Gritbaal `core/Envelope`, `Lfo`, `Chorus`, `SynthEngine` (voice allocation, mod targets), `Oscillator` (noise); Tannhauser `SynthEngine::allocateVoice` | **Harvested into `spux_dsp` (session 11)**: `Adsr`, `Lfo`, `Chorus`, `VoiceAllocator`, `ModMatrix`, `BrownNoise`, `CrackleNoise`; `Wave` in `spux_core`. Gritbaal itself not migrated yet. |
 | Classic painters | Tannhauser `gui/PanelRenderer` (knob, slider cap, rocker, lever, tone and arrow buttons, panel), Acidus `gui/modern/ModernSkin` (knurled knob, lever switch, worn panel), Tearwash `TwGui` (the look Tannhauser took) | **`ClassicStyle` with a `ClassicConfig` (step 7, Classic); Tannhauser and Acidus drawn pixel for pixel, Tearwash not compared.** |
 | Retro style and fonts | Acidus `RetroSkin`, Syrebas and Gritbaal renderers, Paulascape `Framebuffer` and pt2 font, Kikset `Graphics` | Four drifting forks of the same `Graphics`. |
 | Skin interfaces | Acidus `IGuiSkin`, Gritbaal `IControlRenderer`, Syrebas `IControlRenderer` | Become the per-widget painter interfaces. **Interfaces in `spux_ui_core` (step 6)**; the skins become flavor painters in step 7. |
@@ -218,6 +219,23 @@ plugin-specific views and page code.
 
 lexwash starts on spux from its first line.
 
+**Gritbaal harvest** (session 11, 2026-10-21; Gritbaal is work in progress, so spux's concepts win where they differ). DSP:
+`Adsr`, `Lfo`, `Chorus`, `VoiceAllocator`, `ModMatrix` (one route per source for a single-target synth, more routes for
+macros), `BrownNoise`, `CrackleNoise`; the `Wave` enum moved to `spux_core` so LFOs, icons and oscillators name waves
+once. UI: the knob's circular value, modulation and end-tick arcs and the pickable highlight (`ClassicConfig::Knob::Arc`,
+`KnobState::pickable`; Modern draws a pick ring), a drag option on the dropdown, `Gui::tabs`, `Gui::readout` (three plugins
+had a "what is under the pointer" bar), `presetBar`, the display and arrow button variants as core `StdButtonVariant`, the
+forge look (`ClassicConfig::forge()`: iron plates, rivets, copper trim, dark gunmetal knurled knobs with a glowing pointer,
+lever with a lamp). What Gritbaal meets when it switches (it does not yet): its envelope's attack knob was a time constant
+(about a third of the time to 1; `Adsr` attack is the time to 1, so the knob range is rescaled); LFO patterns map Sine,
+Triangle, Saw, Square as before, Perlin to `Wave::Noise`, PulseGate to `Wave::Pulse`, and a triangle starts at 0 instead of
+-1; a re-struck key keeps its voice while it rings out, not only while it is held; the free voice is taken round-robin,
+not first-free, and a steal takes the voice released longest ago (by release time, not by age); white noise is uniform and
+pink noise Kellet's 3-pole version (spux's); brown and crackle noise derive their decay from times, not a fixed per-sample
+factor; random numbers are PCG32, not `std::mt19937`; `Chorus` is the same law on a spux delay line; glide is
+`Smoothed<OnePole>`; the filter keeps its ladder and Sallen-Key models (character) and drops its saturator and solver
+copies for spux's, its 16-tap FIR oversampler for the half-band `Oversampler`; the thermal walk is `OuDrift`.
+
 ## Provenance and switch notes
 
 Library comments describe the library only; where code came from, and what a plugin meets when it switches
@@ -277,6 +295,11 @@ from its own copy, is kept here.
   and pattern banks.
 - **UI core**: `Geometry`, `IRenderer`, `Gui`, `Editor`, `EditorHost` (its modulation extension is Plumeflow's
   matrix) and `Live` come from Plumeflow `ui/`; `EditQueue` gesture balancing follows Plumeflow's Gui.
+- **Gritbaal harvest**: `Adsr` is Gritbaal `core/Envelope` (RC attack aimed at 1.05, exponential decay and release,
+  smoothstep shaping), `Lfo` its `core/Lfo` (Perlin pattern as `Wave::Noise`), `Chorus` its `core/Chorus`,
+  `VoiceAllocator` the key assigner of Gritbaal's `SynthEngine::allocateVoice` and Tannhauser's (their steps merged),
+  `CrackleNoise` and `BrownNoise` its `Oscillator::generateNoiseSample`; the knob arcs, the target highlight, the tabs, the
+  touched-control bar and the preset header are its `IndustrialGritbaalRenderer` and `GuiWindow`.
 - **Classic style** (`classic/ShadedRenderer`, `classic/ClassicStyle`, `classic/ClassicConfig`): the knob, slider cap, rocker,
   lever, tone and arrow buttons and the slate surface are Tannhauser `gui/PanelRenderer` (`drawKnob`, `drawSliderCap`,
   `drawRockerKey`, `drawLever`, `drawToneButton`, `drawArrowButton`, the slot, tick and scale code of `drawStatic`), which took

@@ -144,6 +144,21 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
 - The double-precision math (`expD`, `logD`, `tanD`, ...) is for coefficients at control rate; it is slower
   than libm (docs/BENCH.md). Per sample, use the float set. All of it is opt-in; libm is the default [S4].
 
+### Modulation sources and voices
+
+- `Adsr` (exponential segments; attack is the time to 1, decay and release the time to fall 60 dB), `Lfo` over the shared
+  `Wave` set (`spux/core/Wave.hpp`, also the waveform icons of the UI), bipolar and without depth: an amount belongs to the
+  route that uses it. Random waves draw from a seeded PCG32.
+- `ModMatrix<N>` is a list of routes (source id, target id, signed depth in the target's normalized units). A synth with one
+  target per source uses one route per source; a synth whose sources reach many targets (drag a source onto a knob, set the
+  depth on a ring) uses more routes of the same matrix. `amountFor` and `effective` give the numbers the audio thread
+  applies and the editor shows (`ModulationHost`); how a depth parameter maps to the signed number is the plugin's.
+- `VoiceAllocator` keeps who plays what: a re-struck key keeps its voice, a free voice is taken round-robin, then the voice
+  released longest ago, then the oldest held note. Mono and legato are limit 1 with `wasHeld`. Portamento is
+  `Smoothed<OnePole<...>>` on the pitch, not a class.
+- `Chorus` (three voices, stereo, on `DelayLine`), and the noise colors next to white and pink: `BrownNoise` and
+  `CrackleNoise` (clicks at a rate).
+
 ### Smoothing [S10]
 
 `Smoothed<Policy, T>` with `NoSmoothing`, `LinearRamp` (per tick), `OnePole<Tau>` and `Slew`. The plugin

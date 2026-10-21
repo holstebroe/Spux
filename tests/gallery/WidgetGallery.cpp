@@ -51,6 +51,47 @@ template <class Style> void drawControl(const std::string& name, Style& style, I
         s.valueText = "1.2 kHz";
         s.accent = accent;
         style.knob.paint(r, b, s);
+    } else if (name == "knob_modulated") {
+        KnobState s;
+        s.theme = th;
+        s.value = 0.35;
+        s.label = "CUTOFF";
+        s.valueText = "1.2 kHz";
+        s.accent = accent;
+        s.pickable = true;
+        s.mod.any = true;
+        s.mod.base = 0.35;
+        s.mod.shared = 0.75;
+        style.knob.paint(r, b, s);
+    } else if (name == "tabs") {
+        static const char* const tabLabels[3] = {"LFO 1", "LFO 2", "MOD"};
+        TabsState s;
+        s.theme = th;
+        s.count = 3;
+        s.index = 1;
+        s.labels = tabLabels;
+        s.accent = accent;
+        style.tabs.paint(r, b, s);
+    } else if (name == "readout") {
+        ReadoutState s;
+        s.theme = th;
+        s.name = "CUTOFF";
+        s.value = "1.20 kHz";
+        s.hint = "Drag up or down";
+        style.readout.paint(r, b, s);
+    } else if (name == "button_display") {
+        ButtonState s;
+        s.theme = th;
+        s.label = "Hellfire Bass *";
+        s.variant = kButtonDisplay;
+        style.button.paint(r, b, s);
+    } else if (name == "button_arrows") {
+        ButtonState s;
+        s.theme = th;
+        s.variant = kButtonArrowLeft;
+        style.button.paint(r, {b.x, b.y, b.w / 2 - 2, b.h}, s);
+        s.variant = kButtonArrowRight;
+        style.button.paint(r, {b.x + b.w / 2 + 2, b.y, b.w / 2 - 2, b.h}, s);
     } else if (name == "slider_vertical" || name == "slider_horizontal") {
         SliderState s;
         s.theme = th;
@@ -181,6 +222,11 @@ struct Entry {
 // Sizes that fit the controls of both flavors.
 const Entry kEntries[] = {
     {"knob", 84, 96},
+    {"knob_modulated", 84, 96},
+    {"tabs", 200, 32},
+    {"readout", 260, 32},
+    {"button_display", 170, 30},
+    {"button_arrows", 80, 30},
     {"slider_vertical", 52, 120},
     {"slider_horizontal", 150, 30},
     {"toggle", 110, 86},
@@ -284,6 +330,7 @@ int main(int argc, char** argv) {
     std::filesystem::create_directories(dir);
     classicGallery(dir, "classic", classic::ClassicConfig::slate());
     classicGallery(dir, "silver", classic::ClassicConfig::silver());
+    classicGallery(dir, "forge", classic::ClassicConfig::forge());
     modernGallery(dir);
     coreGallery(dir);
     std::printf("%d images in %s\n", g_written, dir.c_str());
