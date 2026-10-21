@@ -168,6 +168,7 @@ spux_ui_optimize(spux_ui_classic)
 # RetroConfig) and the bitmap fonts. STATIC, one object per part: each font and each look is its own object, so a
 # plugin links only the faces of the look it uses. CPU drawing only.
 add_library(spux_ui_retro STATIC
+  ${SPUX_ROOT}/src/ui/retro/PixelRenderer.cpp
   ${SPUX_ROOT}/src/ui/retro/Font5x7.cpp
   ${SPUX_ROOT}/src/ui/retro/FontPanel7.cpp
   ${SPUX_ROOT}/src/ui/retro/pt2/FontPt2.cpp)
