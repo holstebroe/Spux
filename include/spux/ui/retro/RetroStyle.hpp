@@ -37,12 +37,13 @@ enum ButtonVariant : int {
 };
 
 // A renderer factory for Editor<RetroStyle>: a PixelRenderer with the config's fonts (the bold font is the title
-// font). The fonts must outlive the renderers.
+// font). It reads the config each time it makes a renderer, so after RetroStyle::configure() the renderers made
+// next (a resize, a new editor) have the new fonts. The config and its fonts must outlive the factory.
 inline std::function<std::unique_ptr<IRenderer>(int, int)> retroRenderer(const RetroConfig& c) {
-    const BitmapFont* font = c.font;
-    const BitmapFont* bold = c.titleFont;
-    return [font, bold](int w, int h) -> std::unique_ptr<IRenderer> {
-        return font ? std::make_unique<PixelRenderer>(w, h, *font, bold) : std::make_unique<PixelRenderer>(w, h);
+    const RetroConfig* cfg = &c;
+    return [cfg](int w, int h) -> std::unique_ptr<IRenderer> {
+        return cfg->font ? std::make_unique<PixelRenderer>(w, h, *cfg->font, cfg->titleFont)
+                         : std::make_unique<PixelRenderer>(w, h);
     };
 }
 
@@ -178,7 +179,8 @@ struct RetroStyle {
     RetroStyle(const RetroStyle&) = delete;
     RetroStyle& operator=(const RetroStyle&) = delete;
 
-    // Replaces the look. Call it between frames and have the Gui redraw everything afterwards.
+    // Replaces the look. Call it between frames, have the Gui redraw everything afterwards, and recreate the editor's
+    // renderer (retroRenderer) so its fonts match; a renderer made before keeps the fonts it was made with.
     void configure(const RetroConfig& c) {
         config_ = c;
         theme = c.theme;

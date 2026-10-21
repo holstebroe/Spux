@@ -1226,7 +1226,7 @@ TEST_CASE("showcase: deterministic, filled, whole pixels, golden frames in every
         CHECK(colorsOf(a).size() < 120);
         CHECK(colorsOf(a).size() > 12);
         ui_test::snapshot(name, a, kPageW, kPageH);
-        checkGoldenPixels(name, a, kPageW, kPageH, 0.002);
+        checkGoldenPixels(name, a, kPageW, kPageH, 0.0005);
     }
 }
 
@@ -1260,4 +1260,46 @@ TEST_CASE("the editor shell: cached frames equal uncached frames, and only what 
         showcaseFrame(r, host2, style, 0.2);
         CHECK(diffCount(cached, r.frame()) == 0);
     }
+}
+
+// --- review fixes ---------------------------------------------------------------------------------------------
+
+TEST_CASE("pixel renderer: a reversed arc draws like the forward one, off-screen shapes draw nothing") {
+    PixelRenderer a(40, 40), b(40, 40), c(40, 40);
+    a.drawArc({20.5f, 20.5f}, 12.0f, 0.3f, 3.0f, kFg, 1.0f);
+    b.drawArc({20.5f, 20.5f}, 12.0f, 3.0f, 0.3f, kFg, 1.0f);
+    CHECK(a.frame() == b.frame());
+    CHECK(colorsOf(a.frame()).size() == 2);
+    PixelRenderer blank(40, 40);
+    c.drawLine({-5000.0f, -5000.0f}, {-100.0f, -4000.0f}, kFg, 1.0f);
+    c.fillCircle({-300.0f, 20.0f}, 100.0f, kFg);
+    c.strokeCircle({20.0f, 5000.0f}, 4000.0f, kFg, 2.0f);
+    CHECK(c.frame() == blank.frame());
+}
+
+TEST_CASE("popup: a state without a theme or items lays out and paints without crashing") {
+    RetroStyle style(RetroConfig::silver());
+    PixelRenderer r(120, 90);
+    PopupState ps;
+    ps.anchor = {10, 10, 40, 12};
+    std::vector<Rect> rects;
+    const Rect box = style.popup.layout(r, ps, 120, 90, rects);
+    CHECK(rects.empty());
+    style.popup.paint(r, box, ps);
+}
+
+TEST_CASE("slider: a horizontal fader tall enough for text rows draws its label and value") {
+    RetroStyle style(RetroConfig::silver());
+    auto render = [&](const char* label, const char* value) {
+        PixelRenderer r(120, 40, *style.config().font, style.config().titleFont);
+        r.clear(kBg);
+        SliderState s;
+        s.vertical = false;
+        s.value = 0.5;
+        s.label = label;
+        s.valueText = value;
+        style.slider.paint(r, {0, 0, 120, 40}, s);
+        return r.frame();
+    };
+    CHECK(render("LEVEL", "50") != render("", ""));
 }

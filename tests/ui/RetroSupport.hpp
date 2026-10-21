@@ -176,7 +176,7 @@ inline std::string lookName(int look) {
 // Compares a whole-pixel frame with its stored golden (a full-size ppm in tests/golden/): the same size, and at most
 // `maxDiffering` of the pixels different. A frame is integer arithmetic, but the knob ticks and arcs take their
 // positions from libm, and a toolchain's last bit may move a pixel by one. SPUX_UPDATE_GOLDEN=1 writes the golden. A
-// missing golden is reported, not failed.
+// missing or unreadable golden fails, so a deleted file cannot turn the check off.
 inline void checkGoldenPixels(const std::string& name, const std::vector<std::uint32_t>& frame, [[maybe_unused]] int w,
                               [[maybe_unused]] int h, [[maybe_unused]] double maxDiffering) {
     const std::string path = std::string(SPUX_TEST_DATA_DIR) + "/golden/" + name + ".ppm";
@@ -188,7 +188,8 @@ inline void checkGoldenPixels(const std::string& name, const std::vector<std::ui
     std::vector<std::uint32_t> ref;
     int rw = 0, rh = 0;
     if (!ui_test::readPpm(path, ref, rw, rh)) {
-        std::printf("golden frame %s missing (SPUX_UPDATE_GOLDEN=1 creates it)\n", name.c_str());
+        INFO("golden frame " << name << " is missing or unreadable (SPUX_UPDATE_GOLDEN=1 creates it)");
+        FAIL_CHECK("no golden frame");
         return;
     }
     REQUIRE(rw == w);

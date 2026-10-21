@@ -45,11 +45,6 @@ double innerLimit(double r) { return r * r - 1e-4; }
 
 } // namespace
 
-PixelRenderer::PixelRenderer(int width, int height)
-    : layers_(std::max(1, width), std::max(1, height), 1), font_(&font5x7()), bold_(font_) {
-    clips_.reserve(16);
-}
-
 PixelRenderer::PixelRenderer(int width, int height, const BitmapFont& font, const BitmapFont* bold)
     : layers_(std::max(1, width), std::max(1, height), 1), font_(&font), bold_(bold ? bold : &font) {
     clips_.reserve(16);
@@ -215,6 +210,11 @@ void PixelRenderer::stamp(int x, int y, int brush, Color c) {
 }
 
 void PixelRenderer::line(int x0, int y0, int x1, int y1, int brush, Color c) {
+    // A line whose box misses the clip draws nothing; a partly visible one keeps its exact Bresenham pixels.
+    const int pad = brush;
+    if (!clip().overlaps({std::min(x0, x1) - pad, std::min(y0, y1) - pad, std::abs(x1 - x0) + 2 * pad + 1,
+                          std::abs(y1 - y0) + 2 * pad + 1}))
+        return;
     const int dx = std::abs(x1 - x0), dy = std::abs(y1 - y0);
     const int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
     int err = dx - dy;
@@ -258,7 +258,8 @@ void PixelRenderer::drawPolyline(const Point* pts, int count, Color c, float thi
 void PixelRenderer::fillCircle(Point center, float radius, Color c) {
     const double cx = center.x, cy = center.y, r = radius;
     const Rect cl = clip();
-    const int y0 = static_cast<int>(std::floor(cy - r)), y1 = static_cast<int>(std::ceil(cy + r));
+    const int y0 = std::max(static_cast<int>(std::floor(cy - r)), cl.y);
+    const int y1 = std::min(static_cast<int>(std::ceil(cy + r)), cl.bottom() - 1);
     for (int y = y0; y <= y1; ++y) {
         int x0, x1;
         circleSpan(cx, cy, outerLimit(r), y, x0, x1);
@@ -271,7 +272,8 @@ void PixelRenderer::strokeCircle(Point center, float radius, Color c, float thic
     const double cx = center.x, cy = center.y, r = radius;
     const double rin = r - static_cast<double>(brushOf(thickness));
     const Rect cl = clip();
-    const int y0 = static_cast<int>(std::floor(cy - r)), y1 = static_cast<int>(std::ceil(cy + r));
+    const int y0 = std::max(static_cast<int>(std::floor(cy - r)), cl.y);
+    const int y1 = std::min(static_cast<int>(std::ceil(cy + r)), cl.bottom() - 1);
     for (int y = y0; y <= y1; ++y) {
         int ox0, ox1, ix0 = 1, ix1 = 0;
         circleSpan(cx, cy, outerLimit(r), y, ox0, ox1);
@@ -362,6 +364,8 @@ float PixelRenderer::textWidthPx(const char* s, float px, FontWeight weight) con
 // --- effects ---------------------------------------------------------------------------------------------------
 
 void PixelRenderer::drawArc(Point center, float radius, float a0, float a1, Color c, float thickness) {
+    if (a1 < a0)
+        std::swap(a0, a1);
     const int brush = brushOf(thickness);
     const double step = 0.5 / std::max(1.0, static_cast<double>(radius));
     const int n = std::max(1, static_cast<int>(std::ceil((static_cast<double>(a1) - a0) / step)));

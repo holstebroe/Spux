@@ -154,7 +154,7 @@ void paintFlutedKnob(PixelRenderer& r, const KnobGeo& k, const KnobState& s, con
                      double angle) {
     const RetroConfig::Knob& kc = c.knob;
     const bool hot = s.hot || s.active;
-    const int cx = k.cx, cy = k.cy, R = k.r;
+    const int R = k.r;
     const Point mid = centerOf(k);
     auto disc = [&](int dx, int dy, int rad, Color col) {
         r.fillCircle({mid.x + static_cast<float>(dx), mid.y + static_cast<float>(dy)}, static_cast<float>(rad), col);
@@ -180,8 +180,6 @@ void paintFlutedKnob(PixelRenderer& r, const KnobGeo& k, const KnobState& s, con
         r.strokeCircle(mid, static_cast<float>(faceR / 2 + 1), 0xFF303336, 1.0f);
     }
     radial(r, k, angle, 0, R - 2, orElse(kc.pointer, c.ink), static_cast<float>(kc.pointerWidth));
-    (void)cx;
-    (void)cy;
 }
 
 // A flat disc: a dark rim, a lit edge at the upper left and a shadowed one at the lower right, a pointer.
@@ -208,7 +206,8 @@ void paintFlatKnob(PixelRenderer& r, const KnobGeo& k, const KnobState& s, const
 
 Rect RetroKnob::hitArea(const Rect& b) const {
     const KnobGeo g = knobGeo(b, cfg());
-    const int h = g.r + 4;
+    // Reaches the pick ring (and the printed scale) so what the pointer is invited to hit can be hit.
+    const int h = g.r + std::max(4, cfg().knob.ticks ? 10 : 2);
     return Rect{g.cx - h, g.cy - h, 2 * h + 1, 2 * h + 1}.intersect(b);
 }
 
@@ -233,12 +232,6 @@ void RetroKnob::paint(IRenderer& rr, const Rect& b, const KnobState& s) const {
         if (kc.indexSquare)
             r->fillRect({k.cx - 2, k.cy - k.r - 14, 4, 4}, tick);
     }
-    // The live modulated value: the swing between the knob's own value and the modulated one, just outside the dial.
-    if (s.mod.any) {
-        const double lo = std::min(s.mod.base, s.mod.shared), hi = std::max(s.mod.base, s.mod.shared);
-        r->drawArc(mid, static_cast<float>(k.r + 3), static_cast<float>(start + sweep * lo),
-                   static_cast<float>(start + sweep * hi + 0.02), theme.colors.modulation, 1.0f);
-    }
     if (kc.shadow)
         knobShadow(*r, k);
     const double angle = start + norm * sweep;
@@ -246,6 +239,13 @@ void RetroKnob::paint(IRenderer& rr, const Rect& b, const KnobState& s) const {
         paintFlutedKnob(*r, k, s, c, theme, angle);
     else
         paintFlatKnob(*r, k, s, c, theme, angle);
+    // The live modulated value: the swing between the knob's own value and the modulated one, just outside the dial,
+    // over the shadow.
+    if (s.mod.any) {
+        const double lo = std::min(s.mod.base, s.mod.shared), hi = std::max(s.mod.base, s.mod.shared);
+        r->drawArc(mid, static_cast<float>(k.r + 3), static_cast<float>(start + sweep * lo),
+                   static_cast<float>(start + sweep * hi + 0.02), theme.colors.modulation, 1.0f);
+    }
     if (s.pickable)
         r->strokeCircle(mid, static_cast<float>(k.r + std::min(10, kc.ticks ? 10 : 2)), kc.pick, 1.0f);
     if (s.focused)
@@ -348,6 +348,14 @@ void RetroSlider::paint(IRenderer& rr, const Rect& b, const SliderState& s) cons
         const Rect cap{g.lo + along - sl.capLong / 2, g.cy - g.capShort / 2, sl.capLong, g.capShort};
         paintFace(*r, cap, hasOwnColor(theme, s.accent) ? s.accent : c.button.face, false, s.active, hot, c);
         r->vLine(g.lo + along, cap.y + 2, cap.h - 4, c.button.dark);
+        // The label above the slot and the value below it, when the bounds are taller than the cap by a text row.
+        const int cap1 = capOf(c.font), rowH = (b.h - g.capShort) / 2;
+        if (rowH >= cap1 + 1) {
+            if (s.label && *s.label)
+                putCenteredInRow(*r, c.font, s.label, g.cx, {b.x, b.y, b.w, rowH}, c.ink);
+            if (s.valueText && *s.valueText)
+                putCenteredInRow(*r, c.font, s.valueText, g.cx, {b.x, b.bottom() - rowH, b.w, rowH}, c.valueInk);
+        }
     }
     if (s.focused)
         focusRect(*r, b, theme);
@@ -794,8 +802,9 @@ void paintFloating(PixelRenderer& r, const Rect& b, Color fill, Color edge) {
 
 Rect RetroPopup::layout(IRenderer& /*r*/, const PopupState& s, int viewW, int viewH, std::vector<Rect>& rects) const {
     const RetroConfig& c = cfg();
-    const Theme::Metrics& m = s.theme->metrics;
-    const std::vector<PopupItem>& items = *s.items;
+    const Theme::Metrics& m = themeOf(s.theme, c).metrics;
+    static const std::vector<PopupItem> kNoItems;
+    const std::vector<PopupItem>& items = s.items ? *s.items : kNoItems;
     const int n = static_cast<int>(items.size());
     const int cols = std::max(1, s.columns);
     const int rows = std::max(1, (n + cols - 1) / cols);
@@ -833,6 +842,10 @@ void RetroPopup::paint(IRenderer& rr, const Rect& b, const PopupState& s) const 
     const RetroConfig::Popup& p = c.popup;
     r->pushClip(clipOf(b, margin()));
     paintFloating(*r, b, p.fill, p.edge);
+    if (!s.items) {
+        r->popClip();
+        return;
+    }
     const std::vector<PopupItem>& items = *s.items;
     for (std::size_t i = 0; i < items.size() && s.itemRects && i < s.itemRects->size(); ++i) {
         const Rect& cell = (*s.itemRects)[i];

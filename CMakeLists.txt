@@ -169,6 +169,7 @@ spux_ui_optimize(spux_ui_classic)
 # plugin links only the faces of the look it uses. CPU drawing only.
 add_library(spux_ui_retro STATIC
   ${SPUX_ROOT}/src/ui/retro/PixelRenderer.cpp
+  ${SPUX_ROOT}/src/ui/retro/PixelRendererDefault.cpp
   ${SPUX_ROOT}/src/ui/retro/RetroStyle.cpp
   ${SPUX_ROOT}/src/ui/retro/RetroSilver.cpp
   ${SPUX_ROOT}/src/ui/retro/RetroTracker.cpp
