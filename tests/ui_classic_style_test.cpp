@@ -211,21 +211,24 @@ TEST_CASE("the brushed panel: identical to paintBrushedPanel, cached, a grain al
     std::vector<std::uint32_t> expect(160 * 80);
     ref.resolve(expect.data(), {0, 0, 160, 80});
     CHECK(diffCount(first, expect) == 0);
-    // the grain runs along x: neighbors in a row differ less than neighbors in a column
-    long dx = 0, dy = 0;
-    for (int y = 10; y < 70; ++y)
-        for (int x = 10; x < 150; ++x) {
-            const auto p = static_cast<int>(at(first, 160, x, y) & 0xFF);
-            dx += std::abs(p - static_cast<int>(at(first, 160, x + 1, y) & 0xFF));
-            dy += std::abs(p - static_cast<int>(at(first, 160, x, y + 1) & 0xFF));
-        }
-    CHECK(dx < dy);
     // a plainer finish is another panel
     steel.grain = 0.f;
     steel.sheen = 0.f;
     steel.specks = 0.f;
     r.brushedPanel({0, 0, 160, 80}, light, dark, steel);
-    CHECK(diffCount(first, r.frame()) > 0);
+    const auto plain = r.frame();
+    CHECK(diffCount(first, plain) > 0);
+    // the grain runs along x: what it adds to the plain gradient varies more between rows than along a row
+    long dx = 0, dy = 0;
+    for (int y = 10; y < 70; ++y)
+        for (int x = 10; x < 150; ++x) {
+            auto d = [&](int xx, int yy) {
+                return static_cast<int>(at(first, 160, xx, yy) & 0xFF) - static_cast<int>(at(plain, 160, xx, yy) & 0xFF);
+            };
+            dx += std::abs(d(x, y) - d(x + 1, y));
+            dy += std::abs(d(x, y) - d(x, y + 1));
+        }
+    CHECK(dx < dy);
 }
 
 // --- the painters --------------------------------------------------------------------------------------------

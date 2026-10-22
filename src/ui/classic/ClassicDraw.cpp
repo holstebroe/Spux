@@ -357,9 +357,10 @@ void paintBrushedPanel(Graphics& g, int width, int height, Color light, Color da
     for (int by = 0; by < height * s; ++by) {
         // Rows are in logical units so the lines look the same at any supersampling.
         const float y = (by + 0.5f) * invS;
-        // One random brightness per buffer row is a line that runs the full width; a slow noise along x
-        // breaks it into streaks of different strength.
-        const float rowHash = hash2(0, by, 33) - 0.5f;
+        // One random brightness per logical row is a line that runs the full width (the same at any supersampling,
+        // which would otherwise average the lines away); a slow noise along x breaks it into streaks of different
+        // strength.
+        const float rowHash = hash2(0, by / s, 33) - 0.5f;
         for (int bx = 0; bx < bw; ++bx) {
             const float x = (bx + 0.5f) * invS;
             const float t = clamp01(0.45f * x / W + 0.8f * y / H);
