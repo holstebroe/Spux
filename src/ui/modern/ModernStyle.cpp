@@ -628,7 +628,8 @@ Rect ModernPopup::layout(IRenderer& r, const PopupState& s, int viewW, int viewH
     float maxW = f(s.anchor.w);
     for (const PopupItem& it : items)
         if (!it.separator)
-            maxW = std::max(maxW, r.textWidthPx(it.label.c_str(), m.popupPx) + c.popup.itemPadding);
+            maxW = std::max(maxW, r.textWidthPx(it.label.c_str(), m.popupPx) + c.popup.itemPadding +
+                                      (it.children.empty() ? 0.f : 12.f)); // room for the submenu marker
     const int itemW = static_cast<int>(std::ceil(maxW));
     const int sepH = static_cast<int>(c.popup.separatorHeight);
     // column-major, so a long list reads down its columns

@@ -376,7 +376,7 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
     if (popupOpen_ && popupPainter) {
         // The open lists, outermost first: the first at the anchor, each submenu beside the row that opens it. The
         // pointer decides which submenu is open, so the layout repeats until the path no longer changes.
-        for (int pass = 0; pass < 4; ++pass) {
+        for (int pass = 0; pass < 8; ++pass) {
             popup_.levels.clear();
             const std::vector<PopupItem>* items = &popup_.items;
             Rect anchor = popup_.anchor;
@@ -389,13 +389,15 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
                 ps.theme = theme_;
                 PopupLevel lv;
                 lv.items = items;
+                lv.anchor = anchor;
                 lv.rect = popupPainter->layout(*r_, ps, w_, h_, lv.itemRects);
                 if (k > 0) {
                     // the submenu opens to the right of its row, or to the left when there is no room: the layout
                     // clamped it into the view, over the parent
                     const Rect& parent = popup_.levels[k - 1].rect;
                     if (lv.rect.x < anchor.x - 1) {
-                        ps.anchor = Rect{parent.x + 2 - lv.rect.w, anchor.y, 0, 0};
+                        ps.anchor = Rect{std::max(4, parent.x + 2 - lv.rect.w), anchor.y, 0, 0};
+                        lv.anchor = ps.anchor;
                         lv.rect = popupPainter->layout(*r_, ps, w_, h_, lv.itemRects);
                     }
                 }
@@ -437,8 +439,22 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
                          .children.empty())
                     want.push_back(hot);
             }
+            // leaving a row with an open submenu for one without gets a short grace, so a diagonal move across the
+            // list reaches the submenu
+            const bool closing =
+                want.size() < popup_.path.size() && std::equal(want.begin(), want.end(), popup_.path.begin());
+            if (closing) {
+                if (popup_.leaveSince < 0.0)
+                    popup_.leaveSince = time_;
+                if (time_ - popup_.leaveSince < 0.3)
+                    want = popup_.path;
+            } else {
+                popup_.leaveSince = -1.0;
+            }
             if (want == popup_.path)
                 break;
+            if (pass == 7)
+                break; // not settled: keep the path the layout was built for
             popup_.path = std::move(want);
         }
         for (const PopupLevel& lv : popup_.levels)
@@ -480,7 +496,7 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
             const PopupLevel& lv = popup_.levels[k];
             PopupState ps;
             ps.items = lv.items;
-            ps.anchor = popup_.anchor;
+            ps.anchor = lv.anchor;
             ps.selected = k == 0 ? popup_.selected : -1;
             ps.hot = lv.hot;
             ps.open = k < popup_.path.size() ? popup_.path[k] : -1;
@@ -799,21 +815,28 @@ void GuiCore::label(const char* s, float x, float y, Color c, float px, Align a,
     r_->drawTextPx(s, x, y, c, px, a, w);
 }
 
-void GuiCore::popup(const char* idText, const Rect& anchor, std::vector<PopupItem> items, int selected,
-                    std::function<void(int)> choose, int columns) {
+void GuiCore::openPopup(const char* idText, const Rect& anchor, std::vector<PopupItem> items, int selected,
+                        int columns) {
     popup_ = {};
     popup_.id = hashId(idText, scope());
     popup_.anchor = anchor;
     popup_.items = std::move(items);
     popup_.selected = selected;
-    popup_.choose = std::move(choose);
     popup_.columns = std::max(1, columns);
     popupOpen_ = true;
 }
 
 void GuiCore::popup(const char* idText, const Rect& anchor, std::vector<PopupItem> items, int selected,
-                    std::function<void(const std::vector<int>&)> choose, int columns) {
-    popup(idText, anchor, std::move(items), selected, std::function<void(int)>{}, columns);
+                    std::function<void(int)> choose, int columns) {
+    openPopup(idText, anchor, std::move(items), selected, columns);
+    for (PopupItem& it : popup_.items)
+        it.children.clear(); // a flat list has no submenus to report
+    popup_.choose = std::move(choose);
+}
+
+void GuiCore::popupPath(const char* idText, const Rect& anchor, std::vector<PopupItem> items, int selected,
+                        std::function<void(const std::vector<int>&)> choose, int columns) {
+    openPopup(idText, anchor, std::move(items), selected, columns);
     popup_.choosePath = std::move(choose);
 }
 

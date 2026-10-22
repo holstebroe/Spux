@@ -410,7 +410,7 @@ TEST_CASE("a popup with submenus: the pointer opens them beside the row, a pick 
     auto page = [&](TGui& g) {
         if (open) {
             open = false;
-            g.popup("menu", anchor, cascade(), -1, [&](const std::vector<int>& r) {
+            g.popupPath("menu", anchor, cascade(), -1, [&](const std::vector<int>& r) {
                 route = r;
                 ++calls;
             });
@@ -508,7 +508,7 @@ TEST_CASE("a submenu that does not fit on the right opens to the left of its lis
     auto page = [&](TGui& g) {
         if (open) {
             open = false;
-            g.popup("menu", anchor, cascade(), -1, [&](const std::vector<int>& r) { route = r; });
+            g.popupPath("menu", anchor, cascade(), -1, [&](const std::vector<int>& r) { route = r; });
         }
     };
     open = true;

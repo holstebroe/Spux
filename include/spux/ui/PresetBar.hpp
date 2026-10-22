@@ -5,9 +5,10 @@
 //   if (r.save) { /* the plugin asks for a name and calls presets()->save(...) */ }
 //
 // The arrows load the previous and next preset of the factory list followed by the user list (wrapping); the name
-// opens the whole list (with byCategory, a list of the categories whose submenus hold their presets). A preset that was
-// changed since loading shows a star after its name. Without a PresetHost the bar draws nothing. Saving needs a name,
-// which is the plugin's page (a text field); the bar only reports that SAVE was pressed.
+// opens the whole list (with byCategory, a list of the categories whose submenus hold their presets, the row of the
+// current preset marked; user presets join a factory category of the same name and the factory/user separator is not
+// drawn). A preset that was changed since loading shows a star after its name. Without a PresetHost the bar draws
+// nothing. Saving needs a name, which is the plugin's page (a text field); the bar only reports that SAVE was pressed.
 #pragma once
 
 #include <string>
@@ -81,6 +82,8 @@ PresetBarResult presetBar(Gui<Style>& g, const char* id, const Rect& r, const Pr
             std::vector<PopupItem> items;
             std::vector<std::vector<std::size_t>> groups; // top-level row -> entries (a lone preset: one)
             std::vector<std::string> names;               // top-level row -> category, empty for a lone preset
+            int selected = -1;                            // the top-level row that holds the current preset
+            const std::string now = ph->currentName();
             for (std::size_t i = 0; i < all.size(); ++i) {
                 std::size_t row = items.size();
                 if (!all[i].category.empty())
@@ -93,10 +96,12 @@ PresetBarResult presetBar(Gui<Style>& g, const char* id, const Rect& r, const Pr
                     names.push_back(all[i].category);
                 }
                 groups[row].push_back(i);
+                if (all[i].name == now)
+                    selected = static_cast<int>(row);
                 if (!all[i].category.empty())
                     items[row].children.push_back({all[i].name});
             }
-            g.popup("presets", name, std::move(items), -1, [ph, all, groups](const std::vector<int>& path) {
+            g.popupPath("presets", name, std::move(items), selected, [ph, all, groups](const std::vector<int>& path) {
                 if (path.empty() || static_cast<std::size_t>(path[0]) >= groups.size())
                     return;
                 const std::vector<std::size_t>& group = groups[static_cast<std::size_t>(path[0])];

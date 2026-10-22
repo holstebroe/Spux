@@ -811,7 +811,7 @@ Rect RetroPopup::layout(IRenderer& /*r*/, const PopupState& s, int viewW, int vi
     int itemW = s.anchor.w;
     for (const PopupItem& it : items)
         if (!it.separator)
-            itemW = std::max(itemW, widthOf(c.font, it.label.c_str()) + 20);
+            itemW = std::max(itemW, widthOf(c.font, it.label.c_str()) + 20 + (it.children.empty() ? 0 : 8));
     std::vector<int> colY(static_cast<std::size_t>(cols), 0);
     rects.assign(static_cast<std::size_t>(n), Rect{});
     for (int i = 0; i < n; ++i) {

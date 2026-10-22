@@ -420,6 +420,8 @@ void ClassicSlider::paint(IRenderer& rr, const Rect& b, const SliderState& s) co
         } else {
             const float x = k.lo + (k.hi - k.lo) * t, y = k.cy + hh + 2.f;
             drawLineAA(g, x, y, x, y + len, 0.8f, tick);
+            if (c.slider.scaleBothSides)
+                drawLineAA(g, x, k.cy - hh - 2.f, x, k.cy - hh - 2.f - len, 0.8f, tick);
         }
     }
 
@@ -1077,7 +1079,8 @@ Rect ClassicPopup::layout(IRenderer& r, const PopupState& s, int viewW, int view
     float maxW = static_cast<float>(s.anchor.w);
     for (const PopupItem& it : items)
         if (!it.separator)
-            maxW = std::max(maxW, r.textWidthPx(it.label.c_str(), m.popupPx) + 28.f);
+            maxW =
+                std::max(maxW, r.textWidthPx(it.label.c_str(), m.popupPx) + 28.f + (it.children.empty() ? 0.f : 12.f));
     const int itemW = static_cast<int>(std::ceil(maxW));
     // column-major, so a long list reads down its columns
     std::vector<int> colY(static_cast<std::size_t>(cols), 0);
