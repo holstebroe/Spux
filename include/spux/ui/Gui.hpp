@@ -253,8 +253,9 @@ public:
     // The same for a list with submenus, named apart so a bare lambda or nullptr stays unambiguous
     // (PopupItem::children): a row with children opens its list beside it while the pointer is on it, to any depth.
     // `choose` gets the picked row at every level, outermost first
-    // ({2, 5}: the sixth row of the submenu of the third row). Only the first list can have columns.
-    void popupPath(const char* id, const Rect& anchor, std::vector<PopupItem> items, int selected,
+    // ({2, 5}: the sixth row of the submenu of the third row). `selected` is the route of the current choice (marked in
+    // each list that holds it; empty: none). Only the first list can have columns.
+    void popupPath(const char* id, const Rect& anchor, std::vector<PopupItem> items, std::vector<int> selected,
                    std::function<void(const std::vector<int>&)> choose, int columns = 1);
     void popup(const char* id, const Rect& anchor, const std::vector<std::string>& items, int selected,
                std::function<void(int)> choose, int columns = 1);
@@ -316,7 +317,8 @@ protected:
     enum class TextResult { Editing, Commit, Cancel };
     TextResult textFieldImpl(const char* id, const Rect& b, std::string& text, std::size_t maxBytes,
                              const TextFieldPainter& p);
-    void openPopup(const char* id, const Rect& anchor, std::vector<PopupItem> items, int selected, int columns);
+    void openPopup(const char* id, const Rect& anchor, std::vector<PopupItem> items, std::vector<int> selected,
+                   int columns);
     void endImpl(const PopupPainter* popup, const TooltipPainter* tooltip);
 
 private:
@@ -336,7 +338,8 @@ private:
         std::uint64_t id = 0;
         Rect anchor;
         std::vector<PopupItem> items;
-        int selected = -1, columns = 1;
+        int columns = 1;
+        std::vector<int> selectedPath; // the current choice at each level, outermost first (empty: none)
         std::function<void(int)> choose;
         std::function<void(const std::vector<int>&)> choosePath;
         std::vector<int> path;          // the rows whose submenus are open, outermost first
