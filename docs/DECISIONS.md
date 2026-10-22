@@ -69,7 +69,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 | U6 | CI builds each plugin's native flavor on every push and the full matrix nightly. | Decided | |
 | U7 | **Immediate-mode widget API with retained-style caches.** The retained widget tree behind the same painter interfaces was the fallback and is not needed. | Decided | 2026-10-20 after the acceptance gate (docs/UI_GATE.md): simpler page code and faster frames than the retained panels; the size cost (Acidus Retro about +33 % with U16, Tannhauser Classic +7.6 %) accepted by the author. |
 | U8 | **Painters per widget and flavor**; a flavor's look is a `Theme` **data struct** (colors, metrics, fonts). | Decided | |
-| U9 | **Editing helpers** in the core: value entry, Tab focus, tooltips, popups, double-click reset, fine adjust. | Decided | Plumeflow's `Gui` is the baseline. Cascading submenus (Tannhauser's preset menu) go into spux's own popup, the simple option: a plugin cannot draw its own overlays (2026-10-20). |
+| U9 | **Editing helpers** in the core: value entry, Tab focus, tooltips, popups, double-click reset, fine adjust. | Decided | Plumeflow's `Gui` is the baseline. Cascading submenus (Tannhauser's preset menu) go into spux's own popup, the simple option: a plugin cannot draw its own overlays (2026-10-20). Built 2026-10-22 (`PopupItem::children`, to any depth, drawn left of the parent at the view's edge) for Tannhauser and Tearwash. |
 | U10 | **Shared preset browser** as an optional target; plugins may write their own. | Decided | |
 | U11 | Scaling: Retro whole steps; Classic in steps up to a cap; Modern **free resize at a fixed aspect ratio**. | Decided | |
 | U12 | Fonts: Retro bitmap; Classic pre-rasterized atlas; Modern **SDF atlas baked at editor open** from an embedded TTF subset (stb_truetype). | Decided | Smaller binary than a pre-baked atlas (about 34 KB TTF vs 1 MB atlas). |
@@ -267,3 +267,12 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   panel titles. Compared with the plugins' own drawing, text, lines and bevels are identical to the last pixel, Acidus's lever and
   panel trims too, its knob within 2 of 255 in the blended shadow; the Syrebas and Gritbaal knob is a simpler drawing and is not
   reproduced exactly (MIGRATION.md, "Retro style").
+- 2026-10-22: migration step 8, Tearwash and Tannhauser onto spux (session 12). No decision changed. U9's cascading submenus built
+  (a `PopupItem` has `children`; `Gui::popup` takes a path callback; the list opens beside the row while the pointer is on it, to
+  the left when the view's edge is in the way; each flavor's popup draws a marker on such a row). Small additions the two panels
+  needed, within the guidelines: `ClassicConfig::Slider::slotW`, `slotEnd` and `scaleBothSides`, `PresetBarOptions::byCategory`,
+  `Gui::wheelIn`. Choices in the plugins: each keeps its own painters where the standard ones differ (Tannhauser's paddle, rocker,
+  lettered key, lever and tone button; plugin territory in docs/WIDGETS.md), and each keeps its printed panel in the background
+  layer, so the cached areas of widgets never overlap (`overlapCount()` is a test of both). The `before_spux_*` golden frames are
+  records of the earlier looks with their own tolerances and are never rewritten; the current frames are strict. The pins of
+  `extern/spux` are commits of the migration branch until tags start.
