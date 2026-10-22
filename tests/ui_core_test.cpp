@@ -378,6 +378,29 @@ std::vector<PopupItem> cascade() {
 }
 } // namespace
 
+TEST_CASE("wheelIn reads the wheel over an area without taking a press") {
+    Rig f;
+    float seen = 0.0f, outside = 0.0f;
+    bool pressed = false;
+    const Rect area{20, 20, 80, 16};
+    auto page = [&](TGui& g) {
+        seen = g.wheelIn(area);
+        outside = g.wheelIn({120, 20, 40, 16});
+        pressed = g.button("b", area, "x") || pressed;
+    };
+    f.run(page);
+    f.gui.onMouseMove(40, 28);
+    f.gui.onWheel(40, 28, 2.0f, false);
+    f.run(page);
+    CHECK(seen == 2.0f);
+    CHECK(outside == 0.0f);
+    f.gui.onMouseDown(40, 28, MouseButton::Left, false);
+    f.run(page);
+    f.gui.onMouseUp(40, 28, MouseButton::Left);
+    f.run(page);
+    CHECK(pressed);   // the button under the same area still takes its press
+}
+
 TEST_CASE("a popup with submenus: the pointer opens them beside the row, a pick reports the route") {
     Rig f;
     std::vector<int> route;

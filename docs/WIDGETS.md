@@ -10,7 +10,8 @@ build/tests/spux_widget_gallery docs/widgets      # then optimize the PNGs if yo
 A control is **done** in a flavor when its painter exists and is tested (every painter draws inside its bounds, in
 `ui_classic_style_test` and `ui_modern_test`). The plugin decides what it uses (guidelines rule 1): a page that calls a widget
 its flavor lacks fails to compile, and a plugin can always pass its own painter per call, draw its own widgets with
-`Gui::view` and `Gui::interact`, and draw its own background in the root view.
+`Gui::view` and `Gui::interact` (`Gui::wheelIn` reads the wheel over an area without taking the press), and draw its own
+background in the root view.
 
 Classic has three shipped looks: **slate** (a dark console), **silver** (worn silver paint, knurled knobs) and **forge**
 (forged iron plates, copper trim, amber lettering, arcs around the knobs). All are `ClassicConfig` data.

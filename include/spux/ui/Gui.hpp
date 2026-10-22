@@ -210,6 +210,9 @@ public:
     [[nodiscard]] bool shift() const { return shift_; }
     [[nodiscard]] bool leftDown() const { return leftDown_; }
     [[nodiscard]] bool hovered(const Rect& r) const;
+    // The wheel notches this frame while the pointer is inside `r` (positive: away from the user), for a widget that
+    // also steps something with the wheel (a preset display), without the press an interact area would take.
+    [[nodiscard]] float wheelIn(const Rect& r) const { return hovered(r) && !background_ ? wheel_ : 0.0f; }
     // Keys delivered this frame that no widget took (page shortcuts).
     [[nodiscard]] const std::vector<KeyEvent>& keys() const { return keys_; }
 
