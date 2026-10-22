@@ -37,8 +37,9 @@ struct ClassicConfig {
 
     PanelSurface surface = PanelSurface::Slate;
     bool trims = false; // Worn: the darker extrusions along the top and bottom edges
-    Color surfaceLight{0.205f, 0.225f, 0.245f}, surfaceDark{0.07f, 0.077f, 0.086f}; // Slate, Brushed: top left to bottom right
-    BrushedSteel brushed;                                                           // Brushed: the finish
+    Color surfaceLight{0.205f, 0.225f, 0.245f},
+        surfaceDark{0.07f, 0.077f, 0.086f}; // Slate, Brushed: top left to bottom right
+    BrushedSteel brushed;                   // Brushed: the finish
 
     struct Knob {
         KnobShape shape = KnobShape::Disc;
