@@ -423,6 +423,42 @@ TEST_CASE("popup and tooltip: layout stays in view, items are placed, painting s
             outside += !allowed.contains(x, y) && at(px, 400, x, y) != rgb(77, 88, 99);
     CHECK(outside == 0);
 
+    { // a row with a submenu shows a marker at its right end, and nothing else changes
+        std::vector<PopupItem> sub = items;
+        sub[7].children = {{"Sub"}};
+        PopupState plain = ps, withSub = ps;
+        plain.hot = withSub.hot = -1;
+        withSub.items = &sub;
+        r.clear(rgb(77, 88, 99));
+        style.popup.paint(r, box, plain);
+        const auto a = r.frame();
+        r.clear(rgb(77, 88, 99));
+        style.popup.paint(r, box, withSub);
+        const auto b = r.frame();
+        int marker = 0, elsewhere = 0;
+        for (int y = 0; y < 260; ++y)
+            for (int x = 0; x < 400; ++x)
+                if (at(a, 400, x, y) != at(b, 400, x, y)) {
+                    if (rects[7].contains(x, y) && x >= rects[7].right() - 18)
+                        ++marker;
+                    else
+                        ++elsewhere;
+                }
+        CHECK(marker > 3);
+        CHECK(elsewhere == 0);
+        // the row whose submenu is open is drawn like the hot one
+        PopupState opened = withSub;
+        opened.open = 7;
+        r.clear(rgb(77, 88, 99));
+        style.popup.paint(r, box, opened);
+        PopupState hotOne = withSub;
+        hotOne.hot = 7;
+        const auto o = r.frame();
+        r.clear(rgb(77, 88, 99));
+        style.popup.paint(r, box, hotOne);
+        CHECK(o == r.frame());
+    }
+
     TooltipState ts;
     ts.theme = &style.theme;
     ts.title = "Cutoff";

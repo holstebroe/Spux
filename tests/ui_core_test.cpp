@@ -365,6 +365,145 @@ TEST_CASE("a dropdown opens a popup over the widgets; a pick sets the value and 
     CHECK(changed == 0);
 }
 
+namespace {
+// A menu with submenus: A, B (B1, B2, B3 (B3a, B3b)), C, D (a disabled row with children).
+std::vector<PopupItem> cascade() {
+    PopupItem b3{"B3"};
+    b3.children = {{"B3a"}, {"B3b"}};
+    PopupItem b{"B"};
+    b.children = {{"B1"}, {"B2"}, b3};
+    PopupItem d{"D", false, false};
+    d.children = {{"D1"}};
+    return {{"A"}, b, {"C"}, d};
+}
+} // namespace
+
+TEST_CASE("a popup with submenus: the pointer opens them beside the row, a pick reports the route") {
+    Rig f;
+    std::vector<int> route;
+    int calls = 0;
+    bool open = false;
+    const Rect anchor{20, 20, 80, 16};
+    auto page = [&](TGui& g) {
+        if (open) {
+            open = false;
+            g.popup("menu", anchor, cascade(), -1, [&](const std::vector<int>& r) {
+                route = r;
+                ++calls;
+            });
+        }
+    };
+    open = true;
+    f.run(page);
+    f.run(page);
+    REQUIRE(f.gui.popupOpen());
+    // List 0: x 20, y 38, rows 12 high from y 40. The pointer on B (row 1) opens its list: x 98, rows from y 53.
+    f.gui.onMouseMove(40, 40 + 12 + 6);
+    f.run(page);
+    f.gui.onMouseMove(120, 53 + 12 + 6); // B2, in the submenu
+    f.run(page);
+    CHECK(f.gui.popupOpen());
+    f.gui.onMouseDown(120, 53 + 12 + 6, MouseButton::Left, false);
+    f.run(page);
+    f.gui.onMouseUp(120, 53 + 12 + 6, MouseButton::Left);
+    f.run(page);
+    CHECK_FALSE(f.gui.popupOpen());
+    CHECK(calls == 1);
+    CHECK(route == std::vector<int>{1, 1});
+
+    // A third level: B, then B3 in the submenu (row 2 at y 53 + 24), then B3b in its list.
+    open = true;
+    f.run(page);
+    f.run(page);
+    f.gui.onMouseMove(40, 40 + 12 + 6);
+    f.run(page);
+    f.gui.onMouseMove(120, 53 + 24 + 6);
+    f.run(page);
+    f.gui.onMouseMove(120, 53 + 24 + 6); // B3 opens its list: x 156, rows from y 53 + 24 - 3 + 2 + 2 = 78
+    f.run(page);
+    f.gui.onMouseMove(170, 78 + 12 + 6); // B3b
+    f.run(page);
+    f.gui.onMouseDown(170, 78 + 12 + 6, MouseButton::Left, false);
+    f.run(page);
+    f.gui.onMouseUp(170, 78 + 12 + 6, MouseButton::Left);
+    f.run(page);
+    CHECK_FALSE(f.gui.popupOpen());
+    CHECK(calls == 2);
+    CHECK(route == std::vector<int>{1, 2, 1});
+
+    // A press on a row with a submenu keeps the list open and picks nothing; a leaf of the first list picks it.
+    open = true;
+    f.run(page);
+    f.run(page);
+    f.gui.onMouseMove(40, 40 + 12 + 6);
+    f.gui.onMouseDown(40, 40 + 12 + 6, MouseButton::Left, false);
+    f.run(page);
+    f.gui.onMouseUp(40, 40 + 12 + 6, MouseButton::Left);
+    f.run(page);
+    CHECK(f.gui.popupOpen());
+    CHECK(calls == 2);
+    f.gui.onMouseMove(40, 40 + 24 + 6); // C
+    f.run(page);
+    f.gui.onMouseDown(40, 40 + 24 + 6, MouseButton::Left, false);
+    f.run(page);
+    f.gui.onMouseUp(40, 40 + 24 + 6, MouseButton::Left);
+    f.run(page);
+    CHECK_FALSE(f.gui.popupOpen());
+    CHECK(route == std::vector<int>{2});
+
+    // A disabled row opens nothing; a press outside closes the list without a pick; Escape too.
+    open = true;
+    f.run(page);
+    f.run(page);
+    f.gui.onMouseMove(40, 40 + 36 + 6); // D, disabled
+    f.run(page);
+    f.gui.onMouseMove(120, 40 + 36 + 6);
+    f.run(page);
+    f.gui.onMouseDown(120, 40 + 36 + 6, MouseButton::Left, false); // where D1 would be: outside every list
+    f.run(page);
+    f.gui.onMouseUp(120, 40 + 36 + 6, MouseButton::Left);
+    f.run(page);
+    CHECK_FALSE(f.gui.popupOpen());
+    CHECK(calls == 3);
+    open = true;
+    f.run(page);
+    f.run(page);
+    CHECK(f.gui.popupOpen());
+    KeyEvent esc;
+    esc.key = KeyEvent::Key::Escape;
+    f.gui.onKey(esc);
+    f.run(page);
+    CHECK_FALSE(f.gui.popupOpen());
+    CHECK(calls == 3);
+}
+
+TEST_CASE("a submenu that does not fit on the right opens to the left of its list") {
+    Rig f;
+    std::vector<int> route;
+    bool open = false;
+    const Rect anchor{150, 20, 80, 16}; // the list ends at 230 of 240
+    auto page = [&](TGui& g) {
+        if (open) {
+            open = false;
+            g.popup("menu", anchor, cascade(), -1, [&](const std::vector<int>& r) { route = r; });
+        }
+    };
+    open = true;
+    f.run(page);
+    f.run(page);
+    f.gui.onMouseMove(170, 40 + 12 + 6); // B
+    f.run(page);
+    // Right of the list there is no room for 60 pixels: the submenu is at 150 + 2 - 60 = 92, rows from y 53.
+    f.gui.onMouseMove(110, 53 + 6);
+    f.run(page);
+    f.gui.onMouseDown(110, 53 + 6, MouseButton::Left, false);
+    f.run(page);
+    f.gui.onMouseUp(110, 53 + 6, MouseButton::Left);
+    f.run(page);
+    CHECK_FALSE(f.gui.popupOpen());
+    CHECK(route == std::vector<int>{1, 0});
+}
+
 TEST_CASE("a tooltip shows after the delay and leaves no trace") {
     Rig f;
     auto page = [&](TGui& g) { g.knob(P_width, {20, 20, 60, 60}); };

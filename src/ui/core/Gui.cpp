@@ -218,20 +218,45 @@ void GuiCore::begin(IRenderer& r, double time, float dt, int width, int height) 
     blocked_ = popupOpen_;
     if (popupOpen_ && downEvent_) {
         // a click while a list is open picks an item or closes the list; it never reaches the widgets below
-        const bool inside = popup_.rect.contains(static_cast<int>(downX_), static_cast<int>(downY_));
+        const Point at{downX_, downY_};
+        int level = -1; // the innermost open list under the pointer
+        for (std::size_t k = popup_.levels.size(); k-- > 0;)
+            if (popup_.levels[k].rect.contains(static_cast<int>(at.x), static_cast<int>(at.y))) {
+                level = static_cast<int>(k);
+                break;
+            }
         int picked = -1;
-        if (inside)
-            for (std::size_t i = 0; i < popup_.itemRects.size() && i < popup_.items.size(); ++i)
-                if (popup_.itemRects[i].contains(static_cast<int>(downX_), static_cast<int>(downY_)) &&
-                    !popup_.items[i].separator && popup_.items[i].enabled)
+        if (level >= 0) {
+            const PopupLevel& lv = popup_.levels[static_cast<std::size_t>(level)];
+            for (std::size_t i = 0; i < lv.itemRects.size() && lv.items && i < lv.items->size(); ++i)
+                if (lv.itemRects[i].contains(static_cast<int>(at.x), static_cast<int>(at.y)) &&
+                    !(*lv.items)[i].separator && (*lv.items)[i].enabled)
                     picked = static_cast<int>(i);
-        if (inside && picked < 0) {
+        }
+        if (level >= 0 && picked < 0) {
             // a press on a separator or a disabled item keeps the list open
+        } else if (level >= 0 &&
+                   !(*popup_.levels[static_cast<std::size_t>(level)].items)[static_cast<std::size_t>(picked)]
+                        .children.empty()) {
+            // a row with a submenu: it opens (it already does under the pointer); the list stays
+            popup_.path.resize(static_cast<std::size_t>(level));
+            popup_.path.push_back(picked);
         } else {
+            std::vector<int> route(
+                popup_.path.begin(),
+                popup_.path.begin() +
+                    std::min<std::ptrdiff_t>(level < 0 ? 0 : level, static_cast<std::ptrdiff_t>(popup_.path.size())));
+            if (picked >= 0)
+                route.push_back(picked);
             auto choose = std::move(popup_.choose);
+            auto choosePath = std::move(popup_.choosePath);
             popupOpen_ = false;
-            if (picked >= 0 && choose)
-                choose(picked);
+            if (picked >= 0) {
+                if (choosePath)
+                    choosePath(route);
+                else if (choose && route.size() == 1)
+                    choose(route[0]);
+            }
         }
         downEvent_ = false;
         rightDownEvent_ = false;
@@ -345,24 +370,79 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
 
     // overlays: laid out now, drawn last on the display layer (with caches) so they never touch a widget
     std::vector<Rect> overlays;
-    Rect popupRect, tipRect;
+    Rect tipRect;
     TooltipState tip;
     std::string tipText;
     if (popupOpen_ && popupPainter) {
-        PopupState ps;
-        ps.items = &popup_.items;
-        ps.anchor = popup_.anchor;
-        ps.selected = popup_.selected;
-        ps.columns = popup_.columns;
-        ps.theme = theme_;
-        popup_.rect = popupPainter->layout(*r_, ps, w_, h_, popup_.itemRects);
-        popup_.hot = -1;
-        for (std::size_t i = 0; i < popup_.itemRects.size() && i < popup_.items.size(); ++i)
-            if (popup_.itemRects[i].contains(static_cast<int>(mx_), static_cast<int>(my_)) &&
-                !popup_.items[i].separator && popup_.items[i].enabled)
-                popup_.hot = static_cast<int>(i);
-        popupRect = popup_.rect;
-        overlays.push_back(popupRect.expand(popupPainter->margin()));
+        // The open lists, outermost first: the first at the anchor, each submenu beside the row that opens it. The
+        // pointer decides which submenu is open, so the layout repeats until the path no longer changes.
+        for (int pass = 0; pass < 4; ++pass) {
+            popup_.levels.clear();
+            const std::vector<PopupItem>* items = &popup_.items;
+            Rect anchor = popup_.anchor;
+            for (std::size_t k = 0;; ++k) {
+                PopupState ps;
+                ps.items = items;
+                ps.anchor = anchor;
+                ps.selected = k == 0 ? popup_.selected : -1;
+                ps.columns = k == 0 ? popup_.columns : 1;
+                ps.theme = theme_;
+                PopupLevel lv;
+                lv.items = items;
+                lv.rect = popupPainter->layout(*r_, ps, w_, h_, lv.itemRects);
+                if (k > 0) {
+                    // the submenu opens to the right of its row, or to the left when there is no room: the layout
+                    // clamped it into the view, over the parent
+                    const Rect& parent = popup_.levels[k - 1].rect;
+                    if (lv.rect.x < anchor.x - 1) {
+                        ps.anchor = Rect{parent.x + 2 - lv.rect.w, anchor.y, 0, 0};
+                        lv.rect = popupPainter->layout(*r_, ps, w_, h_, lv.itemRects);
+                    }
+                }
+                popup_.levels.push_back(std::move(lv));
+                if (k >= popup_.path.size())
+                    break;
+                const int row = popup_.path[k];
+                if (row < 0 || static_cast<std::size_t>(row) >= items->size() ||
+                    (*items)[static_cast<std::size_t>(row)].children.empty() ||
+                    static_cast<std::size_t>(row) >= popup_.levels[k].itemRects.size()) {
+                    popup_.path.resize(k);
+                    break;
+                }
+                const Rect& cell = popup_.levels[k].itemRects[static_cast<std::size_t>(row)];
+                anchor = Rect{popup_.levels[k].rect.right() - 2, cell.y - 3, 0, 0};
+                items = &(*items)[static_cast<std::size_t>(row)].children;
+            }
+            // the innermost list under the pointer takes the hover; a row with a submenu opens it
+            int inner = -1, hot = -1;
+            for (std::size_t k = popup_.levels.size(); k-- > 0;)
+                if (popup_.levels[k].rect.contains(static_cast<int>(mx_), static_cast<int>(my_))) {
+                    inner = static_cast<int>(k);
+                    break;
+                }
+            for (PopupLevel& lv : popup_.levels)
+                lv.hot = -1;
+            if (inner >= 0) {
+                PopupLevel& lv = popup_.levels[static_cast<std::size_t>(inner)];
+                for (std::size_t i = 0; i < lv.itemRects.size() && i < lv.items->size(); ++i)
+                    if (lv.itemRects[i].contains(static_cast<int>(mx_), static_cast<int>(my_)) &&
+                        !(*lv.items)[i].separator && (*lv.items)[i].enabled)
+                        hot = static_cast<int>(i);
+                lv.hot = hot;
+            }
+            std::vector<int> want = popup_.path;
+            if (hot >= 0) {
+                want.resize(static_cast<std::size_t>(inner));
+                if (!(*popup_.levels[static_cast<std::size_t>(inner)].items)[static_cast<std::size_t>(hot)]
+                         .children.empty())
+                    want.push_back(hot);
+            }
+            if (want == popup_.path)
+                break;
+            popup_.path = std::move(want);
+        }
+        for (const PopupLevel& lv : popup_.levels)
+            overlays.push_back(lv.rect.expand(popupPainter->margin()));
     } else if (popupOpen_) {
         popupOpen_ = false; // no painter: no popups in this style
     }
@@ -395,16 +475,20 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
             cache_->setTarget(Layer::Display);
         }
     }
-    if (!popupRect.empty()) {
-        PopupState ps;
-        ps.items = &popup_.items;
-        ps.anchor = popup_.anchor;
-        ps.selected = popup_.selected;
-        ps.hot = popup_.hot;
-        ps.columns = popup_.columns;
-        ps.itemRects = &popup_.itemRects;
-        ps.theme = theme_;
-        popupPainter->paint(*r_, popupRect, ps);
+    if (popupOpen_ && popupPainter) {
+        for (std::size_t k = 0; k < popup_.levels.size(); ++k) {
+            const PopupLevel& lv = popup_.levels[k];
+            PopupState ps;
+            ps.items = lv.items;
+            ps.anchor = popup_.anchor;
+            ps.selected = k == 0 ? popup_.selected : -1;
+            ps.hot = lv.hot;
+            ps.open = k < popup_.path.size() ? popup_.path[k] : -1;
+            ps.columns = k == 0 ? popup_.columns : 1;
+            ps.itemRects = &lv.itemRects;
+            ps.theme = theme_;
+            popupPainter->paint(*r_, lv.rect, ps);
+        }
     }
     if (!tipRect.empty())
         tooltipPainter->paint(*r_, tipRect, tip);
@@ -725,6 +809,12 @@ void GuiCore::popup(const char* idText, const Rect& anchor, std::vector<PopupIte
     popup_.choose = std::move(choose);
     popup_.columns = std::max(1, columns);
     popupOpen_ = true;
+}
+
+void GuiCore::popup(const char* idText, const Rect& anchor, std::vector<PopupItem> items, int selected,
+                    std::function<void(const std::vector<int>&)> choose, int columns) {
+    popup(idText, anchor, std::move(items), selected, std::function<void(int)>{}, columns);
+    popup_.choosePath = std::move(choose);
 }
 
 void GuiCore::popup(const char* idText, const Rect& anchor, const std::vector<std::string>& items, int selected,

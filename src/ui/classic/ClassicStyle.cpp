@@ -393,19 +393,21 @@ void ClassicSlider::paint(IRenderer& rr, const Rect& b, const SliderState& s) co
     Graphics g = r->graphics();
 
     // The slot: a dark recessed groove with its lower rim lit, and the printed scale beside it.
-    const float slotW = 5.f;
+    const float slotW = c.slider.slotW, slotEnd = c.slider.slotEnd;
     if (s.vertical)
-        shadeRoundRect(
-            g, k.cx - slotW / 2, k.hi - 3.f, k.cx + slotW / 2, k.lo + 3.f, slotW / 2, [&](float, float v, float d) {
-                const float rim = smoothstep(-1.2f, 0.f, d);
-                return toArgb(mix({0.015f, 0.015f, 0.018f}, {0.30f, 0.31f, 0.32f}, rim * (v > 0 ? 0.9f : 0.3f)), 1.f);
-            });
+        shadeRoundRect(g, k.cx - slotW / 2, k.hi - slotEnd, k.cx + slotW / 2, k.lo + slotEnd, slotW / 2,
+                       [&](float, float v, float d) {
+                           const float rim = smoothstep(-1.2f, 0.f, d);
+                           return toArgb(
+                               mix({0.015f, 0.015f, 0.018f}, {0.30f, 0.31f, 0.32f}, rim * (v > 0 ? 0.9f : 0.3f)), 1.f);
+                       });
     else
-        shadeRoundRect(
-            g, k.lo - 3.f, k.cy - slotW / 2, k.hi + 3.f, k.cy + slotW / 2, slotW / 2, [&](float, float v, float d) {
-                const float rim = smoothstep(-1.2f, 0.f, d);
-                return toArgb(mix({0.015f, 0.015f, 0.018f}, {0.30f, 0.31f, 0.32f}, rim * (v > 0 ? 0.9f : 0.3f)), 1.f);
-            });
+        shadeRoundRect(g, k.lo - slotEnd, k.cy - slotW / 2, k.hi + slotEnd, k.cy + slotW / 2, slotW / 2,
+                       [&](float, float v, float d) {
+                           const float rim = smoothstep(-1.2f, 0.f, d);
+                           return toArgb(
+                               mix({0.015f, 0.015f, 0.018f}, {0.30f, 0.31f, 0.32f}, rim * (v > 0 ? 0.9f : 0.3f)), 1.f);
+                       });
     for (int i = 0; i <= 10; ++i) {
         const float t = static_cast<float>(i) / 10.f;
         const float len = (i % 5 == 0) ? 4.f : 2.5f;
@@ -413,6 +415,8 @@ void ClassicSlider::paint(IRenderer& rr, const Rect& b, const SliderState& s) co
         if (s.vertical) {
             const float y = k.lo + (k.hi - k.lo) * t, x = k.cx - hw - 1.5f;
             drawLineAA(g, x - len, y, x, y, 0.8f, tick);
+            if (c.slider.scaleBothSides)
+                drawLineAA(g, k.cx + hw + 1.5f, y, k.cx + hw + 1.5f + len, y, 0.8f, tick);
         } else {
             const float x = k.lo + (k.hi - k.lo) * t, y = k.cy + hh + 2.f;
             drawLineAA(g, x, y, x, y + len, 0.8f, tick);
@@ -1115,7 +1119,7 @@ void ClassicPopup::paint(IRenderer& rr, const Rect& b, const PopupState& s) cons
             r->fillRect({cell.x + 6, cell.y + cell.h / 2, cell.w - 12, 1}, t.colors.hairline);
             continue;
         }
-        const bool hot = static_cast<int>(i) == s.hot && it.enabled;
+        const bool hot = (static_cast<int>(i) == s.hot || static_cast<int>(i) == s.open) && it.enabled;
         if (hot)
             r->fillRoundRect(cell.inset(1), 2.f, withAlpha(t.colors.accent, 0.35f));
         if (static_cast<int>(i) == s.selected)
@@ -1123,9 +1127,15 @@ void ClassicPopup::paint(IRenderer& rr, const Rect& b, const PopupState& s) cons
                 {static_cast<float>(cell.x) + 9.f, static_cast<float>(cell.y) + static_cast<float>(cell.h) * 0.5f},
                 2.5f, t.colors.focus);
         r->pushClip(cell);
+        const Argb ink = !it.enabled ? t.colors.textFaint : (hot ? t.colors.text : t.colors.textDim);
         r->ink(ShadedRenderer::labelFont(), it.label.c_str(), static_cast<float>(cell.x) + 18.f,
-               capTopIn(static_cast<float>(cell.y), static_cast<float>(cell.h), cap), cap,
-               !it.enabled ? t.colors.textFaint : (hot ? t.colors.text : t.colors.textDim));
+               capTopIn(static_cast<float>(cell.y), static_cast<float>(cell.h), cap), cap, ink);
+        if (!it.children.empty()) { // the submenu marker: a chevron pointing right
+            const float mx = static_cast<float>(cell.right()) - 9.f,
+                        my = static_cast<float>(cell.y) + static_cast<float>(cell.h) * 0.5f;
+            const Point chev[3] = {{mx - 2.f, my - 3.5f}, {mx + 2.f, my}, {mx - 2.f, my + 3.5f}};
+            r->drawPolyline(chev, 3, ink, 1.2f);
+        }
         r->popClip();
     }
     r->popClip();

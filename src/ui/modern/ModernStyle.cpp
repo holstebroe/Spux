@@ -671,7 +671,7 @@ void ModernPopup::paint(IRenderer& r, const Rect& b, const PopupState& s) const 
             r.fillRect({cell.x + 8, cell.y + cell.h / 2, cell.w - 16, 1}, t.colors.hairline);
             continue;
         }
-        const bool hot = static_cast<int>(i) == s.hot && it.enabled;
+        const bool hot = (static_cast<int>(i) == s.hot || static_cast<int>(i) == s.open) && it.enabled;
         if (hot)
             r.fillRoundRect(cell.inset(1), c.shape.itemRadius, withAlpha(t.colors.accent, 0.22f));
         if (static_cast<int>(i) == s.selected)
@@ -682,6 +682,11 @@ void ModernPopup::paint(IRenderer& r, const Rect& b, const PopupState& s) const 
                      : hot       ? t.colors.text
                                  : t.colors.textDim,
                      px);
+        if (!it.children.empty()) { // the submenu marker: a chevron pointing right
+            const float mx = f(cell.right()) - 12.0f, my = f(cell.y) + f(cell.h) * 0.5f;
+            const Point chev[3] = {{mx - 2.5f, my - 4.0f}, {mx + 2.5f, my}, {mx - 2.5f, my + 4.0f}};
+            r.drawPolyline(chev, 3, hot ? t.colors.text : t.colors.textDim, 1.4f);
+        }
     }
 }
 

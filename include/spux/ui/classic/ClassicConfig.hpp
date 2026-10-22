@@ -85,6 +85,9 @@ struct ClassicConfig {
 
     struct Slider {
         float capW = 21.0f, capH = 11.0f;
+        float slotW = 5.0f;          // the groove's width
+        float slotEnd = 3.0f;        // how far the groove reaches beyond the cap's travel at each end
+        bool scaleBothSides = false; // the printed ticks on both sides of a vertical groove (else on the left)
     } slider;
 
     // The recessed display of a dropdown, a stepper's value and a text field: a dark glass with a light edge.

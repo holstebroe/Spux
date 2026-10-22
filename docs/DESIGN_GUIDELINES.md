@@ -323,6 +323,13 @@ are unaffected.
 Value entry by typing, Tab focus, tooltips, popups and dropdowns, double-click reset, shift for fine
 adjustment, mouse wheel, right-click hooks. The plugin can override text formatting per widget.
 
+A popup is a list of `PopupItem`s (separators, disabled rows, columns for the first list). A row with `children` is a
+submenu: the pointer on it opens its list beside the row (to the left when the view ends), to any depth, and every
+painter marks such a row with a chevron. `Gui::popup` with a path callback reports the picked row at each level
+(`{1, 2}`: the third row of the submenu of the second row); the `int` callback is for flat lists. The preset bar offers
+`byCategory` for a preset library that has categories. Submenus are opened by the pointer only; keyboard navigation of
+them is not built.
+
 ### Editor host
 
 The plugin implements an `EditorHost` core (parameters, edit queue, telemetry, flush request, UI state)

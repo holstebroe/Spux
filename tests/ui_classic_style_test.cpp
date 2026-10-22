@@ -442,6 +442,38 @@ TEST_CASE("every painter draws inside its bounds plus its margin, in both looks"
     }
 }
 
+TEST_CASE("the fader's groove width and end, and its scale on both sides, are options; the defaults keep the look") {
+    auto render = [](const ClassicConfig& c) {
+        ClassicStyle style(c);
+        ShadedRenderer r(60, 120, 2);
+        r.clear(rgb(40, 44, 50));
+        SliderState s;
+        s.theme = &style.theme;
+        s.vertical = true;
+        s.value = 0.3;
+        style.slider.paint(r, {5, 5, 50, 110}, s);
+        return r.frame();
+    };
+    ClassicConfig def = ClassicConfig::slate();
+    ClassicConfig narrow = def;
+    narrow.slider.slotW = 4.0f;
+    narrow.slider.slotEnd = 2.0f;
+    ClassicConfig both = def;
+    both.slider.scaleBothSides = true;
+    const auto d = render(def);
+    CHECK(diffCount(d, render(ClassicConfig::slate())) == 0);
+    CHECK(diffCount(d, render(narrow)) > 0);
+    const auto b = render(both);
+    // the right half gains the ticks, the left half is as before
+    int left = 0, right = 0;
+    for (int y = 0; y < 120; ++y)
+        for (int x = 0; x < 60; ++x)
+            if (at(d, 60, x, y) != at(b, 60, x, y))
+                (x < 30 ? left : right)++;
+    CHECK(left == 0);
+    CHECK(right > 20);
+}
+
 TEST_CASE("a painter on another renderer draws nothing") {
     ClassicStyle style;
     uitest::TestRenderer r(100, 100);
@@ -543,6 +575,42 @@ TEST_CASE("popup and tooltip: layout stays in view, items are placed, painting s
             }
         CHECK(outside == 0);
         CHECK(inside > 5000);
+
+        { // a row with a submenu shows a marker at its right end, and nothing else changes
+            std::vector<PopupItem> sub = items;
+            sub[7].children = {{"Sub"}};
+            PopupState plain = ps, withSub = ps;
+            plain.hot = withSub.hot = -1;
+            withSub.items = &sub;
+            r.clear(rgb(77, 88, 99));
+            style.popup.paint(r, box, plain);
+            const auto a = r.frame();
+            r.clear(rgb(77, 88, 99));
+            style.popup.paint(r, box, withSub);
+            const auto b = r.frame();
+            int marker = 0, elsewhere = 0;
+            for (int y = 0; y < 260; ++y)
+                for (int x = 0; x < 400; ++x)
+                    if (at(a, 400, x, y) != at(b, 400, x, y)) {
+                        if (rects[7].contains(x, y) && x >= rects[7].right() - 14)
+                            ++marker;
+                        else
+                            ++elsewhere;
+                    }
+            CHECK(marker > 3);
+            CHECK(elsewhere == 0);
+            // the row whose submenu is open is drawn like the hot one
+            PopupState opened = withSub;
+            opened.open = 7;
+            r.clear(rgb(77, 88, 99));
+            style.popup.paint(r, box, opened);
+            PopupState hotOne = withSub;
+            hotOne.hot = 7;
+            const auto o = r.frame();
+            r.clear(rgb(77, 88, 99));
+            style.popup.paint(r, box, hotOne);
+            CHECK(o == r.frame());
+        }
 
         TooltipState ts;
         ts.theme = &style.theme;
@@ -1004,6 +1072,63 @@ TEST_CASE(
     g2.end();
     CHECK_FALSE(res.save);
     CHECK(at(r.frame(), 400, 100, 20) == rgb(1, 2, 3));
+}
+
+TEST_CASE("preset bar by category: the name opens the categories, a category opens its presets, a pick loads it") {
+    Host host;
+    ShowPresets presets;
+    host.presetHost = &presets;
+    ClassicStyle style;
+    ShadedRenderer r(400, 160, 1);
+    CGui gui(host, style);
+    gui.setCaching(false);
+    const Rect bar{10, 10, 330, 22};
+    PresetBarOptions opt;
+    opt.byCategory = true;
+    auto frame = [&] {
+        r.clear(style.theme.colors.background);
+        gui.begin(r, 1.0, 0.016f, 400, 160);
+        presetBar(gui, "p", bar, opt);
+        gui.end();
+    };
+    auto click = [&](float x, float y) {
+        gui.onMouseDown(x, y, MouseButton::Left, false);
+        frame();
+        gui.onMouseUp(x, y, MouseButton::Left);
+        frame();
+    };
+    auto center = [](const Rect& c) { return Point{c.x + c.w * 0.5f, c.y + c.h * 0.5f}; };
+    frame();
+    CHECK(presets.current == 1);
+    click(150.0f, 21.0f); // the name opens the list: Bass, Pad, Lead
+    REQUIRE(gui.popupOpen());
+
+    // The lists as the Gui lays them out: the categories under the name button, a submenu beside its row.
+    const Rect name{36, 10, 226, 22};
+    std::vector<PopupItem> cats = {{"Bass"}, {"Pad"}, {"Lead"}};
+    PopupState ps;
+    ps.theme = &style.theme;
+    ps.items = &cats;
+    ps.anchor = name;
+    std::vector<Rect> rows;
+    const Rect box = style.popup.layout(r, ps, 400, 160, rows);
+    REQUIRE(rows.size() == 3);
+    std::vector<PopupItem> kids = {{"Hellfire Bass"}};
+    PopupState sub = ps;
+    sub.items = &kids;
+    sub.anchor = Rect{box.right() - 2, rows[0].y - 3, 0, 0};
+    std::vector<Rect> kidRows;
+    style.popup.layout(r, sub, 400, 160, kidRows);
+    REQUIRE(kidRows.size() == 1);
+
+    gui.onMouseMove(center(rows[0]).x, center(rows[0]).y); // Bass opens its list
+    frame();
+    gui.onMouseMove(center(kidRows[0]).x, center(kidRows[0]).y);
+    frame();
+    REQUIRE(gui.popupOpen());
+    click(center(kidRows[0]).x, center(kidRows[0]).y);
+    CHECK_FALSE(gui.popupOpen());
+    CHECK(presets.current == 0); // Hellfire Bass
 }
 
 TEST_CASE(
