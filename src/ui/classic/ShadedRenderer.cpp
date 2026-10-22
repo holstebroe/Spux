@@ -235,18 +235,41 @@ float ShadedRenderer::textWidthPx(const char* text, float px, FontWeight weight)
 // --- the worn panel ---------------------------------------------------------------------------------------
 
 void ShadedRenderer::wornPanel(const Rect& r, bool trims) {
+    PanelKey key;
+    key.kind = 1;
+    key.w = r.w;
+    key.h = r.h;
+    key.scale = layers_.scale();
+    key.trims = trims;
+    paintPanelTexture(r, key);
+}
+
+void ShadedRenderer::brushedPanel(const Rect& r, Color light, Color dark, const BrushedSteel& steel) {
+    PanelKey key;
+    key.kind = 2;
+    key.w = r.w;
+    key.h = r.h;
+    key.scale = layers_.scale();
+    key.light = light;
+    key.dark = dark;
+    key.steel = steel;
+    paintPanelTexture(r, key);
+}
+
+// Renders the texture when the cache does not hold this one, then copies it into the target, clipped.
+void ShadedRenderer::paintPanelTexture(const Rect& r, const PanelKey& key) {
     if (r.empty())
         return;
     const int s = layers_.scale();
-    if (wornW_ != r.w || wornH_ != r.h || wornScale_ != s || wornTrims_ != trims) {
+    if (!(panelKey_ == key)) {
         worn_.assign(static_cast<std::size_t>(r.w) * static_cast<std::size_t>(r.h) * static_cast<std::size_t>(s * s),
                      0);
         Graphics g(worn_.data(), static_cast<std::uint32_t>(r.w), static_cast<std::uint32_t>(r.h), s);
-        paintWornPanel(g, r.w, r.h, trims);
-        wornW_ = r.w;
-        wornH_ = r.h;
-        wornScale_ = s;
-        wornTrims_ = trims;
+        if (key.kind == 1)
+            paintWornPanel(g, r.w, r.h, key.trims);
+        else
+            paintBrushedPanel(g, r.w, r.h, key.light, key.dark, key.steel);
+        panelKey_ = key;
     }
     const Graphics g = graphics();
     const int x0 = std::max(g.clipX0(), r.x * s), x1 = std::min(g.clipX1(), r.right() * s);

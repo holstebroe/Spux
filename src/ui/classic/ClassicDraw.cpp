@@ -345,4 +345,47 @@ void paintWornPanel(Graphics& g, int width, int height, bool trims) {
     }
 }
 
+// --- Brushed steel -----------------------------------------------------------
+
+void paintBrushedPanel(Graphics& g, int width, int height, Color light, Color dark, const BrushedSteel& steel) {
+    const int s = g.getScale();
+    const int bw = width * s;
+    uint32_t* buf = g.getBuffer();
+    const float W = static_cast<float>(width), H = static_cast<float>(height);
+    const float invS = 1.f / static_cast<float>(s);
+    const float len = std::max(steel.streak, 4.f);
+    for (int by = 0; by < height * s; ++by) {
+        // Rows are in logical units so the lines look the same at any supersampling.
+        const float y = (by + 0.5f) * invS;
+        // One random brightness per buffer row is a line that runs the full width; a slow noise along x
+        // breaks it into streaks of different strength.
+        const float rowHash = hash2(0, by, 33) - 0.5f;
+        for (int bx = 0; bx < bw; ++bx) {
+            const float x = (bx + 0.5f) * invS;
+            const float t = clamp01(0.45f * x / W + 0.8f * y / H);
+            const Color base = mix(light, dark, t);
+            const float lines = 0.50f * (valueNoise(x / len, y * 1.7f, 31) - 0.5f) +
+                                0.30f * (valueNoise(x / (len * 0.3f), y * 3.1f, 32) - 0.5f) +
+                                0.45f * rowHash * (0.4f + 0.6f * valueNoise(x / (len * 2.f), y * 0.9f, 34)) +
+                                0.06f * (hash2(bx, by, 36) - 0.5f);
+            // Light raked across the metal makes wide, flat patches; they are stretched along the grain.
+            const float cloud = fbm(x / (len * 2.5f), y / 11.f, 35) - 0.5f;
+            // The lines are partly additive: on a dark metal a purely proportional grain would vanish.
+            const float k = 1.f + 0.5f * steel.grain * lines + steel.sheen * 0.35f * cloud;
+            const float add = 0.25f * steel.grain * lines;
+            Color c = scale(base, k);
+            c = {c.r + add, c.g + add, c.b + add};
+            // A few specks of dust: one buffer pixel in a lit cell.
+            if (steel.specks > 0.f) {
+                const int lx = static_cast<int>(x), ly = static_cast<int>(y);
+                if (hash2(lx, ly, 40) < 0.0016f * steel.specks && (bx % s) == 0 && (by % s) == 0) {
+                    const float lift = 0.10f + 0.25f * hash2(lx, ly, 41);
+                    c = {c.r + lift, c.g + lift, c.b + lift};
+                }
+            }
+            buf[static_cast<size_t>(by) * bw + bx] = toArgb(c, 1.f);
+        }
+    }
+}
+
 } // namespace spux::inline v1::ui::classic

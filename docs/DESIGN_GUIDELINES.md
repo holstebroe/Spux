@@ -387,8 +387,8 @@ spux's and can be overridden per plugin (`formatParam`, `parseParam`) or per wid
   default, 1 to 4) and box-filtered when the frame is resolved, with analytic edges and the clip applied to everything,
   text and shading included. Besides the basics it hands out `graphics()`, a clipped view of the current layer at the
   supersampled resolution that the `ClassicDraw` helpers (`shadeBox`, `shadeRoundRect`, `softShadow`, `shadeLit`,
-  `drawLineAA`, the lettering) draw through, so a plugin's own views shade exactly like the painters. `wornPanel` renders the
-  worn paint once per size and copies it afterwards; the cache belongs to the renderer (guideline principle 6).
+  `drawLineAA`, the lettering) draw through, so a plugin's own views shade exactly like the painters. `wornPanel` and `brushedPanel` render the
+  worn paint or the brushed steel (a gradient with a grain along x, `PanelSurface::Brushed`) once per size and copy it afterwards; the cache belongs to the renderer (guideline principle 6).
 - **Painters shade per pixel**, so they need a `ShadedRenderer`; on another renderer they draw nothing. Each paints inside its
   bounds plus its margin (it sets the clip itself), and what a knob's bounds must contain is documented in `ClassicStyle.hpp`.
 - **The look is a `ClassicConfig`**: the knob shape (disc or knurled), the toggle shape (rocker or lever), the surface (slate

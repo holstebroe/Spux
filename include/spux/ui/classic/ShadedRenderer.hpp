@@ -85,14 +85,29 @@ public:
     // A worn silver panel (paintWornPanel) over `r`. The texture of one size is rendered once and kept, so
     // a redraw of the background copies it; a size or trim change renders it again.
     void wornPanel(const Rect& r, bool trims);
+    // Brushed steel (paintBrushedPanel) over `r`, cached and copied the same way. The cache holds one panel:
+    // asking for the other kind, size or finish renders it again.
+    void brushedPanel(const Rect& r, Color light, Color dark, const BrushedSteel& steel);
 
 private:
     std::vector<Rect> clips_;
     CpuLayers layers_;
-    // the cached worn panel: size in logical pixels, trims, supersampling
-    int wornW_ = 0, wornH_ = 0, wornScale_ = 0;
-    bool wornTrims_ = false;
-    std::vector<std::uint32_t> worn_;
+    // the cached panel texture: what it is (worn or brushed), size in logical pixels, supersampling
+    struct PanelKey {
+        int kind = 0; // 0 none, 1 worn, 2 brushed
+        int w = 0, h = 0, scale = 0;
+        bool trims = false;
+        Color light{}, dark{};
+        BrushedSteel steel;
+        bool operator==(const PanelKey& o) const {
+            return kind == o.kind && w == o.w && h == o.h && scale == o.scale && trims == o.trims &&
+                   light.r == o.light.r && light.g == o.light.g && light.b == o.light.b && dark.r == o.dark.r &&
+                   dark.g == o.dark.g && dark.b == o.dark.b && steel == o.steel;
+        }
+    };
+    void paintPanelTexture(const Rect& r, const PanelKey& key);
+    PanelKey panelKey_;
+    std::vector<std::uint32_t> worn_; // the cached texture, either kind
 };
 
 // The renderer a Classic painter was given, or null when it draws on something else.
