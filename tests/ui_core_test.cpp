@@ -398,7 +398,7 @@ TEST_CASE("wheelIn reads the wheel over an area without taking a press") {
     f.run(page);
     f.gui.onMouseUp(40, 28, MouseButton::Left);
     f.run(page);
-    CHECK(pressed);   // the button under the same area still takes its press
+    CHECK(pressed); // the button under the same area still takes its press
 }
 
 TEST_CASE("a popup with submenus: the pointer opens them beside the row, a pick reports the route") {
