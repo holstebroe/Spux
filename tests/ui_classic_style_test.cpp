@@ -223,7 +223,8 @@ TEST_CASE("the brushed panel: identical to paintBrushedPanel, cached, a grain al
     for (int y = 10; y < 70; ++y)
         for (int x = 10; x < 150; ++x) {
             auto d = [&](int xx, int yy) {
-                return static_cast<int>(at(first, 160, xx, yy) & 0xFF) - static_cast<int>(at(plain, 160, xx, yy) & 0xFF);
+                return static_cast<int>(at(first, 160, xx, yy) & 0xFF) -
+                       static_cast<int>(at(plain, 160, xx, yy) & 0xFF);
             };
             dx += std::abs(d(x, y) - d(x + 1, y));
             dy += std::abs(d(x, y) - d(x, y + 1));
