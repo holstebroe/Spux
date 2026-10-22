@@ -24,8 +24,11 @@ MIT license.
 3. **Acidus is strict.** Its calibration must survive. Any change that can reach Acidus's output must
    pass its `reference_conformance_test` and its null test within the sound tolerances, and every
    difference is reported to the author per patch. Never accept an Acidus difference silently.
-4. **Check sound changes.** Kernel references and golden hashes in spux; reference renders and the null
-   test in each plugin. Update references in the same commit as the change, with a changelog line.
+4. **Check sound changes.** Kernel references and golden hashes in spux; in each plugin a null test against
+   a few short reference renders (two or three, a second or two each; Acidus keeps its full set), and for a
+   wider check a render with the previous pin against a render with the new one, made on the fly and not
+   stored. Update references in the same commit as the change, with a changelog line. Keep test data small:
+   no per-case WAV library, no full-size golden frames.
 5. **Real time.** Nothing on the audio thread allocates, locks (except `try_lock`), throws, makes system
    calls or touches the GPU. Flush denormals.
 6. **Determinism.** Bit-identical output within one build for any block size. PCG32 for randomness.
@@ -78,8 +81,8 @@ Add this section to each plugin's CLAUDE.md:
 
 > **Using spux.** Shared code lives in spux (`extern/spux`, pinned to a tag). Change shared code in spux
 > (develop with `-DSPUX_SOURCE_DIR=...`), release a tag, then bump the submodule here and run this
-> plugin's null test against its reference renders. Accept differences by regenerating the references
-> in the same commit as the pointer bump. This plugin's UI flavor: `<flavor>` (set `SPUX_UI_FLAVOR` to it
+> plugin's null test against its few short reference renders (for a wider check, render with the previous
+> pin and compare). Accept differences by regenerating the references in the same commit as the pointer bump. This plugin's UI flavor: `<flavor>` (set `SPUX_UI_FLAVOR` to it
 > before adding spux: a simple Retro plugin builds its UI for size, a large one for speed). Character code
 > stays in this repository.
 

@@ -239,7 +239,8 @@ plugin-specific views and page code.
    Left: Retro whole-step scaling (U11); a Retro spectrum, traces and curve editor; the Syrebas and Gritbaal knob as an exact
    variant, if the author wants it (their repositories' switch); a level meter painter in any flavor.
 8. The plugins move onto spux, one by one. **Tearwash and Tannhauser done** (session 12, 2026-10-22; each with its reference
-   renders recorded first from the code before the move, in `src/tests/reference/`, and the null test at -90 dBFS peak).
+   renders recorded first from the code before the move and the null test at -90 dBFS peak; the 20 cases each were measured once
+   for this report, then both repos were pruned to two or three short references by the author's decision S5, 2026-10-22).
    Per plugin, in this order: `extern/spux` and `spux_target_flags` (`-Werror`, no contraction, hidden visibility); generic DSP
    from `spux_dsp`; parameters, state and CLAP glue (done for Tearwash in step 5; Tannhauser here: `Params.def`, `ParamStore`,
    `EditQueue`, `Plugin<Derived>`, the `TNH1` container with the text state of earlier versions as a legacy reader); the editor as

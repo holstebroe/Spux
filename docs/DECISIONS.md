@@ -32,7 +32,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 | S2 | The change rules apply to a plugin from its **1.0 release**. Before that, duplicates are merged freely. | Decided | |
 | S3 | **Bit-identical within one build** (any block size, every re-render). Across spux versions, inaudible differences are allowed. | Decided | |
 | S4 | **libm is the default in the audio path.** spux math is opt-in: where `spux_bench` shows a gain that matters (`fastTanhF` in a hot loop), where constexpr is needed, or where identical bits on every platform are wanted. | Decided | Changed 2026-10-20 (was "no libm in the audio path, where spux is at least as fast"): libm's last-bit differences between platforms are as inaudible as spux's against libm, and libm costs a plugin no size (a shared library). |
-| S5 | **Reference renders** stored in each plugin repo; a null test compares against them with a single checkout. | Decided | Threshold: proposed -90 dBFS peak of the difference; where rounding alone exceeds it, the sound tolerances (spectrum, envelope) gate instead (2026-10-20). LFS or plain git: Open. |
+| S5 | **Reference renders** stored in each plugin repo, **a few short ones** (two or three cases, a second or two each); a null test compares against them with a single checkout. A wider check renders with the previous pin and the new one on the fly and stores nothing. Acidus keeps its full set (S6). | Decided | Threshold: proposed -90 dBFS peak of the difference; where rounding alone exceeds it, the sound tolerances (spectrum, envelope) gate instead (2026-10-20). Changed 2026-10-22 (by the author; was a curated set per plugin, 20 cases and 15 MB in Tannhauser): the stored set made the migrated repos heavy. LFS or plain git: plain git, since the set is small. |
 | S6 | **Acidus is strict.** Its calibration must survive refactoring: every spux update in Acidus runs its reference conformance test (the whole report) and its null test within sound tolerances, and reports every difference per patch before it is accepted. Other plugins may change more freely. | Decided | Tolerances 0.08 dB spectrum, 0.12 dB envelope (2026-10-20; was -110 dBFS peak, which on Acidus's ladder meant identical bits). |
 | S7 | Every plugin state carries a **version field**, so a later converter can rescue old data. | Decided | |
 | S8 | **Sample type is a template parameter** for building blocks; `float` audio and `double` coefficients by default. | Decided | |
@@ -276,3 +276,8 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   layer, so the cached areas of widgets never overlap (`overlapCount()` is a test of both). The `before_spux_*` golden frames are
   records of the earlier looks with their own tolerances and are never rewritten; the current frames are strict. The pins of
   `extern/spux` are commits of the migration branch until tags start.
+- 2026-10-22: **S5 changed** (by the author): a plugin stores two or three short reference renders, not a curated library; a wider
+  check renders with the previous pin and the new one on the fly. UI golden frames in plugin repos shrink the same way (hashes or a
+  few reduced images). Acidus's strict gate (S6) is unchanged. Cause: the null test and golden frames of the Tearwash and Tannhauser
+  migration (20 cases, 15 MB of WAV and full-size frames in Tannhauser) weighed the repos down. The two repos were pruned and their
+  histories rewritten.

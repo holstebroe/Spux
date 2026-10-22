@@ -83,10 +83,15 @@ Before a plugin's 1.0 release, duplicates are merged freely [S2].
 1. **Kernel references in spux.** Each DSP building block has short reference outputs and a golden hash
    per platform and compiler. A changed hash is a change detector, not a failure: update the golden
    file in the same commit and note it in the changelog.
-2. **Reference renders in each plugin.** A curated set of patches and note sequences, a few seconds
-   each, stored as 32-bit float (or 24-bit) WAV in the plugin repo. The null test renders with the
+2. **Reference renders in each plugin.** A small set, two or three short cases (a second or two each, chosen
+   to cover the engine: a plain voice, the resonant filter or the effect chain, a corner setting), stored as
+   16-bit (or float) WAV in the plugin repo; Acidus keeps its full set (S6). The null test renders with the
    current code, subtracts the stored file and fails above the threshold (proposed -90 dBFS peak). One
-   checkout is enough. Accepting a change means regenerating the references in the same commit. Where a
+   checkout is enough. Accepting a change means regenerating the references in the same commit. A wider
+   check across many presets is made on the fly, not stored: build the previous pin and the new one, render
+   the same cases with both (the old build with `SPUX_UPDATE_REFERENCES=1` into a scratch reference directory, then
+   the null test of the new build against it); the report goes in the commit message. Plugin repos keep test data small: no per-case WAV library, and UI golden frames only
+   as hashes or a few reduced images, not full-size frames per state. Where a
    one-ulp change already exceeds the peak threshold (a resonant filter amplifies rounding), gate on what
    is heard instead: the null test's spectrum and envelope tolerances (`NullOptions::maxSpectralDb`,
    `maxEnvelopeDb`), with the peak as a report.
@@ -493,5 +498,6 @@ LLVM base, 4-space indent, 120 columns, checked in CI. Comments say why, not wha
 1. Make the change in spux (a local checkout through `SPUX_SOURCE_DIR`), with tests, kernel references
    and docs.
 2. Release a tag.
-3. In the plugin: bump the submodule, run its null test (and for Acidus the strict gate), accept or
+3. In the plugin: bump the submodule, run its null test (and for Acidus the strict gate; for a wider check,
+   render with the previous pin and compare), accept or
    reject the differences, commit pointer and references together.
