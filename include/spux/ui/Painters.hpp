@@ -233,6 +233,9 @@ struct PopupItem {
     std::string label;
     bool separator = false;
     bool enabled = true;
+    // A submenu: the row opens a list of these beside it while the pointer is on it, and shows a marker. A row with
+    // children is not picked itself.
+    std::vector<PopupItem> children{};
 };
 
 struct PopupState {
@@ -240,6 +243,7 @@ struct PopupState {
     Rect anchor;       // the widget it belongs to, or a point (w = h = 0)
     int selected = -1; // marked as the current choice
     int hot = -1;      // under the pointer
+    int open = -1;     // the row whose submenu is open (drawn like the hot row)
     int columns = 1;
     const std::vector<Rect>* itemRects = nullptr; // from layout()
     const Theme* theme = nullptr;

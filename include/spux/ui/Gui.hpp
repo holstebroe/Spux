@@ -210,6 +210,9 @@ public:
     [[nodiscard]] bool shift() const { return shift_; }
     [[nodiscard]] bool leftDown() const { return leftDown_; }
     [[nodiscard]] bool hovered(const Rect& r) const;
+    // The wheel notches this frame while the pointer is inside `r` (positive: away from the user), for a widget that
+    // also steps something with the wheel (a preset display), without the press an interact area would take.
+    [[nodiscard]] float wheelIn(const Rect& r) const { return hovered(r) && !background_ ? wheel_ : 0.0f; }
     // Keys delivered this frame that no widget took (page shortcuts).
     [[nodiscard]] const std::vector<KeyEvent>& keys() const { return keys_; }
 
@@ -244,9 +247,15 @@ public:
     void label(const char* s, float x, float y, Color c, float px = 11.0f, Align a = Align::Left,
                FontWeight w = FontWeight::Regular);
     // Opens a list popup anchored below `anchor` (or at a point when it is empty); `choose` runs with the
-    // picked index in the next frame's begin.
+    // picked index in the next frame's begin. Submenus (PopupItem::children) are ignored here: use popupPath.
     void popup(const char* id, const Rect& anchor, std::vector<PopupItem> items, int selected,
                std::function<void(int)> choose, int columns = 1);
+    // The same for a list with submenus, named apart so a bare lambda or nullptr stays unambiguous
+    // (PopupItem::children): a row with children opens its list beside it while the pointer is on it, to any depth.
+    // `choose` gets the picked row at every level, outermost first
+    // ({2, 5}: the sixth row of the submenu of the third row). Only the first list can have columns.
+    void popupPath(const char* id, const Rect& anchor, std::vector<PopupItem> items, int selected,
+                   std::function<void(const std::vector<int>&)> choose, int columns = 1);
     void popup(const char* id, const Rect& anchor, const std::vector<std::string>& items, int selected,
                std::function<void(int)> choose, int columns = 1);
     void closePopup() { popupOpen_ = false; }
@@ -307,6 +316,7 @@ protected:
     enum class TextResult { Editing, Commit, Cancel };
     TextResult textFieldImpl(const char* id, const Rect& b, std::string& text, std::size_t maxBytes,
                              const TextFieldPainter& p);
+    void openPopup(const char* id, const Rect& anchor, std::vector<PopupItem> items, int selected, int columns);
     void endImpl(const PopupPainter* popup, const TooltipPainter* tooltip);
 
 private:
@@ -316,13 +326,22 @@ private:
         std::uint64_t key = 0;
         std::uint32_t frame = 0;
     };
+    struct PopupLevel { // one list of the popup as laid out in the last frame
+        const std::vector<PopupItem>* items = nullptr;
+        Rect rect, anchor;
+        std::vector<Rect> itemRects;
+        int hot = -1;
+    };
     struct Popup {
         std::uint64_t id = 0;
-        Rect anchor, rect;
+        Rect anchor;
         std::vector<PopupItem> items;
-        std::vector<Rect> itemRects;
-        int selected = -1, columns = 1, hot = -1;
+        int selected = -1, columns = 1;
         std::function<void(int)> choose;
+        std::function<void(const std::vector<int>&)> choosePath;
+        std::vector<int> path;          // the rows whose submenus are open, outermost first
+        std::vector<PopupLevel> levels; // the open lists, outermost first
+        double leaveSince = -1.0;       // when the pointer left the open submenu's row for one without a submenu
     };
 
     template <class P, class S>

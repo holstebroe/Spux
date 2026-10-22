@@ -7,13 +7,13 @@ only in namespace and include guards, or not at all.
 
 | spux part | Source today | Notes |
 | --- | --- | --- |
-| Classic drawing (`Graphics`, `Font`, `FileDialog`, `modern/ModernDraw`, `DisplayFont`, `LabelFont`) | Acidus, Tannhauser, Tearwash | Three copies; Tannhauser and Tearwash byte-identical. Renamed `modern/` to `classic/`. **Moved to `spux_ui_classic` (step 2); Tearwash migrated.** |
+| Classic drawing (`Graphics`, `Font`, `FileDialog`, `modern/ModernDraw`, `DisplayFont`, `LabelFont`) | Acidus, Tannhauser, Tearwash | Three copies; Tannhauser and Tearwash byte-identical. Renamed `modern/` to `classic/`. **Moved to `spux_ui_classic` (step 2); Tearwash and Tannhauser migrated.** |
 | Classic CPU renderer | Plumeflow `ui/SoftRenderer` + the files above | Merge into one supersampled renderer with shading helpers. **Done (step 7, Classic): `ShadedRenderer` (the basics and the shading helpers over the Classic drawing code); Plumeflow's `SoftRenderer` became the Modern fallback (session 9), so only the Classic drawing code was merged into it.** |
 | Envelope, LFO, chorus, voice allocator, modulation routes, brown and crackle noise | Gritbaal `core/Envelope`, `Lfo`, `Chorus`, `SynthEngine` (voice allocation, mod targets), `Oscillator` (noise); Tannhauser `SynthEngine::allocateVoice` | **Harvested into `spux_dsp` (session 11)**: `Adsr`, `Lfo`, `Chorus`, `VoiceAllocator`, `ModMatrix`, `BrownNoise`, `CrackleNoise`; `Wave` in `spux_core`. Gritbaal itself not migrated yet. |
-| Classic painters | Tannhauser `gui/PanelRenderer` (knob, slider cap, rocker, lever, tone and arrow buttons, panel), Acidus `gui/modern/ModernSkin` (knurled knob, lever switch, worn panel), Tearwash `TwGui` (the look Tannhauser took) | **`ClassicStyle` with a `ClassicConfig` (step 7, Classic); Tannhauser and Acidus drawn pixel for pixel, Tearwash not compared.** |
+| Classic painters | Tannhauser `gui/PanelRenderer` (knob, slider cap, rocker, lever, tone and arrow buttons, panel), Acidus `gui/modern/ModernSkin` (knurled knob, lever switch, worn panel), Tearwash `TwGui` (the look Tannhauser took) | **`ClassicStyle` with a `ClassicConfig` (step 7, Classic); Tannhauser and Acidus drawn pixel for pixel in the harness, then Tearwash and Tannhauser migrated (step 8): their panels against their own earlier snapshots, see the notes.** |
 | Retro style and fonts | Acidus `RetroSkin`, Syrebas and Gritbaal renderers, Paulascape `Framebuffer` and pt2 font, Kikset `Graphics` | Four drifting forks of the same `Graphics`. **Done in spux (session 11): `PixelRenderer`, `RetroStyle` with a `RetroConfig` (`silver()`, `tracker()`, `forge()`), the three bitmap fonts in `spux_ui_retro`; no plugin switched yet.** |
 | Skin interfaces | Acidus `IGuiSkin`, Gritbaal `IControlRenderer`, Syrebas `IControlRenderer` | Become the per-widget painter interfaces. **Interfaces in `spux_ui_core` (step 6)**; the skins became flavor painters in step 7 (**Classic, Modern and Retro done in spux**). |
-| Native window | Plumeflow `gfx/NativeWindow*` (ported from Acidus); `GuiWindow` code in Acidus, Gritbaal, Syrebas, Tannhauser, Tearwash, Kikset, Paulascape | Plumeflow's version is the base; Cocoa missing. **Moved to `spux_platform` (step 3); Tearwash migrated.** |
+| Native window | Plumeflow `gfx/NativeWindow*` (ported from Acidus); `GuiWindow` code in Acidus, Gritbaal, Syrebas, Tannhauser, Tearwash, Kikset, Paulascape | Plumeflow's version is the base; Cocoa missing. **Moved to `spux_platform` (step 3); Tearwash and Tannhauser migrated.** |
 | GL context and function table | Plumeflow `gfx/GlApi`, `GlContext_{wgl,glx,none}` | Generic as is. **Moved to `spux_ui_modern` (step 3), namespace `spux::gl`.** |
 | Renderer interface | Plumeflow `ui/IRenderer` | Generic as is. **Moved to `spux_ui_core` (step 6)**, plus `layers()` for the CPU caches. |
 | GPU renderer, shaders, SDF fonts | Plumeflow `ui/GpuRenderer`, `ui/shaders`, `ui/FontAtlas`, `ui/InterFont`, `tools/make_fonts.py`, `cmake/EmbedShaders.cmake` | Generic as is. **Moved to `spux_ui_modern` (step 7).** |
@@ -22,10 +22,10 @@ only in namespace and include guards, or not at all.
 | Immediate-mode `Gui` | Plumeflow `ui/Gui` | Needs: painter split, parameter binding through spux, plugin-specific ids out (10 `plugin::P_*` uses), modulation as an optional interface. **Done in `spux_ui_core` (step 6).** Plumeflow's drawing becomes the Modern painters (step 7); its `displayText`, sync dimming, effect presets and route table stay in Plumeflow. |
 | Editor shell | Plumeflow `ui/Editor` | Logical size and root view become parameters. **Done (step 6)** for CPU renderers; **the GPU path and window scaling done in step 7** (`FrameSurface` in the core, `ModernSurface` in `spux_ui_modern`). |
 | Editor host | Plumeflow `ui/EditorHost` | Split into a core and optional extensions. **Done (step 6)**: core, `ModulationHost`, `PresetHost`, `StoreEditorHost<N>`. |
-| Edit queue, telemetry ring | Plumeflow `plugin/EditQueue`, `plugin/Telemetry` | Ring becomes a template on the frame type. **Edit queue moved to `spux_params` (step 5); Tearwash migrated.** **Telemetry ring done (step 6)**: `spux/core/TelemetryRing.hpp` (`TelemetryRing<Frame>`, `SampleRing`). |
+| Edit queue, telemetry ring | Plumeflow `plugin/EditQueue`, `plugin/Telemetry` | Ring becomes a template on the frame type. **Edit queue moved to `spux_params` (step 5); Tearwash and Tannhauser migrated.** **Telemetry ring done (step 6)**: `spux/core/TelemetryRing.hpp` (`TelemetryRing<Frame>`, `SampleRing`). |
 | Generic live views | Plumeflow `ui/Live`, `ui/Views` (spectrum, traces, meters, curve editor) | Attractor, envelope and filter views stay in Plumeflow. **Consumers moved (step 6)**: `Spectrum`, `LevelMeter`, `History` in `spux/ui/Live.hpp`; **the generic views moved in step 7** (`spux/ui/modern/ModernViews.hpp`: spectrum, traces, stereo meter, curve editor). |
-| Parameters | `ParamInfo` in Tannhauser, Plumeflow, Lumeoid, Kikset, Gritbaal; X-macro in Plumeflow and Lumeoid | Plumeflow `params.def` + `ParamStore` as the base. **Moved to `spux_params` (step 5); Tearwash migrated.** |
-| State container | Lumeoid `LMN1`, Plumeflow `PLF1`, Rodee `StateChunk` | Lumeoid as the base. **Moved to `spux_state` (step 5); Tearwash migrated (`TWR1`).** |
+| Parameters | `ParamInfo` in Tannhauser, Plumeflow, Lumeoid, Kikset, Gritbaal; X-macro in Plumeflow and Lumeoid | Plumeflow `params.def` + `ParamStore` as the base. **Moved to `spux_params` (step 5); Tearwash and Tannhauser migrated.** |
+| State container | Lumeoid `LMN1`, Plumeflow `PLF1`, Rodee `StateChunk` | Lumeoid as the base. **Moved to `spux_state` (step 5); Tearwash migrated (`TWR1`), Tannhauser (`TNH1`).** |
 | PCG32 | Lumeoid, Plumeflow | Merge. **Merged into `spux_core` (step 4).** |
 | Math approximations | Lumeoid `dsp/math`, Plumeflow `dsp/Math`, Tannhauser `tanhFast` | Merge; replace `std::tanh` in Acidus, Gritbaal, Syrebas, Kikset. **Merged into `spux_core` (step 4)**; the libm replacement happens in each plugin's step. |
 | Half-band oversampler | Plumeflow (4+4 all-pass sections), Lumeoid (5+5) | Merge into one design. **Done (step 4): Lumeoid's 5+5, by measurement (docs/BENCH.md).** |
@@ -58,7 +58,7 @@ plugin-specific views and page code.
    **Done** (2026-10-19): `spux_ui_classic` (STATIC) holds `Graphics`, `Font`, `FileDialog`, `ClassicDraw`
    (was `modern/ModernDraw`) and the `DisplayFont`/`LabelFont` data, namespace `spux::ui::classic`; golden
    hash test `ui_classic_golden_test`. Tearwash uses it (its `src/tearwash/gui` is gone, snapshots
-   identical). Left: Tannhauser and Acidus still hold their copies (migrate in their own steps;
+   identical). Left: Acidus still holds its copy (Tannhauser migrated in step 8;
    Acidus's copy differs from the others by namespace only, checked). Not moved yet: Acidus's
    `ModernSkin`, `IGuiSkin`, `RetroSkin` (step 6/7).
 3. Platform: Plumeflow `NativeWindow`; move the other `GuiWindow`s onto it. **Done in spux and Tearwash**
@@ -213,8 +213,8 @@ plugin-specific views and page code.
    rocker, paddle, ribbon and LCD of Tannhauser stay plugin territory. `docs/WIDGETS.md` is the status table of every control
    per flavor with an image of each, from `spux_widget_gallery`. The pixel comparison with the plugins is unchanged (Tannhauser
    0 of 255; Acidus identical outside its printed symbols).
-   Left: Retro; Classic spectrum, traces and curve editor; a modulation display on the Classic knob; Classic scaling in steps (U11);
-   cascading submenus (U9); Tearwash's faders (slot width, two-sided scale).
+   Left: Retro; Classic spectrum, traces and curve editor; a modulation display on the Classic knob; Classic scaling in steps (U11).
+   (Cascading submenus (U9) and Tearwash's faders, left here, were built for step 8.)
    **Retro done in spux** (session 11, 2026-10-21), in `spux_ui_retro` (STATIC, one object per part): `PixelRenderer` (an
    `IRenderer` on `CpuLayers` at scale 1: whole pixels, Bresenham lines with a square brush, circles by pixel centers, integer
    blends, clip for everything including text, and the pixel-art effects: stamped arcs, 4 x 4 ordered dither for glow, radial
@@ -238,7 +238,30 @@ plugin-specific views and page code.
    simpler drawing and differs (see the notes below). Size: docs/DESIGN_GUIDELINES.md, Retro specifics.
    Left: Retro whole-step scaling (U11); a Retro spectrum, traces and curve editor; the Syrebas and Gritbaal knob as an exact
    variant, if the author wants it (their repositories' switch); a level meter painter in any flavor.
-8. Plumeflow and Lumeoid move onto spux (Lumeoid's GPU UI starts on spux directly).
+8. The plugins move onto spux, one by one. **Tearwash and Tannhauser done** (session 12, 2026-10-22; each with its reference
+   renders recorded first from the code before the move, in `src/tests/reference/`, and the null test at -90 dBFS peak).
+   Per plugin, in this order: `extern/spux` and `spux_target_flags` (`-Werror`, no contraction, hidden visibility); generic DSP
+   from `spux_dsp`; parameters, state and CLAP glue (done for Tearwash in step 5; Tannhauser here: `Params.def`, `ParamStore`,
+   `EditQueue`, `Plugin<Derived>`, the `TNH1` container with the text state of earlier versions as a legacy reader); the editor as
+   page functions on `Editor<ClassicStyle>` with `TEARWASH_UI` / `TANNHAUSER_UI` = `CLASSIC` or `NONE`; the copies of what spux now
+   provides deleted; golden frames before and after; the "Using spux" section in the plugin's CLAUDE.md.
+   *Tearwash*: the engine's delay lines are `spux::dsp::DelayLine<float>`, the input, mix and output gains follow their targets
+   through `Smoothed<OnePole>`, `process` holds a `DenormalGuard`; null test -138.5 to -144.5 dBFS (last-bit rounding of the
+   mirrored interpolation), one case bit-identical. The editor (`TwEditor`) replaced `TwGui`: panel print in the background layer,
+   programs as cap buttons, faders and knobs as widgets, spux's preset bar by family; with `TEARWASH_UI=NONE` the plugin shrinks from
+   565 KB to 180 KB. The panel against the one before: mean difference 1.6 of 255, 1.8 % of the pixels moved by more than 24 (the
+   second program row 3 px lower, the value rows, the fader scale and the preset bar's buttons).
+   *Tannhauser*: Padé tanh, `Blep<4>`, the TPT one-pole, the biquad design, the delay line and the key assigner are spux's, the
+   voice, OTA filter, envelopes, noise, oscillators and calibration stay; null test bit-identical or -150 to -289 dBFS (last-bit
+   rounding) over the 20 cases, the DSP test (1304 checks) unchanged. Parameters 0 to 100 keep ids, keys, names, ranges, defaults and
+   host flags (`tannhauser_state_test` compares the info and value text line by line with what the plugin reported before), the plugin's
+   own bits (stored in a patch, bipolar, the unit of the value text) ride in the flags column. The editor (`TnEditor`, `TnPainters`)
+   replaced `GuiWindow`, `PanelRenderer`, `Graphics`, `Font`, `FileDialog` and `modern/` (about 2 900 lines, and two font tables): sliders, paddles,
+   rockers, the lettered key, levers and tone buttons are standard widgets with the plugin's painters (the cap color is the widget's
+   accent), the knobs and the keyboard spux's, the ribbon a `Gui::interact` area, the header line a `Gui::view`. Panel and open menu
+   against the ones before: panel mean difference 0.4 of 255, 0.14 % of the pixels moved by more than 24; menu 5.6 and 6.4 % (the
+   shared popup). New in spux for it: submenus (U9), `Gui::wheelIn`, the Classic fader options.
+   Left: Plumeflow and Lumeoid (Lumeoid's GPU UI starts on spux directly).
 
 lexwash starts on spux from its first line.
 
@@ -344,12 +367,25 @@ from its own copy, is kept here.
     `Gui::panel` over the window (trims on) and the printed divider is the plugin's. The sprite cache of finished knobs is not
     needed: `Gui` skips a widget whose state is unchanged. Labels are clipped to the widget's bounds now (the old skin drew them
     outside), so a toggle's bounds must be as wide as its label.
-  - Tearwash: its look is the slate look with `knob.ticks = false`, `slider.capW = 28`, `capH = 15` and `button.radius` 4 or 5; its
-    faders also print a tick scale on both sides and a slot 4 wide, which `ClassicStyle` does not offer yet, so it was not
-    switched or compared.
-  - Tannhauser's LCD becomes a `dropdown` or a plain display drawn by the plugin; its preset menu is the popup; the keyboard is
-    `Gui::keyboard` (keys 36 to 96; the felt strip is `ClassicConfig::keyboardFelt`); the waveform symbols printed on the
-    panel are `Wave` icons, or the plugin's own `Icon`.
+  - Tearwash (switched, step 8): its look is the slate look with `knob.ticks = false`, `knob.topRow = 26`, `bottomRow = 0`,
+    `slider.capW = 28`, `capH = 15`, `slotW = 4`, `slotEnd = 2`, `scaleBothSides = true`, `button.radius = 4` (`twClassicConfig()`);
+    the printed panel, names and group rules are its background layer. What it met: the second program row moved 3 px down and the
+    value above a dial or fader is drawn by the painter (the old code drew it in the static layer); the preset bar is `presetBar`
+    (arrows 18 px, SAVE 44 px, 8 px between) with a submenu per family; the description line is a `Gui::view`; a fader jumps to the
+    pointer (`jump`), a knob drags 180 px for the range (`dragPixels`), the wheel steps 0.5 % (`wheelStep`).
+  - Tannhauser (switched, step 8; it kept its own painters where the standard ones differ): the slider, paddle, rocker, lettered
+    key, lever and tone button are `TnPainters` (ports of `drawSliderCap`, `drawRockerKey`, `drawToggle`, `drawLever` and
+    `drawToneButton` onto `ShadedRenderer::graphics()`, the cap color the widget's accent); the knobs are `ClassicKnob` with the
+    printed scale drawn by the painter (bounds = the old rectangle grown by 7, `knob.topRow = bottomRow = 0`, no value); the keyboard
+    is `ClassicKeyboard` (the plugin computes the velocity from the pointer as before: 0.25 at the top of a key to 1 at its foot,
+    where `Gui::keyboard` reports 0.3 to 1); the LCD and the arrows are `kButtonDisplay` and the arrow variants (the display with
+    `ClassicConfig::display` in green, the name in the label font with a chevron instead of the display font), the arrows 20 px wide
+    and the display 278 (were 22 and 284) so the buttons' shadows do not overlap; the preset menu is `Gui::popup` with submenus
+    (white ink, chevrons, 14 px rows through `popupRow`, no multi-column submenu: a category has at most 22 presets); the wheel over
+    the display steps the preset (`Gui::wheelIn`); the ribbon, the header line, the walnut cheeks, the frames, the waveform symbols
+    and the umlaut stay the plugin's, drawn with `ShadedRenderer::graphics()` and the `ClassicDraw` helpers. Tooltips are off
+    (`feel.tooltipDelay`): the header line is the tooltip. The `PF_BIPOLAR` flag stayed the plugin's `TF_BIPOLAR` bit (spux ignores
+    it); a knob or fader names its center tick through the page.
   - Acidus's printed waveform symbols can be `drawWave` calls in its background; its switch has no symbols of its own.
 - **Retro style** (`retro/PixelRenderer`, `retro/RetroStyle`, `retro/RetroConfig`, `retro/BitmapFont`): the silver look, the
   fluted knob (the shadow of four translucent discs, the bezel, skirt and rim, the 12 flutes, the conical face with its sheen, the

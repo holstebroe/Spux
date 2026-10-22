@@ -811,7 +811,7 @@ Rect RetroPopup::layout(IRenderer& /*r*/, const PopupState& s, int viewW, int vi
     int itemW = s.anchor.w;
     for (const PopupItem& it : items)
         if (!it.separator)
-            itemW = std::max(itemW, widthOf(c.font, it.label.c_str()) + 20);
+            itemW = std::max(itemW, widthOf(c.font, it.label.c_str()) + 20 + (it.children.empty() ? 0 : 8));
     std::vector<int> colY(static_cast<std::size_t>(cols), 0);
     rects.assign(static_cast<std::size_t>(n), Rect{});
     for (int i = 0; i < n; ++i) {
@@ -854,13 +854,16 @@ void RetroPopup::paint(IRenderer& rr, const Rect& b, const PopupState& s) const 
             r->hLine(cell.x + 3, cell.y + cell.h / 2, cell.w - 6, p.edge);
             continue;
         }
-        const bool hot = static_cast<int>(i) == s.hot && it.enabled;
+        const bool hot = (static_cast<int>(i) == s.hot || static_cast<int>(i) == s.open) && it.enabled;
         if (hot)
             r->fillRect(cell, p.hot);
         if (static_cast<int>(i) == s.selected)
             r->fillRect({cell.x + 4, cell.y + cell.h / 2 - 1, 3, 3}, hot ? p.hotInk : p.ink);
         r->pushClip(cell);
-        putInRow(*r, c.font, it.label.c_str(), cell.x + 10, cell, !it.enabled ? p.inkDim : (hot ? p.hotInk : p.ink));
+        const Color ink = !it.enabled ? p.inkDim : (hot ? p.hotInk : p.ink);
+        putInRow(*r, c.font, it.label.c_str(), cell.x + 10, cell, ink);
+        if (!it.children.empty()) // the submenu marker: a chevron pointing right
+            chevron(*r, cell.right() - 6, cell.y + cell.h / 2, 1, ink);
         r->popClip();
     }
     r->popClip();
