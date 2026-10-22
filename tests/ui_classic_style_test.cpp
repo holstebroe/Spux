@@ -197,6 +197,41 @@ TEST_CASE("the worn panel: rendered once per size, identical to paintWornPanel, 
     CHECK(at(r.frame(), 120, 40, 30) != rgb(1, 2, 3));
 }
 
+TEST_CASE("the brushed panel: identical to paintBrushedPanel, cached, a grain along x") {
+    const c::Color light{0.205f, 0.225f, 0.245f}, dark{0.07f, 0.077f, 0.086f};
+    c::BrushedSteel steel;
+    ShadedRenderer r(160, 80, 2);
+    r.brushedPanel({0, 0, 160, 80}, light, dark, steel);
+    const auto first = r.frame();
+    std::vector<std::uint32_t> buf(160 * 2 * 80 * 2, 0);
+    c::Graphics g(buf.data(), 160, 80, 2);
+    c::paintBrushedPanel(g, 160, 80, light, dark, steel);
+    CpuLayers ref(160, 80, 2);
+    std::copy(buf.begin(), buf.end(), ref.target());
+    std::vector<std::uint32_t> expect(160 * 80);
+    ref.resolve(expect.data(), {0, 0, 160, 80});
+    CHECK(diffCount(first, expect) == 0);
+    // a plainer finish is another panel
+    steel.grain = 0.f;
+    steel.sheen = 0.f;
+    steel.specks = 0.f;
+    r.brushedPanel({0, 0, 160, 80}, light, dark, steel);
+    const auto plain = r.frame();
+    CHECK(diffCount(first, plain) > 0);
+    // the grain runs along x: what it adds to the plain gradient varies more between rows than along a row
+    long dx = 0, dy = 0;
+    for (int y = 10; y < 70; ++y)
+        for (int x = 10; x < 150; ++x) {
+            auto d = [&](int xx, int yy) {
+                return static_cast<int>(at(first, 160, xx, yy) & 0xFF) -
+                       static_cast<int>(at(plain, 160, xx, yy) & 0xFF);
+            };
+            dx += std::abs(d(x, y) - d(x + 1, y));
+            dy += std::abs(d(x, y) - d(x, y + 1));
+        }
+    CHECK(dx < dy);
+}
+
 // --- the painters --------------------------------------------------------------------------------------------
 
 namespace {

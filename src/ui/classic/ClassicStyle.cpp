@@ -836,6 +836,10 @@ void ClassicPanel::paint(IRenderer& rr, const Rect& b, const PanelState& s) cons
         // The surface.
         if (c.surface == PanelSurface::Worn) {
             r->wornPanel(b, c.trims);
+        } else if (c.surface == PanelSurface::Brushed) {
+            r->brushedPanel(b, c.surfaceLight, c.surfaceDark, c.brushed);
+            r->fillRect({b.x, b.y, b.w, std::min(2, b.h)}, 0xFF2C2D30);
+            r->fillRect({b.x, b.bottom() - std::min(2, b.h), b.w, std::min(2, b.h)}, 0xFF08090A);
         } else {
             Graphics g = r->graphics();
             const float W = static_cast<float>(b.w), H = static_cast<float>(b.h);

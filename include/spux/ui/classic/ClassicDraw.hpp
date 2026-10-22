@@ -179,6 +179,19 @@ const Color kPaint{0.785f, 0.790f, 0.775f}; // aged silver paint
 // extrusions along the top and bottom edges.
 void paintWornPanel(Graphics& g, int width, int height, bool trims);
 
+// Brushed steel: the surface is a diagonal gradient from `light` (top left) to `dark` (bottom right) with the
+// grain of a brushed finish running along x, as on a hardware front panel.
+struct BrushedSteel {
+    float grain = 0.15f; // strength of the fine lines (fraction of the brightness); 0 is a plain gradient
+    float streak = 90.f; // typical length of a line along x, logical pixels
+    float sheen = 0.5f;  // broad, long soft patches of light and shade, as light rakes across the metal (0..1)
+    float specks = 1.f;  // density of dust and polishing specks (0 off)
+    bool operator==(const BrushedSteel&) const = default;
+};
+
+// Fills the whole buffer with brushed steel, deterministic for a size and a supersampling factor.
+void paintBrushedPanel(Graphics& g, int width, int height, Color light, Color dark, const BrushedSteel& steel);
+
 } // namespace spux::inline v1::ui::classic
 
 #endif // SPUX_UI_CLASSIC_DRAW_HPP

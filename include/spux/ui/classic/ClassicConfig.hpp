@@ -16,8 +16,9 @@ namespace spux::inline v1::ui::classic {
 enum class KnobShape { Disc, Knurled };
 // The look of a toggle: a rocker key with a lamp, or a lever in a slot.
 enum class ToggleShape { Rocker, Lever };
-// What a panel without a title is: a soft gradient with a grain, or worn silver paint.
-enum class PanelSurface { Slate, Worn };
+// What a panel without a title is: a soft gradient with a grain, worn silver paint, or brushed steel (the
+// gradient with the lines of a brushed finish along x).
+enum class PanelSurface { Slate, Worn, Brushed };
 
 // Values of ButtonState::variant that ClassicStyle draws.
 enum ButtonVariant : int {
@@ -36,7 +37,9 @@ struct ClassicConfig {
 
     PanelSurface surface = PanelSurface::Slate;
     bool trims = false; // Worn: the darker extrusions along the top and bottom edges
-    Color surfaceLight{0.205f, 0.225f, 0.245f}, surfaceDark{0.07f, 0.077f, 0.086f}; // Slate: top left to bottom right
+    Color surfaceLight{0.205f, 0.225f, 0.245f},
+        surfaceDark{0.07f, 0.077f, 0.086f}; // Slate, Brushed: top left to bottom right
+    BrushedSteel brushed;                   // Brushed: the finish
 
     struct Knob {
         KnobShape shape = KnobShape::Disc;

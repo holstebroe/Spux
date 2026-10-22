@@ -82,7 +82,7 @@ PresetBarResult presetBar(Gui<Style>& g, const char* id, const Rect& r, const Pr
             std::vector<PopupItem> items;
             std::vector<std::vector<std::size_t>> groups; // top-level row -> entries (a lone preset: one)
             std::vector<std::string> names;               // top-level row -> category, empty for a lone preset
-            int selected = -1;                            // the top-level row that holds the current preset
+            std::vector<int> selected; // the route to the current preset: its row, then its entry in the category
             const std::string now = ph->currentName();
             for (std::size_t i = 0; i < all.size(); ++i) {
                 std::size_t row = items.size();
@@ -96,19 +96,28 @@ PresetBarResult presetBar(Gui<Style>& g, const char* id, const Rect& r, const Pr
                     names.push_back(all[i].category);
                 }
                 groups[row].push_back(i);
-                if (all[i].name == now)
-                    selected = static_cast<int>(row);
                 if (!all[i].category.empty())
                     items[row].children.push_back({all[i].name});
+                if (all[i].name == now) {
+                    selected = {static_cast<int>(row)};
+                    if (!all[i].category.empty())
+                        selected.push_back(static_cast<int>(items[row].children.size()) - 1);
+                }
             }
-            g.popupPath("presets", name, std::move(items), selected, [ph, all, groups](const std::vector<int>& path) {
-                if (path.empty() || static_cast<std::size_t>(path[0]) >= groups.size())
-                    return;
-                const std::vector<std::size_t>& group = groups[static_cast<std::size_t>(path[0])];
-                const std::size_t k = path.size() > 1 ? static_cast<std::size_t>(path[1]) : 0;
-                if (k < group.size())
-                    ph->load(all[group[k]]);
-            });
+            const int cols = items.size() > 24   ? 3
+                             : items.size() > 12 ? 2
+                                                 : 1; // top-level rows; submenus are one column
+            g.popupPath(
+                "presets", name, std::move(items), selected,
+                [ph, all, groups](const std::vector<int>& path) {
+                    if (path.empty() || static_cast<std::size_t>(path[0]) >= groups.size())
+                        return;
+                    const std::vector<std::size_t>& group = groups[static_cast<std::size_t>(path[0])];
+                    const std::size_t k = path.size() > 1 ? static_cast<std::size_t>(path[1]) : 0;
+                    if (k < group.size())
+                        ph->load(all[group[k]]);
+                },
+                cols);
         } else {
             std::vector<PopupItem> items;
             const std::size_t nFactory = ph->factory().size();

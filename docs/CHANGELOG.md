@@ -5,6 +5,10 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-10-22: Classic gets a third panel surface, `PanelSurface::Brushed` (`BrushedSteel`, `paintBrushedPanel`,
+  `ShadedRenderer::brushedPanel`), an addition: the slate gradient with a fine grain along x, soft raked-light patches and
+  a few specks, cached per size like the worn panel. Existing looks and their golden hashes are unchanged.
+
 - 2026-10-20, migration step 5: `spux_params` brings parameter laws and host mapping (count as sound, S1):
   Plumeflow's Linear, Log, LogZero and Db, bit-identical to its `plugin/Params` over its whole table. No kernel
   reference changed.
