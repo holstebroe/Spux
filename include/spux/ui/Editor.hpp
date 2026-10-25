@@ -39,9 +39,9 @@ struct EditorOptions {
     int height = 400;
     int activeHz = 60;
     int idleHz = 20;
-    double activeHold = 1.5; // seconds after the last input the editor stays at activeHz
-    bool caching = true;     // background layer and per-widget skip (CPU renderers)
-    bool keyboard = true;    // the window takes key presses (WindowOptions::keyboard)
+    double activeHold = 1.5;  // seconds after the last input the editor stays at activeHz
+    bool caching = true;      // background layer and per-widget skip (CPU renderers)
+    bool keyboard = true;     // the window takes key presses (WindowOptions::keyboard)
     bool acceptFiles = false; // files dropped on the window reach RootViewBase::filesDropped (Win32 only for now)
     // With a FrameSurface: the user's scale and its limits; the window is `width * scale` wide, at a fixed
     // aspect ratio. A CPU renderer ignores them.

@@ -16,8 +16,9 @@ struct FileDialogOptions {
     bool save{false};
     std::string title;
     std::string filterName; // e.g. "Calibration profiles"
-    std::string extension;  // without the dot, e.g. "json"; several separated by ';' ("png;jpg"), the first is the default
-    std::string startPath;  // a directory, or a directory and file name
+    // Without the dot, e.g. "json"; several separated by ';' ("png;jpg"), the first is the default.
+    std::string extension;
+    std::string startPath; // a directory, or a directory and file name
 };
 
 // The user's home directory (HOME, or USERPROFILE on Windows), or "".

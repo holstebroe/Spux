@@ -65,8 +65,9 @@ public:
         events_ = events;
         gl_ = options.openGl;
         keyboard_ = options.keyboard;
-        hwnd_ = CreateWindowExW(options.acceptFiles ? WS_EX_ACCEPTFILES : 0, className, L"spux", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0, 0,
-                                width, height, reinterpret_cast<HWND>(parent.handle), nullptr, inst, this);
+        hwnd_ = CreateWindowExW(options.acceptFiles ? WS_EX_ACCEPTFILES : 0, className, L"spux",
+                                WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0, 0, width, height,
+                                reinterpret_cast<HWND>(parent.handle), nullptr, inst, this);
         return hwnd_ != nullptr;
     }
 
