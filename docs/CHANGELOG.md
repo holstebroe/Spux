@@ -10,6 +10,9 @@ commit as the regenerated files (guidelines section 3). Newest first.
   screen capture, or copied files; Windows, nothing elsewhere), and file dialogs with several extensions (`"png;jpg"`).
   Additions: nothing that was delivered before changes.
 
+- 2026-10-25: a Win32 window that takes the keyboard answers `WM_GETDLGCODE` with `DLGC_WANTALLKEYS`, so hosts that show plugins
+  in a dialog pass shortcuts such as ctrl+V on to it.
+
 - 2026-10-25: Modern arrow buttons (`kButtonArrowLeft`, `kButtonArrowRight`, the preset bar's previous and next) point the
   way they are named; they were mirrored. A UI bug fix: no sound changes.
 

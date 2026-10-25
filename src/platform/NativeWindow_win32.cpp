@@ -194,6 +194,11 @@ LRESULT handle(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (ev)
             ev->onMouseLeave();
         return 0;
+    case WM_GETDLGCODE:
+        // A host that shows plugins in a dialog (IsDialogMessage) would otherwise keep keys like ctrl+V for itself.
+        if (self && self->keyboard())
+            return DLGC_WANTALLKEYS;
+        break;
     case WM_KEYDOWN: {
         KeyEvent k;
         k.shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
