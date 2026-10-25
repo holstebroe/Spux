@@ -288,6 +288,12 @@ copies for spux's, its 16-tap FIR oversampler for the half-band `Oversampler`; t
 Library comments describe the library only; where code came from, and what a plugin meets when it switches
 from its own copy, is kept here.
 
+- **Presets** (`presets/PresetLibrary.hpp`, `tools/bake_presets.py`, `cmake/SpuxPresets.cmake`, decision P13): from Burette's
+  factory banks (Acidus `src/sequencer/FactoryBanks.cpp`, `tools/bake_presets.py`, the `ACIDUS_PRESET_DEV` option). What a plugin meets
+  when it switches: the library is an object (Acidus keeps one in a function-local static), a preset's group, name and text are
+  `std::string` and the development folder is passed to the constructor (no environment variable, no per-plugin define name), the bake
+  script takes the table's symbol and namespace, and the option is `SPUX_PRESETS_DEV`. Tannhauser's presets are still Python
+  (`tools/preset_library.py`) and move to the folder as `TextPreset` files.
 - **Math** (`core/Math.hpp`, decision S4): Lumeoid `dsp/math.hpp` (the double `...D` set, the [7/6] Pade tanh;
   its header claimed double precision, its test checked 1e-9), Plumeflow `dsp/Math.hpp` (the float set fitted
   by its `tools/fit_math.py`), Tannhauser's [3/2] Pade tanh. Renames: Plumeflow `exp2`, `tanh` are `exp2F`,

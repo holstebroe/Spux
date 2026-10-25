@@ -43,6 +43,7 @@ endif()
 include(${SPUX_ROOT}/cmake/SpuxFlags.cmake)
 include(${SPUX_ROOT}/cmake/SpuxPackaging.cmake)
 include(${SPUX_ROOT}/cmake/SpuxTesting.cmake)
+include(${SPUX_ROOT}/cmake/SpuxPresets.cmake)
 
 # Third party (spux owns the versions): clap, clap-wrapper (author's fork), doctest.
 if(NOT TARGET clap)
@@ -75,6 +76,7 @@ spux_module(spux_params DEPENDS spux_core)
 spux_module(spux_state DEPENDS spux_core)
 spux_module(spux_clap DEPENDS spux_params spux_state clap)
 spux_module(spux_midi DEPENDS spux_core)
+spux_module(spux_presets DEPENDS spux_core)
 spux_module(spux_presetbrowser DEPENDS spux_ui_core spux_state)
 spux_module(spux_testing DEPENDS spux_core spux_dsp spux_doctest)    # header-only: WAV, loudness, metrics, hashes, null test
 

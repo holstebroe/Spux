@@ -146,6 +146,12 @@ TEST_CASE("double click resets, the wheel steps, a typed value is entered, keys 
         f.gui.onKey(k);
     }
     f.run(page);
+    KeyEvent shortcut;
+    shortcut.key = KeyEvent::Key::Char;
+    shortcut.ctrl = true;
+    shortcut.text[0] = 's'; // a shortcut is not typed into the field
+    f.gui.onKey(shortcut);
+    f.run(page);
     f.gui.onKey({KeyEvent::Key::Enter});
     f.run(page);
     CHECK(f.host.plainOf(P_osc_a_level) == doctest::Approx(-6.5));

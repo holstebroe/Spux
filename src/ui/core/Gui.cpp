@@ -981,7 +981,7 @@ GuiCore::TextResult GuiCore::textFieldImpl(const char* idText, const Rect& b, st
     editing_ = id; // keeps frames coming for the caret
     TextResult result = TextResult::Editing;
     for (const KeyEvent& k : keys_) {
-        if (k.key == KeyEvent::Key::Char) {
+        if (k.key == KeyEvent::Key::Char && !k.ctrl) {
             if (text.size() + std::strlen(k.text) <= maxBytes)
                 text += k.text;
         } else if (k.key == KeyEvent::Key::Backspace) {
@@ -1143,7 +1143,7 @@ void GuiCore::knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& 
         for (const KeyEvent& k : keys_) {
             if (enteredNow)
                 break;
-            if (k.key == KeyEvent::Key::Char)
+            if (k.key == KeyEvent::Key::Char && !k.ctrl)
                 editText_ += k.text;
             else if (k.key == KeyEvent::Key::Backspace)
                 popUtf8(editText_);

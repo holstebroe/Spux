@@ -21,7 +21,8 @@ struct DirtyRect {
 
 enum class MouseButton { Left, Right };
 
-// A key press as the editor needs it: editing keys, navigation and typed text (UTF-8, already composed).
+// A key press as the editor needs it: editing keys, navigation and typed text (UTF-8, already composed). A
+// shortcut (ctrl held, no alt) is a Char with `ctrl` set and the lower-case letter as its text; text entry ignores it.
 struct KeyEvent {
     enum class Key { Unknown, Char, Enter, Escape, Backspace, Delete, Left, Right, Up, Down, Home, End, Tab };
     Key key = Key::Unknown;

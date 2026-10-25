@@ -286,8 +286,10 @@ private:
         // The text is UTF-8: the code point comes from the keysym (Latin-1 keysyms are their code point,
         // Unicode keysyms carry it in the low bits), not from XLookupString's Latin-1 bytes. Other legacy
         // keysyms are not typed.
-        if (n <= 0 || out.ctrl)
+        if (n <= 0)
             return false;
+        if (out.ctrl && (xk.state & Mod1Mask || sym < 'a' || sym > 'z'))
+            return false; // only ctrl+letter is a shortcut (ctrl+alt is a layout's typing)
         std::uint32_t cp = 0;
         if (sym >= 0x20 && sym <= 0xff)
             cp = static_cast<std::uint32_t>(sym);
