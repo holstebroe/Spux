@@ -22,6 +22,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -38,9 +39,10 @@ struct EditorOptions {
     int height = 400;
     int activeHz = 60;
     int idleHz = 20;
-    double activeHold = 1.5; // seconds after the last input the editor stays at activeHz
-    bool caching = true;     // background layer and per-widget skip (CPU renderers)
-    bool keyboard = true;    // the window takes key presses (WindowOptions::keyboard)
+    double activeHold = 1.5;  // seconds after the last input the editor stays at activeHz
+    bool caching = true;      // background layer and per-widget skip (CPU renderers)
+    bool keyboard = true;     // the window takes key presses (WindowOptions::keyboard)
+    bool acceptFiles = false; // files dropped on the window reach RootViewBase::filesDropped (Win32 only for now)
     // With a FrameSurface: the user's scale and its limits; the window is `width * scale` wide, at a fixed
     // aspect ratio. A CPU renderer ignores them.
     float scale = 1.0f;
@@ -61,6 +63,8 @@ public:
     [[nodiscard]] virtual bool animating() { return false; }
     // Every tick, before the editor decides whether to draw (poll a file dialog, advance a timer).
     virtual void tick(double /*now*/) {}
+    // Files dropped on the window (EditorOptions::acceptFiles), in the order the file manager gives them.
+    virtual void filesDropped(const std::vector<std::filesystem::path>& /*files*/) {}
 };
 
 template <class G> class RootView : public RootViewBase {
@@ -129,6 +133,7 @@ public:
     void mouseWheel(float x, float y, float steps, bool shift);
     void mouseLeave();
     void key(const KeyEvent& k);
+    void filesDropped(const std::vector<std::filesystem::path>& files);
 
 protected:
     virtual void drawBackground() = 0;
@@ -143,6 +148,7 @@ private:
     void onMouseWheel(int x, int y, float steps, bool shift) override;
     void onMouseLeave() override;
     void onKey(const KeyEvent& k) override;
+    void onFilesDropped(const std::vector<std::filesystem::path>& files) override { filesDropped(files); }
 
     [[nodiscard]] double clockNow() const;
     void touch();

@@ -1,5 +1,7 @@
 // X11 child window. Own Display connection per window,
 // so several plugin instances in one host do not interfere; every Xlib call is made under a mutex.
+// TODO: dropped files (WindowOptions::acceptFiles) need the XDND protocol: XdndAware on the window, and
+// answers to XdndEnter, XdndPosition and XdndDrop with a selection request for text/uri-list.
 #if defined(SPUX_HAS_X11)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>

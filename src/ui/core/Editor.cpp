@@ -33,6 +33,7 @@ bool EditorCore::openWindow(const platform::ParentWindow& parent, bool gl, float
     auto w = platform::NativeWindow::create();
     platform::WindowOptions wo;
     wo.keyboard = options_.keyboard;
+    wo.acceptFiles = options_.acceptFiles;
     wo.openGl = gl;
     const int pw = static_cast<int>(std::lround(static_cast<float>(options_.width) * scale));
     const int ph = static_cast<int>(std::lround(static_cast<float>(options_.height) * scale));
@@ -248,6 +249,12 @@ void EditorCore::key(const KeyEvent& k) {
     std::lock_guard<std::mutex> lock(mutex_);
     touch();
     gui_.onKey(k);
+}
+
+void EditorCore::filesDropped(const std::vector<std::filesystem::path>& files) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    touch();
+    root_.filesDropped(files);
 }
 
 // The window reports pixels; the page works in logical pixels.

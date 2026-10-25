@@ -706,7 +706,7 @@ Rect ModernTooltip::layout(IRenderer& r, const TooltipState& s, int viewW, int v
                              body ? r.textWidthPx(s.text, m.valuePx) : 0.0f) +
                     24.0f;
     // never wider than the view (paint() fits the text to what is left); the height follows the text size
-    const int iw = std::min(static_cast<int>(w), std::max(0, viewW - 8)), ih = tooltipHeight(m, body);
+    const int iw = std::min(static_cast<int>(std::ceil(w)), std::max(0, viewW - 8)), ih = tooltipHeight(m, body);
     int x = static_cast<int>(s.pointer.x) + 14, y = static_cast<int>(s.pointer.y) + 18;
     if (x + iw > viewW - 4)
         x = std::max(4, viewW - 4 - iw);

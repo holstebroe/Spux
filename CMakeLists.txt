@@ -191,6 +191,7 @@ spux_ui_optimize(spux_ui_retro)
 # `all` of a plugin that never links it. The OS libraries are public because a plugin links the window
 # code. The GLX visual lookup opens libGL at run time, so no GL library is needed here.
 add_library(spux_platform STATIC
+  ${SPUX_ROOT}/src/platform/Clipboard.cpp
   ${SPUX_ROOT}/src/platform/NativeWindow_x11.cpp
   ${SPUX_ROOT}/src/platform/NativeWindow_win32.cpp
   ${SPUX_ROOT}/src/platform/NativeWindow_other.cpp
@@ -207,7 +208,7 @@ if(UNIX AND NOT APPLE AND SPUX_WITH_X11)
   target_include_directories(spux_platform PUBLIC ${X11_INCLUDE_DIR})
   target_link_libraries(spux_platform PUBLIC ${X11_LIBRARIES} Threads::Threads ${CMAKE_DL_LIBS})
 elseif(WIN32)
-  target_link_libraries(spux_platform PUBLIC user32 gdi32)
+  target_link_libraries(spux_platform PUBLIC user32 gdi32 shell32)
 endif()
 spux_target_flags(spux_platform)
 spux_ui_optimize(spux_platform)
