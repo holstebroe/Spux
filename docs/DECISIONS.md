@@ -56,6 +56,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
 | P10 | Packaging: **installers and zips**; spux provides CMake helpers and replaces the copies of `DeployClap.cmake`. | Decided | Inno Setup or NSIS on Windows. |
 | P11 | **CPU budget** measured in Release builds. CI fails on a regression over a stored baseline; absolute targets per plugin. | Decided | Threshold: proposed 10 to 15 %. |
 | P12 | **Plugin IDs** (CLAP reverse-DNS ids, VST3 class ids). | Deferred | Waits for the brand name. They can never change after release. |
+| P13 | **Factory presets live in a folder of text files** (a directory per group, a file per preset) that a script bakes into a checked-in table; a development build (`SPUX_PRESETS_DEV`) reads and writes the folder so presets are edited by ear and committed. A preset is one text, in the plugin's own format. | Decided | Added 2026-10-25 (by the author). Refines P4: factory presets keep their compiled form, with the folder as the source. No runtime switch. |
 
 ## User interface
 
@@ -281,3 +282,7 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   few reduced images). Acidus's strict gate (S6) is unchanged. Cause: the null test and golden frames of the Tearwash and Tannhauser
   migration (20 cases, 15 MB of WAV and full-size frames in Tannhauser) weighed the repos down. The two repos were pruned and their
   histories rewritten.
+- 2026-10-25: **P13 added** (by the author): factory presets are a folder of text files, baked into a checked-in table, and a
+  development build reads and writes the folder (`spux_presets`, `tools/bake_presets.py`, `cmake/SpuxPresets.cmake`). The generated
+  table stays in the plugin's repository so a plugin builds without Python. A preset is one text; the plugin keeps its format in it
+  (`TextPreset` key=value for parameter presets). The library is an object the plugin owns, not a registry.

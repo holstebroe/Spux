@@ -24,6 +24,15 @@ spux_add_test(render_safety_test)
 spux_add_test(null_test)
 spux_add_test(midi_test spux_midi)
 
+# spux_presets (header-only): the library over a small folder, and its baked table (tests/presets/).
+add_executable(presets_test presets_test.cpp presets/BakedPresets.cpp)
+target_link_libraries(presets_test PRIVATE spux_test_main spux_presets)
+target_compile_definitions(presets_test PRIVATE SPUX_TEST_PRESETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/presets/folder")
+spux_target_flags(presets_test)
+add_test(NAME presets_test COMMAND presets_test)
+spux_presets_bake(presets_bake FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/presets/folder
+                  OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/presets/BakedPresets.cpp SYMBOL kBakedTestPresets NAMESPACE spux_test)
+
 # spux_params, spux_state, spux_clap (header-only). The test parameter table is tests/params/.
 spux_add_test(params_test spux_params)
 spux_add_test(state_test spux_state)
