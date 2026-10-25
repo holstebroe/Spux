@@ -351,7 +351,7 @@ void ModernButton::paint(IRenderer& r, const Rect& b, const ButtonState& s) cons
         r.fillRoundRect(b, rad, hairline(s.active ? 0.2f : s.hot ? 0.13f : 0.07f));
         r.strokeRoundRect(b, rad, hairline(s.hot ? 0.3f : 0.14f), c.shape.stroke);
         const Point m = b.center();
-        const float k = s.variant == kButtonArrowLeft ? -1.0f : 1.0f;
+        const float k = s.variant == kButtonArrowLeft ? 1.0f : -1.0f;
         const Color col = s.hot ? t.colors.text : t.colors.textDim;
         r.drawLine({m.x + 2.0f * k, m.y - 4.0f}, {m.x - 2.0f * k, m.y}, col, 1.8f);
         r.drawLine({m.x - 2.0f * k, m.y}, {m.x + 2.0f * k, m.y + 4.0f}, col, 1.8f);
