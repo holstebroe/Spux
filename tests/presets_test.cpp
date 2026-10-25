@@ -74,7 +74,7 @@ TEST_CASE("save writes the file, and refuses a file that changed on disk") {
     CHECK(slurp(lib.at(1).file) == "# Test preset v1\nname=Beta\nvalue=22\n");
     CHECK(lib.at(1).text == "# Test preset v1\nname=Beta\nvalue=22");
     CHECK(lib.save(1, "# Test preset v1\nname=Beta\nvalue=23") == ""); // saving again is fine
-    { std::ofstream(lib.at(1).file, std::ios::trunc) << "edited elsewhere\n"; }
+    { std::ofstream(lib.at(1).file, std::ios::binary | std::ios::trunc) << "edited elsewhere\n"; }
     CHECK(lib.save(1, "mine") == "FILE CHANGED ON DISK: RESCAN FIRST");
     CHECK(slurp(lib.at(1).file) == "edited elsewhere\n");
     lib.rescan();
