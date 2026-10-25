@@ -5,6 +5,11 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-10-25: files dropped on the editor window (`EditorOptions::acceptFiles`, `WindowOptions::acceptFiles`,
+  `RootViewBase::filesDropped`; Win32, X11 is a TODO), the clipboard (`spux/platform/Clipboard.hpp`: a bitmap such as a
+  screen capture, or copied files; Windows, nothing elsewhere), and file dialogs with several extensions (`"png;jpg"`).
+  Additions: nothing that was delivered before changes.
+
 - 2026-10-25: Modern arrow buttons (`kButtonArrowLeft`, `kButtonArrowRight`, the preset bar's previous and next) point the
   way they are named; they were mirrored. A UI bug fix: no sound changes.
 

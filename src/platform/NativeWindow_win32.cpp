@@ -12,12 +12,15 @@
 #include <memory>
 #include <windows.h>
 
+#include <shellapi.h>
+
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <cwchar>
 #include <mutex>
+#include <string>
 
 #include "spux/platform/NativeWindow.hpp"
 
@@ -62,7 +65,7 @@ public:
         events_ = events;
         gl_ = options.openGl;
         keyboard_ = options.keyboard;
-        hwnd_ = CreateWindowExW(0, className, L"spux", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0, 0,
+        hwnd_ = CreateWindowExW(options.acceptFiles ? WS_EX_ACCEPTFILES : 0, className, L"spux", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0, 0,
                                 width, height, reinterpret_cast<HWND>(parent.handle), nullptr, inst, this);
         return hwnd_ != nullptr;
     }
@@ -270,6 +273,20 @@ LRESULT handle(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (ev)
             ev->onMouseUp(x, y, MouseButton::Right);
         return 0;
+    case WM_DROPFILES: {
+        auto* drop = reinterpret_cast<HDROP>(wp);
+        std::vector<std::filesystem::path> files;
+        const UINT n = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
+        for (UINT i = 0; i < n; ++i) {
+            std::wstring name(DragQueryFileW(drop, i, nullptr, 0), L'\0');
+            DragQueryFileW(drop, i, name.data(), static_cast<UINT>(name.size() + 1));
+            files.emplace_back(name);
+        }
+        DragFinish(drop);
+        if (ev && !files.empty())
+            ev->onFilesDropped(files);
+        return 0;
+    }
     case WM_DESTROY:
         KillTimer(hwnd, kTimerId);
         return 0;

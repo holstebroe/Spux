@@ -1,5 +1,6 @@
 #include "spux/ui/classic/FileDialog.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <vector>
 
@@ -30,6 +31,18 @@ std::string homeDirectory() {
     return home ? home : "";
 }
 
+// "png;jpg" -> "*.png<sep>*.jpg"
+[[maybe_unused]] static std::string patterns(const std::string& extensions, const char* sep) {
+    std::string out;
+    size_t start = 0;
+    while (start <= extensions.size()) {
+        const size_t end = std::min(extensions.find(';', start), extensions.size());
+        out += (out.empty() ? "*." : sep + std::string("*.")) + extensions.substr(start, end - start);
+        start = end + 1;
+    }
+    return out;
+}
+
 #if defined(__linux__) && !defined(__APPLE__)
 
 static bool onPath(const char* program) {
@@ -51,7 +64,7 @@ static bool onPath(const char* program) {
 bool FileDialogProcess::start(const FileDialogOptions& options) {
     if (running())
         return true;
-    const std::string pattern = "*." + options.extension;
+    const std::string pattern = patterns(options.extension, " ");
     const std::string described = options.filterName + " (" + pattern + ")";
     std::vector<std::string> args;
     if (onPath("zenity")) {
@@ -161,10 +174,11 @@ std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& option
     std::vector<wchar_t> file(MAX_PATH, L'\0');
     if (name.size() < file.size())
         std::copy(name.begin(), name.end(), file.begin());
-    const std::wstring ext = widen(options.extension);
-    std::wstring filter = widen(options.filterName) + L" (*." + ext + L")";
+    const std::wstring ext = widen(options.extension.substr(0, options.extension.find(';')));
+    const std::wstring pattern = widen(patterns(options.extension, ";"));
+    std::wstring filter = widen(options.filterName) + L" (" + pattern + L")";
     filter.push_back(L'\0');
-    filter += L"*." + ext;
+    filter += pattern;
     filter.push_back(L'\0');
     filter += L"All files (*.*)";
     filter.push_back(L'\0');

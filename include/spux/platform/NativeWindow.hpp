@@ -4,7 +4,9 @@
 // context. One instance per editor; nothing is shared between instances.
 #pragma once
 #include <cstdint>
+#include <filesystem>
 #include <memory>
+#include <vector>
 
 namespace spux::inline v1::platform {
 
@@ -36,6 +38,9 @@ struct WindowOptions {
     // The window takes the keyboard focus on a click and reports keys through onKey. A window that has
     // no use for keys sets this to false, so the host keeps its shortcuts (transport, undo).
     bool keyboard = true;
+    // The window takes files dropped on it from the file manager and reports them through onFilesDropped.
+    // Win32 only for now (X11 needs the XDND protocol: TODO).
+    bool acceptFiles = false;
 };
 
 // Callbacks run on the window's event thread (X11) or the host UI thread (Win32); they may call
@@ -51,6 +56,7 @@ public:
     virtual void onKey(const KeyEvent&) {}
     virtual void onTick() {}   // at the tick rate while the window is visible
     virtual void onExpose() {} // the window contents were lost: present the whole frame again
+    virtual void onFilesDropped(const std::vector<std::filesystem::path>&) {}
 };
 
 class NativeWindow {
