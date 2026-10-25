@@ -230,6 +230,11 @@ LRESULT handle(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             k.key = KeyEvent::Key::Tab;
             break;
         default:
+            // ctrl+letter (without alt, which is a layout's typing) is a shortcut: a Char with ctrl set.
+            if (k.ctrl && !(GetKeyState(VK_MENU) & 0x8000) && wp >= 'A' && wp <= 'Z') {
+                k.key = KeyEvent::Key::Char;
+                k.text[0] = static_cast<char>(wp - 'A' + 'a');
+            }
             break;
         }
         if (ev && k.key != KeyEvent::Key::Unknown)

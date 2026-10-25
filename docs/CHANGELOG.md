@@ -5,6 +5,9 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-10-25: the editor window reports ctrl+letter shortcuts as a `Char` key event with `ctrl` set (X11 and Win32); text entry
+  ignores them. An addition: nothing that was delivered before changes.
+
 - 2026-10-25: `spux_presets` (header-only) adds `PresetLibrary`: factory presets from a folder of text files, a baked table when
   there is none, and in a development build (`SPUX_PRESETS_DEV`) saving a preset back to its file and adding one; with
   `tools/bake_presets.py` and `cmake/SpuxPresets.cmake`. An addition: no sound changes.
