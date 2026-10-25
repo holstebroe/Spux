@@ -5,6 +5,8 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-10-25: the Modern tooltip rounds its width up, so its title no longer loses its last letters to an ellipsis.
+
 - 2026-10-25: files dropped on the editor window (`EditorOptions::acceptFiles`, `WindowOptions::acceptFiles`,
   `RootViewBase::filesDropped`; Win32, X11 is a TODO), the clipboard (`spux/platform/Clipboard.hpp`: a bitmap such as a
   screen capture, or copied files; Windows, nothing elsewhere), and file dialogs with several extensions (`"png;jpg"`).
