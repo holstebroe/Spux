@@ -270,6 +270,10 @@ void EditorCore::onMouseMove(int x, int y, bool, bool shift) {
     const float s = scale();
     mouseMove(static_cast<float>(x) / s, static_cast<float>(y) / s, shift);
 }
+void EditorCore::onCtrl(bool ctrl) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    gui_.setCtrl(ctrl);
+}
 void EditorCore::onMouseWheel(int x, int y, float steps, bool shift) {
     const float s = scale();
     mouseWheel(static_cast<float>(x) / s, static_cast<float>(y) / s, steps, shift);

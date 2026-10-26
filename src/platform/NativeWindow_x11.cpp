@@ -211,6 +211,8 @@ private:
                     if (!ev)
                         break;
                     const bool shift = (e.state & ShiftMask) != 0;
+                    if (e.type == ButtonPress || e.type == MotionNotify)
+                        ev->onCtrl((e.state & ControlMask) != 0);
                     if (e.type == Expose)
                         ev->onExpose();
                     else if (e.type == LeaveNotify)

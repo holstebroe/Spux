@@ -53,6 +53,7 @@ public:
     virtual void onMouseMove(int /*x*/, int /*y*/, bool /*leftDown*/, bool /*shift*/) {}
     virtual void onMouseWheel(int /*x*/, int /*y*/, float /*steps*/, bool /*shift*/) {} // positive: away from the user
     virtual void onMouseLeave() {}
+    virtual void onCtrl(bool /*ctrl*/) {} // the Ctrl key, reported before each mouse press and move
     virtual void onKey(const KeyEvent&) {}
     virtual void onTick() {}   // at the tick rate while the window is visible
     virtual void onExpose() {} // the window contents were lost: present the whole frame again

@@ -114,6 +114,30 @@ TEST_CASE("a knob drag is one gesture: begin, values, end; shift makes it fine")
     CHECK(f.host.plainOf(P_width) == doctest::Approx(mid - 0.0 + 50.0 * 0.1 / 166.0).epsilon(1e-6));
 }
 
+TEST_CASE("a knob dragged with ctrl held snaps to its snap values, or to minimum, default and maximum") {
+    Rig f;
+    const Rect b{60, 30, 90, 90};
+    const double points[] = {0.25, 0.75};
+    for (const bool list : {true, false}) {
+        CAPTURE(list);
+        f.host.store.setPlain(kTable.indexOf(P_width), 0.5);
+        auto page = [&](TGui& g) {
+            g.knob(P_width, b, {.snap = list ? std::span<const double>(points) : std::span<const double>()});
+        };
+        f.t += 1.0; // not a double click
+        f.gui.setCtrl(true);
+        f.gui.onMouseMove(100, 70);
+        f.gui.onMouseDown(100, 70, MouseButton::Left, false);
+        f.run(page);
+        f.gui.onMouseMove(100, 40); // 30 pixels up: 0.68 unsnapped
+        f.run(page);
+        f.gui.onMouseUp(100, 40, MouseButton::Left);
+        f.run(page);
+        f.gui.setCtrl(false);
+        CHECK(f.host.plainOf(P_width) == doctest::Approx(list ? 0.75 : 0.5));
+    }
+}
+
 TEST_CASE("double click resets, the wheel steps, a typed value is entered, keys step") {
     Rig f;
     const Rect b{60, 30, 90, 90};

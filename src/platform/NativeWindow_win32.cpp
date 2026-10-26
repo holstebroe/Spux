@@ -172,12 +172,16 @@ LRESULT handle(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         SetCapture(hwnd);
         if (!self || self->keyboard())
             SetFocus(hwnd);
-        if (ev)
+        if (ev) {
+            ev->onCtrl((wp & MK_CONTROL) != 0);
             ev->onMouseDown(x, y, MouseButton::Left, (wp & MK_SHIFT) != 0);
+        }
         return 0;
     case WM_RBUTTONDOWN:
-        if (ev)
+        if (ev) {
+            ev->onCtrl((wp & MK_CONTROL) != 0);
             ev->onMouseDown(x, y, MouseButton::Right, (wp & MK_SHIFT) != 0);
+        }
         return 0;
     case WM_MOUSEWHEEL: {
         POINT pt = {static_cast<LONG>(static_cast<short>(LOWORD(lp))),
@@ -267,8 +271,10 @@ LRESULT handle(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             TrackMouseEvent(&t);
             self->trackedLeave = true;
         }
-        if (ev)
+        if (ev) {
+            ev->onCtrl((wp & MK_CONTROL) != 0);
             ev->onMouseMove(x, y, (wp & MK_LBUTTON) != 0, (wp & MK_SHIFT) != 0);
+        }
         return 0;
     case WM_LBUTTONUP:
         ReleaseCapture();

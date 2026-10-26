@@ -326,7 +326,8 @@ are unaffected.
 ### Editing helpers [U9]
 
 Value entry by typing, Tab focus, tooltips, popups and dropdowns, double-click reset, shift for fine
-adjustment, mouse wheel, right-click hooks. The plugin can override text formatting per widget.
+adjustment, Ctrl while dragging a knob to snap (to the knob's `snap` values, or to minimum, default and maximum), mouse
+wheel, right-click hooks. The plugin can override text formatting per widget.
 
 A popup is a list of `PopupItem`s (separators, disabled rows, columns for the first list). A row with `children` is a
 submenu: the pointer on it opens its list beside the row (to the left when the view ends), to any depth, and every
