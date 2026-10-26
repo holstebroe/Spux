@@ -5,6 +5,10 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-10-26: a knob dragged with Ctrl held snaps to the nearest of `KnobOptions::snap` (plain values; empty: minimum,
+  default and maximum). `WindowEvents::onCtrl` reports the Ctrl key before each mouse press and move (Win32, X11).
+  Additions: a drag without Ctrl is unchanged.
+
 - 2026-10-25: the Modern tooltip rounds its width up, so its title no longer loses its last letters to an ellipsis.
 
 - 2026-10-25: files dropped on the editor window (`EditorOptions::acceptFiles`, `WindowOptions::acceptFiles`,

@@ -145,6 +145,7 @@ private:
     void onMouseDown(int x, int y, MouseButton b, bool shift) override;
     void onMouseUp(int x, int y, MouseButton b) override;
     void onMouseMove(int x, int y, bool left, bool shift) override;
+    void onCtrl(bool ctrl) override;
     void onMouseWheel(int x, int y, float steps, bool shift) override;
     void onMouseLeave() override;
     void onKey(const KeyEvent& k) override;

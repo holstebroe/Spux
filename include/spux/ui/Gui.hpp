@@ -32,6 +32,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -66,6 +67,8 @@ struct KnobOptions {
     double wheelStep = -1.0;              // normalized step per notch; < 0: the theme's; 0: no wheel
     float hitRadius = 0.0f;               // > 0: a press must land this close to the center of the bounds
     const KnobPainter* painter = nullptr; // null: the style's
+    // Plain values a drag with Ctrl held snaps to (the nearest one); empty: minimum, default and maximum.
+    std::span<const double> snap{};
 };
 
 struct SliderOptions {
@@ -200,6 +203,7 @@ public:
     // --- input (logical coordinates), delivered between frames ----------------------------------------------
     void onMouseMove(float x, float y);
     void setShift(bool shift) { shift_ = shift; }
+    void setCtrl(bool ctrl) { ctrl_ = ctrl; }
     void onMouseDown(float x, float y, MouseButton b, bool shift);
     void onMouseUp(float x, float y, MouseButton b);
     void onWheel(float x, float y, float steps, bool shift);
@@ -208,6 +212,7 @@ public:
     [[nodiscard]] float mouseX() const { return mx_; }
     [[nodiscard]] float mouseY() const { return my_; }
     [[nodiscard]] bool shift() const { return shift_; }
+    [[nodiscard]] bool ctrl() const { return ctrl_; }
     [[nodiscard]] bool leftDown() const { return leftDown_; }
     [[nodiscard]] bool hovered(const Rect& r) const;
     // The wheel notches this frame while the pointer is inside `r` (positive: away from the user), for a widget that
@@ -386,7 +391,7 @@ private:
 
     // input
     float mx_ = -1, my_ = -1;
-    bool leftDown_ = false, rightDown_ = false, shift_ = false;
+    bool leftDown_ = false, rightDown_ = false, shift_ = false, ctrl_ = false;
     bool downEvent_ = false, upEvent_ = false, rightDownEvent_ = false, rightUpEvent_ = false;
     float downX_ = 0, downY_ = 0;
     float wheel_ = 0.0f;

@@ -1090,7 +1090,19 @@ void GuiCore::knobImpl(std::uint32_t paramId, const Rect& b, const KnobOptions& 
         const float pixels = o.dragPixels > 0.0f ? o.dragPixels : theme_->feel.dragPixels;
         const double sens = (shift_ ? theme_->feel.fine : 1.0f) / pixels;
         const double target = std::clamp(dragStart_ + static_cast<double>(dragStartY_ - my_) * sens, 0.0, 1.0);
-        valueAt(idx, params::fromNormalized(info, target));
+        double value = params::fromNormalized(info, target);
+        if (ctrl_) {
+            const double ends[] = {info.min, info.def, info.max};
+            double nearest = 2.0;
+            for (double v : o.snap.empty() ? std::span<const double>(ends) : o.snap) {
+                const double d = std::abs(params::toNormalized(info, v) - target);
+                if (d < nearest) {
+                    nearest = d;
+                    value = v;
+                }
+            }
+        }
+        valueAt(idx, value);
     } else if (active_ == (id | 1) && leftDown_ && activeParam_ != kNoParamId && mh) {
         const ParamInfo* dp = this->info(activeParam_);
         if (dp) {
