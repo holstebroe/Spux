@@ -21,6 +21,7 @@
 #include <windows.h>
 
 #include <commdlg.h> // after windows.h; the blank line keeps clang-format from sorting it before
+#include <shlobj.h>
 #endif
 
 namespace spux::inline v1::ui::classic {
@@ -145,7 +146,12 @@ bool FileDialogProcess::start(const FileDialogOptions& options) {
     const std::string pattern = patterns(options.extension, " ");
     const std::string described = options.filterName + " (" + pattern + ")";
     std::vector<std::string> args;
-    if (onPath("zenity")) {
+    if (onPath("zenity") && options.folder) {
+        args = {"zenity", "--file-selection", "--directory", "--title=" + options.title,
+                "--filename=" + options.startPath};
+    } else if (onPath("kdialog") && options.folder) {
+        args = {"kdialog", "--getexistingdirectory", options.startPath, "--title", options.title};
+    } else if (onPath("zenity")) {
         args = {"zenity",
                 "--file-selection",
                 "--title=" + options.title,
@@ -252,6 +258,25 @@ static std::wstring widen(const std::string& s) {
 }
 
 std::vector<std::filesystem::path> runFileDialogs(void* owner, const FileDialogOptions& options) {
+    if (options.folder) {
+        const std::wstring title = widen(options.title);
+        BROWSEINFOW bi = {};
+        bi.hwndOwner = static_cast<HWND>(owner);
+        bi.lpszTitle = title.c_str();
+        bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+        // the new dialog style needs COM on this thread; a host that set it up differently is fine as it is
+        const HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        std::vector<std::filesystem::path> out;
+        if (PIDLIST_ABSOLUTE item = SHBrowseForFolderW(&bi)) {
+            wchar_t path[MAX_PATH] = {};
+            if (SHGetPathFromIDListW(item, path))
+                out.emplace_back(path);
+            CoTaskMemFree(item);
+        }
+        if (SUCCEEDED(com))
+            CoUninitialize();
+        return out;
+    }
     const bool many = options.multiple && !options.save;
     const std::filesystem::path start = std::filesystem::path(
         std::u8string(reinterpret_cast<const char8_t*>(options.startPath.data()), options.startPath.size()));

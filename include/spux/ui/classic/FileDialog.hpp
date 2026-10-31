@@ -21,7 +21,9 @@ struct FileDialogOptions {
     std::string extension;
     std::string startPath; // a directory, or a directory and file name
     bool multiple{false};  // open dialogs only: several files; the result lists one path per line
-    std::string key;       // dialog kind, so each kind reopens in its own last folder (see lastDirectory)
+    bool folder{
+        false};      // choose a folder, not a file: the result is the folder's path (filters and multiple are ignored)
+    std::string key; // dialog kind, so each kind reopens in its own last folder (see lastDirectory)
 };
 
 // The folder the dialog of this kind was last used in (kept in a small file in the user's config folder,
