@@ -26,5 +26,6 @@ TEST_CASE("a dialog kind reopens in the folder of its last file, and kinds share
 #endif
     FileDialogOptions o;
     CHECK_FALSE(o.multiple);
+    CHECK_FALSE(o.folder);
     CHECK(o.key.empty());
 }
