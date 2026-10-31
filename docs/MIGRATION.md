@@ -25,7 +25,7 @@ only in namespace and include guards, or not at all.
 | Edit queue, telemetry ring | Plumeflow `plugin/EditQueue`, `plugin/Telemetry` | Ring becomes a template on the frame type. **Edit queue moved to `spux_params` (step 5); Tearwash and Tannhauser migrated.** **Telemetry ring done (step 6)**: `spux/core/TelemetryRing.hpp` (`TelemetryRing<Frame>`, `SampleRing`). |
 | Generic live views | Plumeflow `ui/Live`, `ui/Views` (spectrum, traces, meters, curve editor) | Attractor, envelope and filter views stay in Plumeflow. **Consumers moved (step 6)**: `Spectrum`, `LevelMeter`, `History` in `spux/ui/Live.hpp`; **the generic views moved in step 7** (`spux/ui/modern/ModernViews.hpp`: spectrum, traces, stereo meter, curve editor). |
 | Parameters | `ParamInfo` in Tannhauser, Plumeflow, Lumeoid, Kikset, Gritbaal; X-macro in Plumeflow and Lumeoid | Plumeflow `params.def` + `ParamStore` as the base. **Moved to `spux_params` (step 5); Tearwash and Tannhauser migrated.** |
-| State container | Lumeoid `LMN1`, Plumeflow `PLF1`, Rodee `StateChunk` | Lumeoid as the base. **Moved to `spux_state` (step 5); Tearwash migrated (`TWR1`), Tannhauser (`TNH1`).** |
+| State container | Lumeoid `LMN1`, Plumeflow `PLF1`, Rodee `StateChunk` | Lumeoid as the base. **Moved to `spux_state` (step 5); Tearwash migrated (`TWR1`), Tannhauser (`TNH1`), Rodee (`RODE`, step 8: the old format was dropped, the plugin being pre-release).** |
 | PCG32 | Lumeoid, Plumeflow | Merge. **Merged into `spux_core` (step 4).** |
 | Math approximations | Lumeoid `dsp/math`, Plumeflow `dsp/Math`, Tannhauser `tanhFast` | Merge; replace `std::tanh` in Acidus, Gritbaal, Syrebas, Kikset. **Merged into `spux_core` (step 4)**; the libm replacement happens in each plugin's step. |
 | Half-band oversampler | Plumeflow (4+4 all-pass sections), Lumeoid (5+5) | Merge into one design. **Done (step 4): Lumeoid's 5+5, by measurement (docs/BENCH.md).** |
@@ -133,7 +133,7 @@ plugin-specific views and page code.
    preset with host automation) and the panel snapshot are bit-identical to before. Left: Plumeflow and Lumeoid
    switch in step 8 (Plumeflow's `.def` gets the module and smoothing columns; its `PLF1` has no CRC, so its switch
    needs a reader for the old chunks); Tannhauser, Acidus, Kikset and Gritbaal move their `ParamInfo` in their
-   own steps; the telemetry ring and Rodee's `StateChunk` are not looked at yet.
+   own steps; the telemetry ring is not looked at yet. (Rodee's `StateChunk` moved in its own step 8.)
 6. `spux_ui_core` from Plumeflow's `Gui`; run the immediate-mode acceptance gate on one Tannhauser and
    one Acidus panel. **Done in spux** (2026-10-20); after the gate the author decided U7 (immediate mode) and U16.
    `spux_ui_core` (STATIC): `Geometry`, `IRenderer` (Plumeflow's, the effect calls with plain defaults,
@@ -285,7 +285,7 @@ copies for spux's, its 16-tap FIR oversampler for the half-band `Oversampler`; t
 
 ## Provenance and switch notes
 
-- **Rodee's switch** (params, state, CLAP glue, window and Classic widgets): `.def` keys with dots (`master.volume`) work with
+- **Rodee's switch, done** (step 8: params from a `.def` and `ParamStore`, state as a container, the CLAP class on `spux::clap::Plugin` and its edit queue, `DenormalGuard`, VST3 through spux's clap-wrapper, the window on `Editor` with the Classic renderer, Classic widgets for the chrome and the play page; its own `GuiWindow`, `Graphics`, `Font` and `FileDialog` deleted; its DSP is character code and stays, except the denormal guard): `.def` keys with dots (`master.volume`) work with
   `SPUX_PARAM_INFO` (the key is stringified) but not with `SPUX_PARAM_ENUM` (token pasting), so such a plugin keeps its own id
   constants. A key such as `macro.1` is a valid token sequence. Stepped parameters (`Int`, `Bool`) are rounded by `ParamStore::setPlain`
   and by `Gui::setPlain`. The smoke host (`spux_clap_smoke`) checks that value text parses back: a plugin with its own value text
