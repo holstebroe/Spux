@@ -217,6 +217,108 @@ void GuiCore::begin(IRenderer& r, double time, float dt, int width, int height) 
     painted_ = skipped_ = collisions_ = overlaps_ = 0;
 
     blocked_ = popupOpen_;
+    if (popupOpen_) {
+        // Wheel scrolling: scrolls the list under the pointer
+        if (wheel_ != 0.0f) {
+            const Point at{mx_, my_};
+            int wheelLevel = -1;
+            for (std::size_t k = popup_.levels.size(); k-- > 0;)
+                if (popup_.levels[k].rect.contains(static_cast<int>(at.x), static_cast<int>(at.y))) {
+                    wheelLevel = static_cast<int>(k);
+                    break;
+                }
+            if (wheelLevel >= 0 && static_cast<std::size_t>(wheelLevel) < popup_.levels.size() &&
+                popup_.levels[static_cast<std::size_t>(wheelLevel)].scrollable) {
+                const PopupLevel& lv = popup_.levels[static_cast<std::size_t>(wheelLevel)];
+                const int maxScroll = std::max(0, lv.totalRows - lv.visibleRows);
+                const int delta = wheel_ > 0 ? -1 : 1;
+                if (popup_.scrollOffset.size() <= static_cast<std::size_t>(wheelLevel))
+                    popup_.scrollOffset.resize(static_cast<std::size_t>(wheelLevel) + 1, 0);
+                popup_.scrollOffset[static_cast<std::size_t>(wheelLevel)] =
+                    std::clamp(popup_.scrollOffset[static_cast<std::size_t>(wheelLevel)] + delta, 0, maxScroll);
+                wheel_ = 0.0f;
+            }
+        }
+
+        // Keyboard navigation: arrow keys and Home/End move through the active list
+        int activeLevel = -1;
+        const Point at{mx_, my_};
+        for (std::size_t k = popup_.levels.size(); k-- > 0;)
+            if (popup_.levels[k].rect.contains(static_cast<int>(at.x), static_cast<int>(at.y))) {
+                activeLevel = static_cast<int>(k);
+                break;
+            }
+        if (activeLevel < 0 && !popup_.levels.empty())
+            activeLevel = static_cast<int>(popup_.levels.size()) - 1;
+        if (activeLevel >= 0 && static_cast<std::size_t>(activeLevel) < popup_.levels.size() &&
+            popup_.levels[static_cast<std::size_t>(activeLevel)].scrollable) {
+            const PopupLevel& lv = popup_.levels[static_cast<std::size_t>(activeLevel)];
+            const int maxScroll = std::max(0, lv.totalRows - lv.visibleRows);
+            if (popup_.scrollOffset.size() <= static_cast<std::size_t>(activeLevel))
+                popup_.scrollOffset.resize(static_cast<std::size_t>(activeLevel) + 1, 0);
+            for (const KeyEvent& k : keys_) {
+                if (k.key == KeyEvent::Key::Up)
+                    popup_.scrollOffset[static_cast<std::size_t>(activeLevel)] =
+                        std::clamp(popup_.scrollOffset[static_cast<std::size_t>(activeLevel)] - 1, 0, maxScroll);
+                else if (k.key == KeyEvent::Key::Down)
+                    popup_.scrollOffset[static_cast<std::size_t>(activeLevel)] =
+                        std::clamp(popup_.scrollOffset[static_cast<std::size_t>(activeLevel)] + 1, 0, maxScroll);
+                else if (k.key == KeyEvent::Key::Home)
+                    popup_.scrollOffset[static_cast<std::size_t>(activeLevel)] = 0;
+                else if (k.key == KeyEvent::Key::End)
+                    popup_.scrollOffset[static_cast<std::size_t>(activeLevel)] = maxScroll;
+            }
+        }
+
+        // Auto-scrolling while pointer is on up/down button or pressed
+        int hoverLevel = -1, hoverDir = 0;
+        for (std::size_t k = popup_.levels.size(); k-- > 0;) {
+            const PopupLevel& lv = popup_.levels[k];
+            if (lv.scrollable) {
+                if (lv.upButton.contains(static_cast<int>(mx_), static_cast<int>(my_))) {
+                    hoverLevel = static_cast<int>(k);
+                    hoverDir = -1;
+                    break;
+                }
+                if (lv.downButton.contains(static_cast<int>(mx_), static_cast<int>(my_))) {
+                    hoverLevel = static_cast<int>(k);
+                    hoverDir = +1;
+                    break;
+                }
+            }
+        }
+        if (hoverLevel >= 0) {
+            if (popup_.scrollAutoTime < 0.0 || time_ - popup_.scrollAutoTime >= 0.12) {
+                const PopupLevel& lv = popup_.levels[static_cast<std::size_t>(hoverLevel)];
+                const int maxScroll = std::max(0, lv.totalRows - lv.visibleRows);
+                if (popup_.scrollOffset.size() <= static_cast<std::size_t>(hoverLevel))
+                    popup_.scrollOffset.resize(static_cast<std::size_t>(hoverLevel) + 1, 0);
+                popup_.scrollOffset[static_cast<std::size_t>(hoverLevel)] =
+                    std::clamp(popup_.scrollOffset[static_cast<std::size_t>(hoverLevel)] + hoverDir, 0, maxScroll);
+                popup_.scrollAutoTime = time_;
+            }
+        } else {
+            popup_.scrollAutoTime = -1.0;
+        }
+
+        // Thumb drag
+        if (popup_.scrollDragLevel >= 0) {
+            if (leftDown_ && static_cast<std::size_t>(popup_.scrollDragLevel) < popup_.levels.size()) {
+                const PopupLevel& lv = popup_.levels[static_cast<std::size_t>(popup_.scrollDragLevel)];
+                const float trackAvail = static_cast<float>(lv.scrollTrack.h - lv.scrollThumb.h);
+                if (trackAvail > 0.0f) {
+                    const int maxScroll = std::max(0, lv.totalRows - lv.visibleRows);
+                    const float dy = my_ - popup_.scrollDragStartY;
+                    const int deltaRows =
+                        static_cast<int>(std::lround(dy * static_cast<float>(maxScroll) / trackAvail));
+                    popup_.scrollOffset[static_cast<std::size_t>(popup_.scrollDragLevel)] =
+                        std::clamp(popup_.scrollDragStartRow + deltaRows, 0, maxScroll);
+                }
+            } else {
+                popup_.scrollDragLevel = -1;
+            }
+        }
+    }
     if (popupOpen_ && downEvent_) {
         // a click while a list is open picks an item or closes the list; it never reaches the widgets below
         const Point at{downX_, downY_};
@@ -226,41 +328,83 @@ void GuiCore::begin(IRenderer& r, double time, float dt, int width, int height) 
                 level = static_cast<int>(k);
                 break;
             }
-        int picked = -1;
-        if (level >= 0) {
+
+        bool handledByScroll = false;
+        if (level >= 0 && popup_.levels[static_cast<std::size_t>(level)].scrollable) {
             const PopupLevel& lv = popup_.levels[static_cast<std::size_t>(level)];
-            for (std::size_t i = 0; i < lv.itemRects.size() && lv.items && i < lv.items->size(); ++i)
-                if (lv.itemRects[i].contains(static_cast<int>(at.x), static_cast<int>(at.y)) &&
-                    !(*lv.items)[i].separator && (*lv.items)[i].enabled)
-                    picked = static_cast<int>(i);
-        }
-        if (level >= 0 && picked < 0) {
-            // a press on a separator or a disabled item keeps the list open
-        } else if (level >= 0 &&
-                   !(*popup_.levels[static_cast<std::size_t>(level)].items)[static_cast<std::size_t>(picked)]
-                        .children.empty()) {
-            // a row with a submenu: it opens (it already does under the pointer); the list stays
-            popup_.path.resize(std::min(static_cast<std::size_t>(level), popup_.path.size()));
-            popup_.path.push_back(picked);
-        } else {
-            std::vector<int> route(
-                popup_.path.begin(),
-                popup_.path.begin() +
-                    std::min<std::ptrdiff_t>(level < 0 ? 0 : level, static_cast<std::ptrdiff_t>(popup_.path.size())));
-            if (picked >= 0)
-                route.push_back(picked);
-            auto choose = std::move(popup_.choose);
-            auto choosePath = std::move(popup_.choosePath);
-            popupOpen_ = false;
-            if (picked >= 0) {
-                if (choosePath)
-                    choosePath(route);
-                else if (choose && route.size() == 1)
-                    choose(route[0]);
+            const int maxScroll = std::max(0, lv.totalRows - lv.visibleRows);
+            if (popup_.scrollOffset.size() <= static_cast<std::size_t>(level))
+                popup_.scrollOffset.resize(static_cast<std::size_t>(level) + 1, 0);
+            if (lv.upButton.contains(static_cast<int>(at.x), static_cast<int>(at.y))) {
+                popup_.scrollOffset[static_cast<std::size_t>(level)] =
+                    std::clamp(popup_.scrollOffset[static_cast<std::size_t>(level)] - 1, 0, maxScroll);
+                handledByScroll = true;
+            } else if (lv.downButton.contains(static_cast<int>(at.x), static_cast<int>(at.y))) {
+                popup_.scrollOffset[static_cast<std::size_t>(level)] =
+                    std::clamp(popup_.scrollOffset[static_cast<std::size_t>(level)] + 1, 0, maxScroll);
+                handledByScroll = true;
+            } else if (lv.scrollThumb.contains(static_cast<int>(at.x), static_cast<int>(at.y))) {
+                popup_.scrollDragLevel = level;
+                popup_.scrollDragStartY = downY_;
+                popup_.scrollDragStartRow = popup_.scrollOffset[static_cast<std::size_t>(level)];
+                handledByScroll = true;
+            } else if (lv.scrollTrack.contains(static_cast<int>(at.x), static_cast<int>(at.y))) {
+                if (at.y < lv.scrollThumb.y)
+                    popup_.scrollOffset[static_cast<std::size_t>(level)] =
+                        std::clamp(popup_.scrollOffset[static_cast<std::size_t>(level)] - lv.visibleRows, 0, maxScroll);
+                else
+                    popup_.scrollOffset[static_cast<std::size_t>(level)] =
+                        std::clamp(popup_.scrollOffset[static_cast<std::size_t>(level)] + lv.visibleRows, 0, maxScroll);
+                handledByScroll = true;
             }
         }
-        downEvent_ = false;
-        rightDownEvent_ = false;
+
+        if (handledByScroll) {
+            downEvent_ = false;
+            rightDownEvent_ = false;
+        } else {
+            int picked = -1;
+            if (level >= 0) {
+                const PopupLevel& lv = popup_.levels[static_cast<std::size_t>(level)];
+                for (std::size_t i = 0; i < lv.itemRects.size(); ++i) {
+                    const int fullIdx = lv.itemMap.empty() ? static_cast<int>(i) : lv.itemMap[i];
+                    if (lv.itemRects[i].contains(static_cast<int>(at.x), static_cast<int>(at.y)) && lv.items &&
+                        static_cast<std::size_t>(fullIdx) < lv.items->size() &&
+                        !(*lv.items)[static_cast<std::size_t>(fullIdx)].separator &&
+                        (*lv.items)[static_cast<std::size_t>(fullIdx)].enabled) {
+                        picked = fullIdx;
+                        break;
+                    }
+                }
+            }
+            if (level >= 0 && picked < 0) {
+                // a press on a separator or a disabled item keeps the list open
+            } else if (level >= 0 &&
+                       !(*popup_.levels[static_cast<std::size_t>(level)].items)[static_cast<std::size_t>(picked)]
+                            .children.empty()) {
+                // a row with a submenu: it opens (it already does under the pointer); the list stays
+                popup_.path.resize(std::min(static_cast<std::size_t>(level), popup_.path.size()));
+                popup_.path.push_back(picked);
+            } else {
+                std::vector<int> route(popup_.path.begin(),
+                                       popup_.path.begin() +
+                                           std::min<std::ptrdiff_t>(level < 0 ? 0 : level,
+                                                                    static_cast<std::ptrdiff_t>(popup_.path.size())));
+                if (picked >= 0)
+                    route.push_back(picked);
+                auto choose = std::move(popup_.choose);
+                auto choosePath = std::move(popup_.choosePath);
+                popupOpen_ = false;
+                if (picked >= 0) {
+                    if (choosePath)
+                        choosePath(route);
+                    else if (choose && route.size() == 1)
+                        choose(route[0]);
+                }
+            }
+            downEvent_ = false;
+            rightDownEvent_ = false;
+        }
     }
     if (popupOpen_) {
         for (const KeyEvent& k : keys_)
@@ -289,6 +433,15 @@ bool GuiCore::wantsFrame(double now) const {
         return true;
     if (popupOpen_ && popup_.leaveSince >= 0.0 && now - popup_.leaveSince >= 0.3)
         return true; // the grace for closing a submenu ends
+    if (popupOpen_) {
+        for (const PopupLevel& lv : popup_.levels) {
+            if (lv.scrollable && (lv.upButton.contains(static_cast<int>(mx_), static_cast<int>(my_)) ||
+                                  lv.downButton.contains(static_cast<int>(mx_), static_cast<int>(my_))))
+                return true;
+        }
+        if (popup_.scrollDragLevel >= 0)
+            return true;
+    }
     return false;
 }
 
@@ -393,30 +546,124 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
             const std::vector<PopupItem>* items = &popup_.items;
             Rect anchor = popup_.anchor;
             for (std::size_t k = 0;; ++k) {
-                PopupState ps;
-                ps.items = items;
-                ps.anchor = anchor;
-                ps.selected = selectedAt(k);
-                ps.columns = k == 0 ? popup_.columns : 1;
-                ps.theme = theme_;
+                const int cols = k == 0 ? popup_.columns : 1;
+                const int nItems = static_cast<int>(items->size());
+                const int totalRows = std::max(1, (nItems + cols - 1) / cols);
+
+                PopupState fullPs;
+                fullPs.items = items;
+                fullPs.anchor = anchor;
+                fullPs.selected = selectedAt(k);
+                fullPs.columns = cols;
+                fullPs.theme = theme_;
+                std::vector<Rect> fullRects;
+                Rect fullRect = popupPainter->layout(*r_, fullPs, w_, h_, fullRects);
+
+                const int maxViewH = h_ - 8;
+                const bool fits = (fullRect.h <= maxViewH);
+
                 PopupLevel lv;
                 lv.items = items;
                 lv.anchor = anchor;
-                lv.rect = popupPainter->layout(*r_, ps, w_, h_, lv.itemRects);
+                lv.totalRows = totalRows;
+
+                if (fits) {
+                    lv.scrollable = false;
+                    lv.rect = fullRect;
+                    lv.itemRects = std::move(fullRects);
+                    lv.visibleRows = totalRows;
+                    lv.scrollRow = 0;
+                } else {
+                    lv.scrollable = true;
+                    const int rowH = std::max(1, theme_->metrics.popupRow);
+                    const int pad = rowH <= 14 ? 2 : 4;
+                    const int btnH = std::clamp(rowH - 4, 10, 14);
+                    const int availForItems = maxViewH - 2 * pad - 2 * btnH;
+                    lv.visibleRows = std::clamp(availForItems / rowH, 1, totalRows - 1);
+                    const int maxScroll = std::max(0, lv.totalRows - lv.visibleRows);
+
+                    if (popup_.scrollOffset.size() <= k)
+                        popup_.scrollOffset.resize(k + 1, -1);
+                    if (popup_.scrollOffset[k] < 0) {
+                        const int sel = selectedAt(k);
+                        if (sel >= 0) {
+                            const int selRow = sel % totalRows;
+                            popup_.scrollOffset[k] = std::clamp(selRow - lv.visibleRows / 2, 0, maxScroll);
+                        } else {
+                            popup_.scrollOffset[k] = 0;
+                        }
+                    }
+                    popup_.scrollOffset[k] = std::clamp(popup_.scrollOffset[k], 0, maxScroll);
+                    lv.scrollRow = popup_.scrollOffset[k];
+
+                    // Slice items in column-major order
+                    lv.slicedItems.clear();
+                    lv.itemMap.clear();
+                    for (int c = 0; c < cols; ++c) {
+                        for (int r = 0; r < lv.visibleRows; ++r) {
+                            const int origRow = lv.scrollRow + r;
+                            const int origIdx = c * totalRows + origRow;
+                            if (origIdx < nItems) {
+                                lv.slicedItems.push_back((*items)[static_cast<std::size_t>(origIdx)]);
+                                lv.itemMap.push_back(origIdx);
+                            }
+                        }
+                    }
+
+                    PopupState slicePs;
+                    slicePs.items = &lv.slicedItems;
+                    slicePs.anchor = anchor;
+                    slicePs.columns = cols;
+                    slicePs.theme = theme_;
+                    const Rect rawBox = popupPainter->layout(*r_, slicePs, w_, h_, lv.itemRects);
+
+                    int newY = rawBox.y;
+                    const int newH = rawBox.h + 2 * btnH;
+                    if (newY + newH > h_ - 4)
+                        newY = std::max(4, h_ - 4 - newH);
+                    if (newY < 4)
+                        newY = 4;
+
+                    const int dy = (newY - rawBox.y) + btnH;
+                    for (Rect& it : lv.itemRects)
+                        it.y += dy;
+
+                    lv.rect = {rawBox.x, newY, rawBox.w, newH};
+                    lv.upButton = Rect{lv.rect.x + pad, lv.rect.y + pad, lv.rect.w - 2 * pad, btnH};
+                    lv.downButton = Rect{lv.rect.x + pad, lv.rect.bottom() - pad - btnH, lv.rect.w - 2 * pad, btnH};
+
+                    const int trackW = 3;
+                    const int trackX = lv.rect.right() - pad - trackW;
+                    const int trackY = lv.upButton.bottom() + 1;
+                    const int trackH = std::max(1, lv.downButton.y - 1 - trackY);
+                    lv.scrollTrack = Rect{trackX, trackY, trackW, trackH};
+                    const int thumbH = std::max(6, trackH * lv.visibleRows / lv.totalRows);
+                    const int thumbY = trackY + (trackH - thumbH) * lv.scrollRow / std::max(1, maxScroll);
+                    lv.scrollThumb = Rect{trackX, thumbY, trackW, thumbH};
+                }
+
                 if (k > 0) {
                     // the submenu opens to the right of its row, or to the left when there is no room: the layout
                     // clamped it into the view, over the parent
                     const Rect& parent = popup_.levels[k - 1].rect;
                     if (lv.rect.x < anchor.x - 1) {
-                        ps.anchor = Rect{std::max(4, parent.x + 2 - lv.rect.w), anchor.y, 0, 0};
-                        lv.anchor = ps.anchor;
-                        lv.rect = popupPainter->layout(*r_, ps, w_, h_, lv.itemRects);
+                        const int shiftX = std::max(4, parent.x + 2 - lv.rect.w) - lv.rect.x;
+                        lv.rect.x += shiftX;
+                        lv.upButton.x += shiftX;
+                        lv.downButton.x += shiftX;
+                        lv.scrollTrack.x += shiftX;
+                        lv.scrollThumb.x += shiftX;
+                        for (Rect& it : lv.itemRects)
+                            it.x += shiftX;
                     }
-                    // a list that does not fit below its row shifts up beside it (the painters flip a point anchor
-                    // above it, which would hide the row that opened it)
+                    // a list that does not fit below its row shifts up beside it
                     if (anchor.y + lv.rect.h > h_ - 4) {
                         const int dy = std::max(4, h_ - 4 - lv.rect.h) - lv.rect.y;
                         lv.rect.y += dy;
+                        lv.upButton.y += dy;
+                        lv.downButton.y += dy;
+                        lv.scrollTrack.y += dy;
+                        lv.scrollThumb.y += dy;
                         for (Rect& it : lv.itemRects)
                             it.y += dy;
                     }
@@ -426,13 +673,27 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
                     break;
                 const int row = popup_.path[k];
                 if (row < 0 || static_cast<std::size_t>(row) >= items->size() ||
-                    (*items)[static_cast<std::size_t>(row)].children.empty() ||
-                    static_cast<std::size_t>(row) >= popup_.levels[k].itemRects.size()) {
+                    (*items)[static_cast<std::size_t>(row)].children.empty()) {
                     popup_.path.resize(k);
                     break;
                 }
-                const Rect& cell = popup_.levels[k].itemRects[static_cast<std::size_t>(row)];
-                anchor = Rect{popup_.levels[k].rect.right() - 2, cell.y - 3, 0, 0};
+                int cellIdx = -1;
+                const PopupLevel& curLv = popup_.levels[k];
+                if (curLv.itemMap.empty()) {
+                    cellIdx = row;
+                } else {
+                    for (std::size_t m = 0; m < curLv.itemMap.size(); ++m)
+                        if (curLv.itemMap[m] == row) {
+                            cellIdx = static_cast<int>(m);
+                            break;
+                        }
+                }
+                if (cellIdx < 0 || static_cast<std::size_t>(cellIdx) >= curLv.itemRects.size()) {
+                    popup_.path.resize(k);
+                    break;
+                }
+                const Rect& cell = curLv.itemRects[static_cast<std::size_t>(cellIdx)];
+                anchor = Rect{curLv.rect.right() - 2, cell.y - 3, 0, 0};
                 items = &(*items)[static_cast<std::size_t>(row)].children;
             }
             // the innermost list under the pointer takes the hover; a row with a submenu opens it
@@ -446,10 +707,14 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
                 lv.hot = -1;
             if (inner >= 0) {
                 PopupLevel& lv = popup_.levels[static_cast<std::size_t>(inner)];
-                for (std::size_t i = 0; i < lv.itemRects.size() && i < lv.items->size(); ++i)
-                    if (lv.itemRects[i].contains(static_cast<int>(mx_), static_cast<int>(my_)) &&
-                        !(*lv.items)[i].separator && (*lv.items)[i].enabled)
-                        hot = static_cast<int>(i);
+                for (std::size_t i = 0; i < lv.itemRects.size(); ++i) {
+                    const int fullIdx = lv.itemMap.empty() ? static_cast<int>(i) : lv.itemMap[i];
+                    if (lv.itemRects[i].contains(static_cast<int>(mx_), static_cast<int>(my_)) && lv.items &&
+                        static_cast<std::size_t>(fullIdx) < lv.items->size() &&
+                        !(*lv.items)[static_cast<std::size_t>(fullIdx)].separator &&
+                        (*lv.items)[static_cast<std::size_t>(fullIdx)].enabled)
+                        hot = fullIdx;
+                }
                 lv.hot = hot;
             }
             std::vector<int> want = popup_.path;
@@ -516,15 +781,58 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
         for (std::size_t k = 0; k < popup_.levels.size(); ++k) {
             const PopupLevel& lv = popup_.levels[k];
             PopupState ps;
-            ps.items = lv.items;
+            ps.items = lv.itemMap.empty() ? lv.items : &lv.slicedItems;
             ps.anchor = lv.anchor;
-            ps.selected = selectedAt(k);
-            ps.hot = lv.hot;
-            ps.open = k < popup_.path.size() ? popup_.path[k] : -1;
+            const int sel = selectedAt(k);
+            if (sel >= 0 && !lv.itemMap.empty()) {
+                int selSlice = -1;
+                for (std::size_t m = 0; m < lv.itemMap.size(); ++m)
+                    if (lv.itemMap[m] == sel) {
+                        selSlice = static_cast<int>(m);
+                        break;
+                    }
+                ps.selected = selSlice;
+            } else {
+                ps.selected = sel;
+            }
+
+            if (lv.hot >= 0 && !lv.itemMap.empty()) {
+                int hotSlice = -1;
+                for (std::size_t m = 0; m < lv.itemMap.size(); ++m)
+                    if (lv.itemMap[m] == lv.hot) {
+                        hotSlice = static_cast<int>(m);
+                        break;
+                    }
+                ps.hot = hotSlice;
+            } else {
+                ps.hot = lv.hot;
+            }
+
+            const int openRow = k < popup_.path.size() ? popup_.path[k] : -1;
+            if (openRow >= 0 && !lv.itemMap.empty()) {
+                int openSlice = -1;
+                for (std::size_t m = 0; m < lv.itemMap.size(); ++m)
+                    if (lv.itemMap[m] == openRow) {
+                        openSlice = static_cast<int>(m);
+                        break;
+                    }
+                ps.open = openSlice;
+            } else {
+                ps.open = openRow;
+            }
+
             ps.columns = k == 0 ? popup_.columns : 1;
             ps.itemRects = &lv.itemRects;
             ps.theme = theme_;
             popupPainter->paint(*r_, lv.rect, ps);
+
+            if (lv.scrollable) {
+                const bool upHot = lv.upButton.contains(static_cast<int>(mx_), static_cast<int>(my_));
+                const bool downHot = lv.downButton.contains(static_cast<int>(mx_), static_cast<int>(my_));
+                popupPainter->paintScrollButton(*r_, lv.upButton, false, upHot, *theme_);
+                popupPainter->paintScrollButton(*r_, lv.downButton, true, downHot, *theme_);
+                popupPainter->paintScrollMarker(*r_, lv.scrollTrack, lv.scrollThumb, *theme_);
+            }
         }
     }
     if (!tipRect.empty())

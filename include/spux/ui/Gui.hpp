@@ -335,9 +335,16 @@ private:
     };
     struct PopupLevel { // one list of the popup as laid out in the last frame
         const std::vector<PopupItem>* items = nullptr;
+        std::vector<PopupItem> slicedItems;
+        std::vector<int> itemMap; // sliced index -> full item index
         Rect rect, anchor;
         std::vector<Rect> itemRects;
         int hot = -1;
+        bool scrollable = false;
+        int totalRows = 0;
+        int visibleRows = 0;
+        int scrollRow = 0;
+        Rect upButton, downButton, scrollTrack, scrollThumb;
     };
     struct Popup {
         std::uint64_t id = 0;
@@ -350,6 +357,11 @@ private:
         std::vector<int> path;          // the rows whose submenus are open, outermost first
         std::vector<PopupLevel> levels; // the open lists, outermost first
         double leaveSince = -1.0;       // when the pointer left the open submenu's row for one without a submenu
+        std::vector<int> scrollOffset;  // scroll row per level
+        int scrollDragLevel = -1;       // level whose thumb is being dragged
+        float scrollDragStartY = 0.0f;
+        int scrollDragStartRow = 0;
+        double scrollAutoTime = -1.0; // timer for auto-scrolling when hovering/holding up/down
     };
 
     template <class P, class S>

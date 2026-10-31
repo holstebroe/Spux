@@ -691,6 +691,26 @@ void ModernPopup::paint(IRenderer& r, const Rect& b, const PopupState& s) const 
     }
 }
 
+void ModernPopup::paintScrollButton(IRenderer& r, const Rect& bounds, bool down, bool hot, const Theme& theme) const {
+    const ModernConfig& c = cfg();
+    if (hot)
+        r.fillRoundRect(bounds.inset(1), c.shape.itemRadius, withAlpha(theme.colors.accent, 0.22f));
+    const float cx = f(bounds.x) + f(bounds.w) * 0.5f, cy = f(bounds.y) + f(bounds.h) * 0.5f;
+    const Color col = hot ? theme.colors.text : theme.colors.textDim;
+    if (down) {
+        const Point p[3] = {{cx - 3.5f, cy - 1.5f}, {cx, cy + 2.0f}, {cx + 3.5f, cy - 1.5f}};
+        r.drawPolyline(p, 3, col, 1.6f);
+    } else {
+        const Point p[3] = {{cx - 3.5f, cy + 1.5f}, {cx, cy - 2.0f}, {cx + 3.5f, cy + 1.5f}};
+        r.drawPolyline(p, 3, col, 1.6f);
+    }
+}
+
+void ModernPopup::paintScrollMarker(IRenderer& r, const Rect& track, const Rect& thumb, const Theme& theme) const {
+    r.fillRoundRect(track, 1.5f, withAlpha(theme.colors.hairline, 0.4f));
+    r.fillRoundRect(thumb, 1.5f, withAlpha(theme.colors.accent, 0.8f));
+}
+
 namespace {
 // Vertical layout of the tooltip text, from the metrics (28 and 44 px at the default sizes).
 float tooltipBodyY(const Theme::Metrics& m) { return 9.0f + m.valuePx + 0.5f + 6.0f; }

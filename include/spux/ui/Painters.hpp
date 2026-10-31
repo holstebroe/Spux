@@ -345,6 +345,27 @@ public:
     virtual void paint(IRenderer& r, const Rect& bounds, const PopupState& s) const = 0;
     // Room outside the popup's rectangle (its shadow).
     [[nodiscard]] virtual Margin margin() const { return {}; }
+
+    // Optional scroll hooks: up/down rows and position marker when the list exceeds the view height.
+    virtual void paintScrollButton(IRenderer& r, const Rect& bounds, bool down, bool hot, const Theme& theme) const {
+        if (hot)
+            r.fillRect(bounds, withAlpha(theme.colors.accent, 0.25f));
+        const float cx = static_cast<float>(bounds.x) + static_cast<float>(bounds.w) * 0.5f;
+        const float cy = static_cast<float>(bounds.y) + static_cast<float>(bounds.h) * 0.5f;
+        const Color col = hot ? theme.colors.text : theme.colors.textDim;
+        if (down) {
+            const Point p[3] = {{cx - 3.5f, cy - 1.5f}, {cx, cy + 2.0f}, {cx + 3.5f, cy - 1.5f}};
+            r.drawPolyline(p, 3, col, 1.2f);
+        } else {
+            const Point p[3] = {{cx - 3.5f, cy + 1.5f}, {cx, cy - 2.0f}, {cx + 3.5f, cy + 1.5f}};
+            r.drawPolyline(p, 3, col, 1.2f);
+        }
+    }
+
+    virtual void paintScrollMarker(IRenderer& r, const Rect& track, const Rect& thumb, const Theme& theme) const {
+        r.fillRect(track, withAlpha(theme.colors.hairline, 0.5f));
+        r.fillRect(thumb, theme.colors.focus ? theme.colors.focus : theme.colors.accent);
+    }
 };
 
 class TooltipPainter {
