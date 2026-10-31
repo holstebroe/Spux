@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <fstream>
+#include <map>
+#include <mutex>
 #include <vector>
 
 #if defined(__linux__) && !defined(__APPLE__)
@@ -21,6 +24,81 @@
 #endif
 
 namespace spux::inline v1::ui::classic {
+
+// ---- last folder per dialog kind ----------------------------------------------------------------------------
+
+namespace {
+
+std::string configFile() {
+#if defined(_WIN32)
+    const char* base = std::getenv("LOCALAPPDATA");
+    if (!base)
+        base = std::getenv("USERPROFILE");
+    return base ? std::string(base) + "\\spux_dialog_folders.txt" : std::string();
+#else
+    const char* xdg = std::getenv("XDG_CONFIG_HOME");
+    if (xdg && *xdg)
+        return std::string(xdg) + "/spux_dialog_folders.txt";
+    const char* home = std::getenv("HOME");
+    return home ? std::string(home) + "/.config/spux_dialog_folders.txt" : std::string();
+#endif
+}
+
+// Dialog folders are user interface state: they never reach what an instance computes.
+std::map<std::string, std::string>& folders() {
+    static std::map<std::string, std::string> m;
+    static bool loaded = false;
+    if (!loaded) {
+        loaded = true;
+        std::ifstream in(configFile());
+        std::string line;
+        while (in && std::getline(in, line)) {
+            const size_t tab = line.find('\t');
+            if (tab != std::string::npos)
+                m[line.substr(0, tab)] = line.substr(tab + 1);
+        }
+    }
+    return m;
+}
+
+std::mutex& foldersMutex() {
+    static std::mutex m;
+    return m;
+}
+
+} // namespace
+
+std::string lastDirectory(const std::string& key, const std::string& fallback) {
+    std::lock_guard<std::mutex> lock(foldersMutex());
+    auto& m = folders();
+    auto it = m.find(key);
+    if (it != m.end() && !it->second.empty())
+        return it->second;
+    // another kind's folder is a better start than the home folder
+    for (const auto& kv : m)
+        if (!kv.second.empty())
+            return kv.second;
+    return fallback;
+}
+
+void rememberDirectory(const std::string& key, const std::string& chosenPath) {
+    if (chosenPath.empty())
+        return;
+    std::string dir = chosenPath;
+    const size_t cut = dir.find_last_of("/\\");
+    if (cut == std::string::npos)
+        return;
+    dir.resize(cut == 0 ? 1 : cut);
+    std::lock_guard<std::mutex> lock(foldersMutex());
+    auto& m = folders();
+    m[key] = dir;
+    const std::string file = configFile();
+    if (file.empty())
+        return;
+    std::ofstream out(file, std::ios::trunc);
+    for (const auto& kv : m)
+        out << kv.first << '\t' << kv.second << '\n';
+}
 
 std::string homeDirectory() {
 #if defined(_WIN32)
@@ -78,10 +156,18 @@ bool FileDialogProcess::start(const FileDialogOptions& options) {
             args.push_back("--save");
             args.push_back("--confirm-overwrite");
         }
+        if (options.multiple && !options.save) {
+            args.push_back("--multiple");
+            args.push_back("--separator=\n");
+        }
     } else if (onPath("kdialog")) {
         args = {"kdialog",         options.save ? "--getsavefilename" : "--getopenfilename",
                 options.startPath, pattern + "|" + described,
                 "--title",         options.title};
+        if (options.multiple && !options.save) {
+            args.push_back("--multiple");
+            args.push_back("--separate-output");
+        }
     } else {
         return false;
     }
@@ -112,6 +198,7 @@ bool FileDialogProcess::start(const FileDialogOptions& options) {
     fd_ = fds[0];
     output_.clear();
     save_ = options.save;
+    multiple_ = options.multiple && !options.save;
     return true;
 }
 
@@ -132,7 +219,11 @@ bool FileDialogProcess::poll(std::string& path, bool& save) {
     fd_ = -1;
     path.clear();
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-        path = output_.substr(0, output_.find('\n'));
+        path = output_;
+        while (!path.empty() && (path.back() == '\n' || path.back() == '\r'))
+            path.pop_back();
+        if (!multiple_)
+            path = path.substr(0, path.find('\n'));
     }
     save = save_;
     return true;
@@ -160,7 +251,8 @@ static std::wstring widen(const std::string& s) {
     return w;
 }
 
-std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& options) {
+std::vector<std::filesystem::path> runFileDialogs(void* owner, const FileDialogOptions& options) {
+    const bool many = options.multiple && !options.save;
     const std::filesystem::path start = std::filesystem::path(
         std::u8string(reinterpret_cast<const char8_t*>(options.startPath.data()), options.startPath.size()));
     std::wstring dir, name;
@@ -171,7 +263,7 @@ std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& option
         dir = start.parent_path().wstring();
         name = start.filename().wstring();
     }
-    std::vector<wchar_t> file(MAX_PATH, L'\0');
+    std::vector<wchar_t> file(many ? 32768 : MAX_PATH, L'\0');
     if (name.size() < file.size())
         std::copy(name.begin(), name.end(), file.begin());
     const std::wstring ext = widen(options.extension.substr(0, options.extension.find(';')));
@@ -195,9 +287,32 @@ std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& option
     ofn.lpstrInitialDir = dir.empty() ? nullptr : dir.c_str();
     ofn.lpstrDefExt = ext.c_str();
     ofn.lpstrTitle = title.c_str();
-    ofn.Flags = OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | (options.save ? OFN_OVERWRITEPROMPT : OFN_FILEMUSTEXIST);
+    ofn.Flags = OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | (options.save ? OFN_OVERWRITEPROMPT : OFN_FILEMUSTEXIST) |
+                (many ? (OFN_ALLOWMULTISELECT | OFN_EXPLORER) : 0);
     const BOOL ok = options.save ? GetSaveFileNameW(&ofn) : GetOpenFileNameW(&ofn);
-    return ok ? std::filesystem::path(file.data()) : std::filesystem::path();
+    std::vector<std::filesystem::path> out;
+    if (!ok)
+        return out;
+    // multi-select returns "folder\0file1\0file2\0\0"; a single file returns its full path
+    const std::wstring first(file.data());
+    const wchar_t* next = file.data() + first.size() + 1;
+    if (!many || *next == L'\0') {
+        out.emplace_back(first);
+        return out;
+    }
+    while (*next) {
+        const std::wstring item(next);
+        out.emplace_back(std::filesystem::path(first) / item);
+        next += item.size() + 1;
+    }
+    return out;
+}
+
+std::filesystem::path runFileDialog(void* owner, const FileDialogOptions& options) {
+    FileDialogOptions single = options;
+    single.multiple = false;
+    const auto files = runFileDialogs(owner, single);
+    return files.empty() ? std::filesystem::path() : files.front();
 }
 
 #endif

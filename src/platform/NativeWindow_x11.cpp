@@ -1,8 +1,9 @@
 // X11 child window. Own Display connection per window,
 // so several plugin instances in one host do not interfere; every Xlib call is made under a mutex.
-// TODO: dropped files (WindowOptions::acceptFiles) need the XDND protocol: XdndAware on the window, and
-// answers to XdndEnter, XdndPosition and XdndDrop with a selection request for text/uri-list.
+// Dropped files (WindowOptions::acceptFiles) use the XDND protocol: XdndAware on the window, a status reply to
+// XdndPosition, and on XdndDrop a selection request for text/uri-list, answered with XdndFinished.
 #if defined(SPUX_HAS_X11)
+#include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
@@ -14,11 +15,13 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <mutex>
 #include <thread>
 #include <vector>
 
 #include "GlxVisual.hpp"
+#include "UriList.hpp"
 #include "spux/platform/NativeWindow.hpp"
 
 namespace spux::inline v1::platform {
@@ -66,6 +69,11 @@ public:
         XSelectInput(d, w,
                      ExposureMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | LeaveWindowMask |
                          EnterWindowMask | (options.keyboard ? KeyPressMask : 0));
+        if (options.acceptFiles) {
+            const Atom version = 5; // the XDND protocol version we speak
+            XChangeProperty(d, w, XInternAtom(d, "XdndAware", False), XA_ATOM, 32, PropModeReplace,
+                            reinterpret_cast<const unsigned char*>(&version), 1);
+        }
         XMapWindow(d, w);
         XFlush(d);
         {
@@ -165,6 +173,29 @@ private:
                 fd = ConnectionNumber(display_);
             }
             std::vector<Ev> batch;
+            std::vector<std::filesystem::path> dropped;
+            Display* const d = display_;
+            const Atom xdndPosition = XInternAtom(d, "XdndPosition", False),
+                       xdndDrop = XInternAtom(d, "XdndDrop", False), xdndStatus = XInternAtom(d, "XdndStatus", False),
+                       xdndFinished = XInternAtom(d, "XdndFinished", False),
+                       xdndSelection = XInternAtom(d, "XdndSelection", False),
+                       xdndCopy = XInternAtom(d, "XdndActionCopy", False),
+                       uriList = XInternAtom(d, "text/uri-list", False), dropProp = XInternAtom(d, "SPUX_DROP", False);
+            Window source = 0;                                         // the window a drop comes from
+            auto answer = [&](Atom type, long accepted, long action) { // to the source, under the lock
+                XEvent m{};
+                m.xclient.type = ClientMessage;
+                m.xclient.display = d;
+                m.xclient.window = source;
+                m.xclient.message_type = type;
+                m.xclient.format = 32;
+                m.xclient.data.l[0] = static_cast<long>(window_);
+                m.xclient.data.l[1] = accepted;
+                m.xclient.data.l[2] = type == xdndFinished ? action : 0;
+                m.xclient.data.l[4] = type == xdndStatus ? action : 0;
+                XSendEvent(d, source, False, NoEventMask, &m);
+                XFlush(d);
+            };
             while (running_) {
                 pollfd pfd{fd, POLLIN, 0};
                 const auto sinceTick =
@@ -172,6 +203,7 @@ private:
                         .count();
                 poll(&pfd, 1, static_cast<int>(std::clamp<long long>(tickMs_.load() - sinceTick, 1, 16)));
                 batch.clear();
+                dropped.clear();
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
                     while (XPending(display_) > 0) {
@@ -201,12 +233,42 @@ private:
                                 batch.push_back(ev);
                             break;
                         }
+                        case ClientMessage:
+                            if (static_cast<Atom>(e.xclient.message_type) == xdndPosition) {
+                                source = static_cast<Window>(e.xclient.data.l[0]);
+                                answer(xdndStatus, 1, static_cast<long>(xdndCopy));
+                            } else if (static_cast<Atom>(e.xclient.message_type) == xdndDrop) {
+                                source = static_cast<Window>(e.xclient.data.l[0]);
+                                XConvertSelection(d, xdndSelection, uriList, dropProp, window_,
+                                                  static_cast<Time>(e.xclient.data.l[2]));
+                            }
+                            break;
+                        case SelectionNotify:
+                            if (e.xselection.property == dropProp) {
+                                Atom type;
+                                int format;
+                                unsigned long count = 0, after = 0;
+                                unsigned char* data = nullptr;
+                                std::string list;
+                                if (XGetWindowProperty(d, window_, dropProp, 0, 1 << 20, True, AnyPropertyType, &type,
+                                                       &format, &count, &after, &data) == Success &&
+                                    data) {
+                                    list.assign(reinterpret_cast<const char*>(data), count);
+                                    XFree(data);
+                                }
+                                dropped = uriListPaths(list);
+                                answer(xdndFinished, dropped.empty() ? 0 : 1,
+                                       dropped.empty() ? 0 : static_cast<long>(xdndCopy));
+                            }
+                            break;
                         default:
                             break;
                         }
                     }
                 }
-                WindowEvents* ev = events_; // callbacks run without the lock so they may present()
+                WindowEvents* ev = events_;
+                if (ev && !dropped.empty())
+                    ev->onFilesDropped(dropped); // callbacks run without the lock so they may present()
                 for (const Ev& e : batch) {
                     if (!ev)
                         break;

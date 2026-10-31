@@ -5,6 +5,12 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-10-31: file drops on X11 (XDND: `WindowOptions::acceptFiles` now works on Linux as on Windows), several files per open
+  dialog (`FileDialogOptions::multiple`, `runFileDialogs` on Windows; `FileDialogProcess::poll` returns one path per line), and
+  the last folder per dialog kind (`FileDialogOptions::key`, `lastDirectory`, `rememberDirectory`; kept in
+  `spux_dialog_folders.txt` in the config folder). Additions: the single-file dialog and windows without `acceptFiles` are
+  unchanged.
+
 - 2026-10-26: a knob dragged with Ctrl held snaps to the nearest of `KnobOptions::snap` (plain values; empty: minimum,
   default and maximum). `WindowEvents::onCtrl` reports the Ctrl key before each mouse press and move (Win32, X11).
   Additions: a drag without Ctrl is unchanged.

@@ -285,6 +285,11 @@ copies for spux's, its 16-tap FIR oversampler for the half-band `Oversampler`; t
 
 ## Provenance and switch notes
 
+- **File dialog multi-select and last folder, X11 file drop** (`ui/classic/FileDialog.hpp`, `platform/NativeWindow_x11.cpp`): from Rodee's
+  copy of the dialog (`multiple`, `key`, `lastDirectory`, `rememberDirectory`; its Windows dialog returned one path per line, here
+  `runFileDialogs` returns a vector) and its X11 window (XDND). What a plugin meets when it switches: the config file is
+  `spux_dialog_folders.txt` and keys are shared by every plugin of the user, so a plugin prefixes its keys with its own name.
+
 Library comments describe the library only; where code came from, and what a plugin meets when it switches
 from its own copy, is kept here.
 
