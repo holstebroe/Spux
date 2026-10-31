@@ -265,6 +265,36 @@ void RetroKnob::paint(IRenderer& rr, const Rect& b, const KnobState& s) const {
     r->popClip();
 }
 
+void RetroPopup::paintScrollButton(IRenderer& rr, const Rect& bounds, bool down, bool hot,
+                                   const Theme& /*theme*/) const {
+    PixelRenderer* r = asPixel(rr);
+    if (!r)
+        return;
+    const RetroConfig& c = cfg();
+    const RetroConfig::Popup& p = c.popup;
+    if (hot)
+        r->fillRect(bounds, p.hot);
+    const int cx = bounds.x + bounds.w / 2, cy = bounds.y + bounds.h / 2;
+    const Color ink = hot ? p.hotInk : p.ink;
+    if (down) {
+        triangleDown(*r, cx, cy - 1, 5, ink);
+    } else {
+        // triangle pointing up
+        for (int i = 0; 5 - 2 * i > 0; ++i)
+            r->hLine(cx - 2 + i, cy + 1 - i, 5 - 2 * i, ink);
+    }
+}
+
+void RetroPopup::paintScrollMarker(IRenderer& rr, const Rect& track, const Rect& thumb, const Theme& /*theme*/) const {
+    PixelRenderer* r = asPixel(rr);
+    if (!r)
+        return;
+    const RetroConfig& c = cfg();
+    const RetroConfig::Popup& p = c.popup;
+    r->fillRect(track, p.edge);
+    r->fillRect(thumb, p.hotInk);
+}
+
 // --- slider --------------------------------------------------------------------------------------------------------
 
 namespace {

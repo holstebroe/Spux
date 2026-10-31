@@ -341,6 +341,34 @@ void ClassicKnob::paint(IRenderer& rr, const Rect& b, const KnobState& s) const 
     r->popClip();
 }
 
+void ClassicPopup::paintScrollButton(IRenderer& rr, const Rect& bounds, bool down, bool hot, const Theme& theme) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    const Argb bg = hot ? withAlpha(theme.colors.accent, 0.35f) : 0u;
+    if (bg)
+        r->fillRoundRect(bounds.inset(1), 2.f, bg);
+    Graphics g = r->graphics();
+    const float cx = static_cast<float>(bounds.x) + static_cast<float>(bounds.w) * 0.5f;
+    const float cy = static_cast<float>(bounds.y) + static_cast<float>(bounds.h) * 0.5f;
+    const Argb ink = hot ? theme.colors.text : theme.colors.textDim;
+    if (down) {
+        drawLineAA(g, cx - 3.5f, cy - 1.5f, cx, cy + 2.f, 1.4f, ink);
+        drawLineAA(g, cx, cy + 2.f, cx + 3.5f, cy - 1.5f, 1.4f, ink);
+    } else {
+        drawLineAA(g, cx - 3.5f, cy + 1.5f, cx, cy - 2.f, 1.4f, ink);
+        drawLineAA(g, cx, cy - 2.f, cx + 3.5f, cy + 1.5f, 1.4f, ink);
+    }
+}
+
+void ClassicPopup::paintScrollMarker(IRenderer& rr, const Rect& track, const Rect& thumb, const Theme& theme) const {
+    ShadedRenderer* r = asShaded(rr);
+    if (!r)
+        return;
+    r->fillRect(track, withAlpha(theme.colors.hairline, 0.3f));
+    r->fillRoundRect(thumb, 1.5f, withAlpha(theme.colors.textDim, 0.7f));
+}
+
 // --- slider ----------------------------------------------------------------------------------------------
 
 namespace {

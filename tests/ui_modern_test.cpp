@@ -491,6 +491,56 @@ TEST_CASE("UTF-8 decoding: one '?' per malformed sequence, four-byte forms are w
     CHECK(decode("\xF4\x90\x80\x80") == std::vector<std::uint32_t>{'?'}); // beyond U+10FFFF
 }
 
+TEST_CASE("scrolling popup with 200 rows in ModernStyle: fits view height, wheel and keyboard scroll, pick works") {
+    Host host;
+    ModernStyle style;
+    MGui gui(host, style);
+    SoftRenderer r(400, 260);
+    auto frame = [&] {
+        gui.begin(r, 0.0, 0.016f, 400, 260);
+        gui.end();
+    };
+
+    std::vector<PopupItem> items;
+    items.reserve(200);
+    for (int i = 0; i < 200; ++i)
+        items.push_back({"Row " + std::to_string(i)});
+
+    int chosen = -1;
+    gui.begin(r, 0.0, 0.016f, 400, 260);
+    gui.popup("long", {20, 20, 100, 20}, items, 10, [&](int i) { chosen = i; });
+    gui.end();
+    REQUIRE(gui.popupOpen());
+
+    // Wheel down
+    gui.onWheel(50.0f, 50.0f, -5.0f, false);
+    frame();
+    REQUIRE(gui.popupOpen());
+
+    // Home key moves to top
+    KeyEvent homeK;
+    homeK.key = KeyEvent::Key::Home;
+    gui.onKey(homeK);
+    frame();
+    REQUIRE(gui.popupOpen());
+
+    // End key moves to bottom
+    KeyEvent endK;
+    endK.key = KeyEvent::Key::End;
+    gui.onKey(endK);
+    frame();
+    REQUIRE(gui.popupOpen());
+
+    // Click near bottom of popup (y ~ 230)
+    gui.onMouseDown(50.0f, 230.0f, MouseButton::Left, false);
+    frame();
+    gui.onMouseUp(50.0f, 230.0f, MouseButton::Left);
+    frame();
+
+    CHECK_FALSE(gui.popupOpen());
+    CHECK(chosen >= 180);
+}
+
 TEST_CASE("the knob's hit area and depth handle follow its geometry") {
     ModernStyle style;
     const Rect b{40, 30, 100, 130};

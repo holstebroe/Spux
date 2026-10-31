@@ -1007,6 +1007,56 @@ TEST_CASE("tabs: a press selects and the page keeps the state; the readout shows
     CHECK(differ > 100); // the text in the readout changed
 }
 
+TEST_CASE("scrolling popup with 200 rows in ClassicStyle: fits view height, wheel and keyboard scroll, pick works") {
+    Host host;
+    ClassicStyle style;
+    Gui<ClassicStyle> gui(host, style);
+    ShadedRenderer r(400, 260, 2);
+    auto frame = [&] {
+        gui.begin(r, 0.0, 0.016f, 400, 260);
+        gui.end();
+    };
+
+    std::vector<PopupItem> items;
+    items.reserve(200);
+    for (int i = 0; i < 200; ++i)
+        items.push_back({"Row " + std::to_string(i)});
+
+    int chosen = -1;
+    gui.begin(r, 0.0, 0.016f, 400, 260);
+    gui.popup("long", {20, 20, 100, 20}, items, 10, [&](int i) { chosen = i; });
+    gui.end();
+    REQUIRE(gui.popupOpen());
+
+    // Wheel down
+    gui.onWheel(50.0f, 50.0f, -5.0f, false);
+    frame();
+    REQUIRE(gui.popupOpen());
+
+    // Home key moves to top
+    KeyEvent homeK;
+    homeK.key = KeyEvent::Key::Home;
+    gui.onKey(homeK);
+    frame();
+    REQUIRE(gui.popupOpen());
+
+    // End key moves to bottom
+    KeyEvent endK;
+    endK.key = KeyEvent::Key::End;
+    gui.onKey(endK);
+    frame();
+    REQUIRE(gui.popupOpen());
+
+    // Click on item near bottom of view (popup fits within 260 view height, y ~ 230)
+    gui.onMouseDown(50.0f, 230.0f, MouseButton::Left, false);
+    frame();
+    gui.onMouseUp(50.0f, 230.0f, MouseButton::Left);
+    frame();
+
+    CHECK_FALSE(gui.popupOpen());
+    CHECK(chosen >= 180);
+}
+
 TEST_CASE("dropdown: a press opens the list; with drag, a drag steps the value and a click still opens") {
     Host host;
     ClassicStyle style;

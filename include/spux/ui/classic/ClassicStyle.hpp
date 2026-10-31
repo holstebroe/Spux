@@ -148,6 +148,8 @@ public:
     using PainterBase::PainterBase;
     Rect layout(IRenderer& r, const PopupState& s, int viewW, int viewH, std::vector<Rect>& itemRects) const override;
     void paint(IRenderer& r, const Rect& bounds, const PopupState& s) const override;
+    void paintScrollButton(IRenderer& r, const Rect& bounds, bool down, bool hot, const Theme& theme) const override;
+    void paintScrollMarker(IRenderer& r, const Rect& track, const Rect& thumb, const Theme& theme) const override;
     [[nodiscard]] Margin margin() const override { return {4, 4, 8, 9}; }
 };
 

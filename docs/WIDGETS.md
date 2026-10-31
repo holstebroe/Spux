@@ -113,7 +113,7 @@ every flavor shows them. A plugin makes its own icon with one function and passe
 | XY pad | Not started. |
 | Envelope and filter-response editors | Not started; generic ones may come after the second plugin needs them (Plumeflow's stay in the plugin). |
 | Preset browser | An optional target is planned (`spux_presetbrowser`, a placeholder); the preset bar covers the header. |
-| Scroll area / long lists | Not started (popups scroll by columns only). |
+| Scroll area / long lists | Built for popups in all three flavors: lists taller than the view height scroll by windowing rows, with mouse wheel, keyboard, up/down buttons and scroll marker. |
 | Cascading submenus in the popup | Built in all three flavors (U9): a chevron marks the row, the list opens beside it (to the left at the edge of the view); no keyboard navigation of submenus yet. |
 | Retro in whole-step scales (U11) | Not built: the editor draws a CPU flavor at its logical size, so a Retro plugin that wants 2x or 3x scales the blitted frame itself. |
 | Retro spectrum, traces and curve editor | Not started (Modern only). |
