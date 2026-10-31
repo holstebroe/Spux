@@ -39,7 +39,6 @@ struct WindowOptions {
     // no use for keys sets this to false, so the host keeps its shortcuts (transport, undo).
     bool keyboard = true;
     // The window takes files dropped on it from the file manager and reports them through onFilesDropped.
-    // Win32 only for now (X11 needs the XDND protocol: TODO).
     bool acceptFiles = false;
 };
 

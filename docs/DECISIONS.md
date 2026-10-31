@@ -286,3 +286,6 @@ Status: **Decided** (by the author), **Proposed** (recommended, not yet confirme
   development build reads and writes the folder (`spux_presets`, `tools/bake_presets.py`, `cmake/SpuxPresets.cmake`). The generated
   table stays in the plugin's repository so a plugin builds without Python. A preset is one text; the plugin keeps its format in it
   (`TextPreset` key=value for parameter presets). The library is an object the plugin owns, not a registry.
+- 2026-10-31: file dialogs and the X11 window gain what a plugin needed that the shared copy lacked: several files per open dialog,
+  a remembered folder per dialog kind, and file drops through XDND. All are additions behind options; the dialog's folder file is
+  user interface state and never reaches what an instance computes (rule 8).

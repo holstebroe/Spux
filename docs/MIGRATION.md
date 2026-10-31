@@ -285,6 +285,17 @@ copies for spux's, its 16-tap FIR oversampler for the half-band `Oversampler`; t
 
 ## Provenance and switch notes
 
+- **Rodee's switch** (params, state, CLAP glue, window and Classic widgets): `.def` keys with dots (`master.volume`) work with
+  `SPUX_PARAM_INFO` (the key is stringified) but not with `SPUX_PARAM_ENUM` (token pasting), so such a plugin keeps its own id
+  constants. A key such as `macro.1` is a valid token sequence. Stepped parameters (`Int`, `Bool`) are rounded by `ParamStore::setPlain`
+  and by `Gui::setPlain`. The smoke host (`spux_clap_smoke`) checks that value text parses back: a plugin with its own value text
+  (tune in Hz, a patch label) implements `paramsTextToValue` for it. A plugin whose pages edit data other than parameters keeps
+  them as custom widgets on `Gui::interact` and the renderer, drawing text with `IRenderer::drawTextPx`.
+- **File dialog multi-select and last folder, X11 file drop** (`ui/classic/FileDialog.hpp`, `platform/NativeWindow_x11.cpp`): from Rodee's
+  copy of the dialog (`multiple`, `key`, `lastDirectory`, `rememberDirectory`; its Windows dialog returned one path per line, here
+  `runFileDialogs` returns a vector) and its X11 window (XDND). What a plugin meets when it switches: the config file is
+  `spux_dialog_folders.txt` and keys are shared by every plugin of the user, so a plugin prefixes its keys with its own name.
+
 Library comments describe the library only; where code came from, and what a plugin meets when it switches
 from its own copy, is kept here.
 

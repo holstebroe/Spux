@@ -6,13 +6,17 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
+#include <mutex>
 #include <thread>
 #include <vector>
 
+#include "UriList.hpp"
 #include "doctest.h"
 #include "spux/platform/NativeWindow.hpp"
 
 #if defined(SPUX_HAS_X11)
+#include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #endif
@@ -38,6 +42,12 @@ struct Sink : WindowEvents {
     void onMouseMove(int, int, bool, bool) override { ++moves; }
     void onTick() override { ++ticks; }
     void onExpose() override { ++exposes; }
+    void onFilesDropped(const std::vector<std::filesystem::path>& f) override {
+        std::lock_guard<std::mutex> lock(mutex);
+        files = f;
+    }
+    std::mutex mutex;
+    std::vector<std::filesystem::path> files;
 };
 // Under heavy parallel load the X server can refuse a connection for a moment: retry a few times.
 [[maybe_unused]] bool openRetry(NativeWindow& w, int width, int height, WindowEvents* ev) {
@@ -160,6 +170,111 @@ TEST_CASE("two windows at once do not interfere") {
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
     CHECK(b.ticks > tb); // the second window keeps running after the first closed
     w2->close();
+}
+TEST_CASE("uri lists become local paths") {
+    const auto paths = uriListPaths("# a comment\r\nfile:///music/a%20b.syx\r\nhttp://x/y\r\nfile://host/c.mid\r\n");
+    REQUIRE(paths.size() == 2);
+    CHECK(paths[0] == "/music/a b.syx");
+    CHECK(paths[1] == "/c.mid");
+    CHECK(uriListPaths("").empty());
+}
+
+// A second X client plays the drag source of the XDND protocol: it answers the target's XdndPosition with
+// a status, owns the XdndSelection and serves text/uri-list when the target asks for it after XdndDrop.
+TEST_CASE("X11 window: a file drop (XDND) reaches onFilesDropped") {
+    if (!std::getenv("DISPLAY")) {
+        std::printf("platform_window_test: no DISPLAY, skipped\n");
+        return;
+    }
+    Sink sink;
+    auto win = NativeWindow::create();
+    WindowOptions options;
+    options.acceptFiles = true;
+    REQUIRE(win->open({WindowApi::X11, 0}, 200, 100, &sink, options));
+    const Window target = static_cast<Window>(win->nativeHandle().handle);
+
+    Display* d = XOpenDisplay(nullptr);
+    REQUIRE(d);
+    const Atom aware = XInternAtom(d, "XdndAware", False), position = XInternAtom(d, "XdndPosition", False),
+               drop = XInternAtom(d, "XdndDrop", False), status = XInternAtom(d, "XdndStatus", False),
+               finished = XInternAtom(d, "XdndFinished", False), selection = XInternAtom(d, "XdndSelection", False),
+               uriList = XInternAtom(d, "text/uri-list", False);
+    // the target announces itself as a drop target
+    Atom type;
+    int format;
+    unsigned long count = 0, after = 0;
+    unsigned char* data = nullptr;
+    REQUIRE(XGetWindowProperty(d, target, aware, 0, 1, False, XA_ATOM, &type, &format, &count, &after, &data) ==
+            Success);
+    REQUIRE(data != nullptr);
+    CHECK(*reinterpret_cast<Atom*>(data) == 5);
+    XFree(data);
+
+    const Window source = XCreateSimpleWindow(d, DefaultRootWindow(d), 0, 0, 10, 10, 0, 0, 0);
+    XSetSelectionOwner(d, selection, source, CurrentTime);
+    auto send = [&](Atom message, long l1, long l2) {
+        XEvent m{};
+        m.xclient.type = ClientMessage;
+        m.xclient.window = target;
+        m.xclient.message_type = message;
+        m.xclient.format = 32;
+        m.xclient.data.l[0] = static_cast<long>(source);
+        m.xclient.data.l[1] = l1;
+        m.xclient.data.l[2] = l2;
+        XSendEvent(d, target, False, NoEventMask, &m);
+        XFlush(d);
+    };
+    send(position, 0, (10L << 16) | 10L);
+    send(drop, 0, CurrentTime);
+
+    bool gotStatus = false, gotFinished = false;
+    long finishedAccepted = -1;
+    const std::string list = "file:///tmp/a%20b.syx\r\nfile:///tmp/c.mid\r\n";
+    for (int i = 0; i < 200 && !gotFinished; ++i) {
+        while (XPending(d) > 0) {
+            XEvent e;
+            XNextEvent(d, &e);
+            if (e.type == ClientMessage && static_cast<Atom>(e.xclient.message_type) == status)
+                gotStatus = e.xclient.data.l[1] & 1;
+            else if (e.type == ClientMessage && static_cast<Atom>(e.xclient.message_type) == finished) {
+                gotFinished = true;
+                finishedAccepted = e.xclient.data.l[1];
+            } else if (e.type == SelectionRequest) {
+                const XSelectionRequestEvent& r = e.xselectionrequest;
+                CHECK(r.target == uriList); // the target asks for text/uri-list
+                XChangeProperty(d, r.requestor, r.property, r.target, 8, PropModeReplace,
+                                reinterpret_cast<const unsigned char*>(list.data()), static_cast<int>(list.size()));
+                XEvent n{};
+                n.xselection.type = SelectionNotify;
+                n.xselection.requestor = r.requestor;
+                n.xselection.selection = r.selection;
+                n.xselection.target = r.target;
+                n.xselection.property = r.property;
+                n.xselection.time = r.time;
+                XSendEvent(d, r.requestor, False, NoEventMask, &n);
+                XFlush(d);
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(gotStatus);
+    CHECK(gotFinished);
+    CHECK(finishedAccepted == 1);
+    for (int i = 0; i < 100; ++i) {
+        {
+            std::lock_guard<std::mutex> lock(sink.mutex);
+            if (!sink.files.empty())
+                break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    std::lock_guard<std::mutex> lock(sink.mutex);
+    REQUIRE(sink.files.size() == 2);
+    CHECK(sink.files[0] == "/tmp/a b.syx");
+    CHECK(sink.files[1] == "/tmp/c.mid");
+    XDestroyWindow(d, source);
+    XCloseDisplay(d);
+    win->close();
 }
 #else
 TEST_CASE("native window glue is only tested on Linux here") { CHECK(true); }
