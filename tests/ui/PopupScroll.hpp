@@ -40,9 +40,7 @@ inline void checkLongList(GuiCore& gui, const PopupFrame& frame, int viewW, int 
     const Rect anchor{20, 8, 90, 14};
     auto open = [&] {
         picked = -1;
-        frame([&](GuiCore& g) {
-            g.popup("long", anchor, longList(kRows), kSelected, [&](int i) { picked = i; });
-        });
+        frame([&](GuiCore& g) { g.popup("long", anchor, longList(kRows), kSelected, [&](int i) { picked = i; }); });
         frame({});
     };
     auto pointAt = [&](float x, float y) {
