@@ -137,6 +137,34 @@ TEST_CASE("shaded renderer: text uses the atlas fonts and matches its metrics") 
     CHECK(r.textWidthPx("MM", 12.0f, FontWeight::Bold) != r.textWidthPx("MM", 12.0f));
 }
 
+TEST_CASE("shaded renderer: lower case is drawn as capitals until the renderer is set to mixed case") {
+    ShadedRenderer r(64, 24, 2);
+    CHECK(r.textWidthPx("agi", 16.0f) == doctest::Approx(r.textWidthPx("AGI", 16.0f)));
+    r.setMixedCase(true);
+    CHECK(r.mixedCase());
+    CHECK(r.textWidthPx("agi", 16.0f) != doctest::Approx(r.textWidthPx("AGI", 16.0f)));
+    CHECK(r.textWidthPx("i", 16.0f) < r.textWidthPx("I", 16.0f) + 1.0f);
+    for (FontWeight w : {FontWeight::Regular, FontWeight::Bold}) { // every printable character has a glyph of its own
+        for (char ch = 33; ch < 127; ++ch) {
+            const char s[2] = {ch, 0};
+            CHECK(r.textWidthPx(s, 16.0f, w) > 0.0f);
+        }
+    }
+    // a descender reaches below the baseline: ink in the last rows of the text box only with 'g'
+    auto lowRows = [&](const char* text) {
+        r.clear(rgb(0, 0, 0));
+        r.drawTextPx(text, 4.0f, 4.0f, rgb(255, 255, 255), 16.0f);
+        const auto px = r.frame();
+        int ink = 0;
+        for (int y = 17; y < 23; ++y)
+            for (int x = 0; x < 64; ++x)
+                ink += (at(px, 64, x, y) & 0xFF) > 40;
+        return ink;
+    };
+    CHECK(lowRows("g") > 0);
+    CHECK(lowRows("G") == 0);
+}
+
 TEST_CASE("shaded renderer: the layers behave as the editor expects") {
     ShadedRenderer r(50, 50, 2);
     REQUIRE(r.layers() != nullptr);

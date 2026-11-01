@@ -75,9 +75,13 @@ public:
 
     // Printed lettering: capitals `cap` logical pixels tall, the left edge at x or centered on x; `wear`
     // (0..1) makes the ink patchy like old silk-screen print.
-    void ink(const AtlasFont& font, const char* text, float x, float capTop, float cap, Argb c, float wear = 0.f);
+    void ink(const AtlasFont& font, const char* text, float x, float capTop, float cap, Argb c, float wear = 0.f,
+             bool mixedCase = false);
     void inkCentered(const AtlasFont& font, const char* text, float centerX, float capTop, float cap, Argb c,
                      float wear = 0.f);
+    // Text from drawText / drawTextPx keeps its lower case instead of drawing capitals (off by default).
+    void setMixedCase(bool on) { mixedCase_ = on; }
+    [[nodiscard]] bool mixedCase() const { return mixedCase_; }
     [[nodiscard]] static float inkWidth(const AtlasFont& font, const char* text, float cap) {
         return classic::textWidth(font, text, cap);
     }
@@ -90,6 +94,7 @@ public:
     void brushedPanel(const Rect& r, Color light, Color dark, const BrushedSteel& steel);
 
 private:
+    bool mixedCase_ = false;
     std::vector<Rect> clips_;
     CpuLayers layers_;
     // the cached panel texture: what it is (worn or brushed), size in logical pixels, supersampling

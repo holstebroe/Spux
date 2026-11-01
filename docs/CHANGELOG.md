@@ -5,6 +5,11 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-11-01: lower case and the characters between Z and a in the Classic label and display fonts (ASCII 91 to 126; `tools/extend_gui_fonts.py`
+  adds them to the atlas without touching the existing glyphs). `ShadedRenderer::setMixedCase(true)` draws `drawText` / `drawTextPx` lower case with
+  its own glyphs; off by default, so lower case still draws as capitals and no existing output changes. `classic::textWidth` and `drawText` take
+  an optional `mixedCase` argument.
+
 - 2026-11-01: popup lists taller than the view scroll (all flavors). `GuiCore` shows a window of the rows: the wheel scrolls the
   list under the pointer, Up/Down/Home/End move through the list that has the keyboard, a row at each end scrolls while the pointer
   rests on it, a thin marker shows the position, and the current choice is in view on open. The painters get the sliced rows, so

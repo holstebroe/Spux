@@ -103,20 +103,20 @@ void sdRoundRectDir(float x, float y, float hx, float hy, float r, float& ux, fl
 
 // --- Lettering ---------------------------------------------------------------
 
-static const AtlasGlyph& glyphFor(const AtlasFont& font, char c) {
-    if (c >= 'a' && c <= 'z')
+static const AtlasGlyph& glyphFor(const AtlasFont& font, char c, bool mixedCase) {
+    if (!mixedCase && c >= 'a' && c <= 'z')
         c = static_cast<char>(c - 'a' + 'A');
     if (c < font.first || c > font.last)
         c = ' ';
     return font.glyphs[c - font.first];
 }
 
-float textWidth(const AtlasFont& font, const char* text, float capHeight) {
+float textWidth(const AtlasFont& font, const char* text, float capHeight, bool mixedCase) {
     if (!text)
         return 0.f;
     float w = 0.f;
     for (const char* p = text; *p; ++p)
-        w += glyphFor(font, *p).advance16 / 16.f;
+        w += glyphFor(font, *p, mixedCase).advance16 / 16.f;
     return w * capHeight / font.capHeight;
 }
 
@@ -196,7 +196,7 @@ const GlyphSet& scaledGlyphs(const AtlasFont& font, float k) {
 } // namespace
 
 void drawText(Graphics& g, const AtlasFont& font, const char* text, float x, float capTop, float capHeight,
-              uint32_t argb, float wear) {
+              uint32_t argb, float wear, bool mixedCase) {
     if (!text)
         return;
     const int s = g.getScale();
@@ -208,7 +208,7 @@ void drawText(Graphics& g, const AtlasFont& font, const char* text, float x, flo
     float penX = std::round(x * s);
     const float penY = std::round(capTop * s - font.capTop * k);
     for (const char* p = text; *p; ++p) {
-        const AtlasGlyph& gl = glyphFor(font, *p);
+        const AtlasGlyph& gl = glyphFor(font, *p, mixedCase);
         const char ch = static_cast<char>(&gl - font.glyphs + font.first);
         if (native) {
             const int x0 = static_cast<int>(penX) + gl.dx, y0 = static_cast<int>(penY) + gl.dy;
