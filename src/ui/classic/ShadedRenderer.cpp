@@ -199,8 +199,8 @@ void ShadedRenderer::drawShadow(const Rect& r, float radius, float spread, Argb 
 
 // --- text ---------------------------------------------------------------------------------------------------
 
-void ShadedRenderer::ink(const AtlasFont& font, const char* text, float x, float capTop, float cap, Argb c,
-                         float wear, bool mixedCase) {
+void ShadedRenderer::ink(const AtlasFont& font, const char* text, float x, float capTop, float cap, Argb c, float wear,
+                         bool mixedCase) {
     Graphics g = graphics();
     classic::drawText(g, font, text, x, capTop, cap, c, wear, mixedCase);
 }
@@ -211,11 +211,13 @@ void ShadedRenderer::inkCentered(const AtlasFont& font, const char* text, float 
 }
 
 void ShadedRenderer::drawText(const char* text, int x, int y, Argb c, int scale) {
-    ink(kLabelFont, text, static_cast<float>(x), static_cast<float>(y), kBitmapCap * static_cast<float>(scale), c, 0.f, mixedCase_);
+    ink(kLabelFont, text, static_cast<float>(x), static_cast<float>(y), kBitmapCap * static_cast<float>(scale), c, 0.f,
+        mixedCase_);
 }
 
 int ShadedRenderer::textWidth(const char* text, int scale) const {
-    return static_cast<int>(std::ceil(classic::textWidth(kLabelFont, text, kBitmapCap * static_cast<float>(scale), mixedCase_)));
+    return static_cast<int>(
+        std::ceil(classic::textWidth(kLabelFont, text, kBitmapCap * static_cast<float>(scale), mixedCase_)));
 }
 
 int ShadedRenderer::textHeight(int scale) const { return static_cast<int>(kBitmapCap) * scale; }

@@ -144,7 +144,7 @@ TEST_CASE("shaded renderer: lower case is drawn as capitals until the renderer i
     CHECK(r.mixedCase());
     CHECK(r.textWidthPx("agi", 16.0f) != doctest::Approx(r.textWidthPx("AGI", 16.0f)));
     CHECK(r.textWidthPx("i", 16.0f) < r.textWidthPx("I", 16.0f) + 1.0f);
-    for (FontWeight w : {FontWeight::Regular, FontWeight::Bold}) {   // every printable character has a glyph of its own
+    for (FontWeight w : {FontWeight::Regular, FontWeight::Bold}) { // every printable character has a glyph of its own
         for (char ch = 33; ch < 127; ++ch) {
             const char s[2] = {ch, 0};
             CHECK(r.textWidthPx(s, 16.0f, w) > 0.0f);
@@ -157,7 +157,8 @@ TEST_CASE("shaded renderer: lower case is drawn as capitals until the renderer i
         const auto px = r.frame();
         int ink = 0;
         for (int y = 17; y < 23; ++y)
-            for (int x = 0; x < 64; ++x) ink += (at(px, 64, x, y) & 0xFF) > 40;
+            for (int x = 0; x < 64; ++x)
+                ink += (at(px, 64, x, y) & 0xFF) > 40;
         return ink;
     };
     CHECK(lowRows("g") > 0);
