@@ -699,6 +699,15 @@ int tooltipHeight(const Theme::Metrics& m, bool body) {
 }
 } // namespace
 
+void ModernPopup::paintScrollMarker(IRenderer& r, const Rect& track, float start, float extent,
+                                    const PopupState& s) const {
+    const Theme& t = *s.theme;
+    const int y = track.y + static_cast<int>(start * static_cast<float>(track.h) + 0.5f);
+    const int h = std::max(4, static_cast<int>(extent * static_cast<float>(track.h) + 0.5f));
+    r.fillRoundRect(Rect{track.x, std::min(y, track.bottom() - h), track.w, h}.intersect(track), 1.0f,
+                    withAlpha(t.colors.accent, 0.7f));
+}
+
 Rect ModernTooltip::layout(IRenderer& r, const TooltipState& s, int viewW, int viewH) const {
     const Theme::Metrics& m = s.theme->metrics;
     const bool body = s.text && *s.text;

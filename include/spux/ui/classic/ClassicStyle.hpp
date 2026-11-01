@@ -146,6 +146,8 @@ public:
 class ClassicPopup final : public PopupPainter, detail::PainterBase {
 public:
     using PainterBase::PainterBase;
+    void paintScrollMarker(IRenderer& r, const Rect& track, float start, float extent,
+                           const PopupState& s) const override;
     Rect layout(IRenderer& r, const PopupState& s, int viewW, int viewH, std::vector<Rect>& itemRects) const override;
     void paint(IRenderer& r, const Rect& bounds, const PopupState& s) const override;
     [[nodiscard]] Margin margin() const override { return {4, 4, 8, 9}; }

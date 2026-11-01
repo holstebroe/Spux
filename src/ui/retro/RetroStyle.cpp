@@ -869,6 +869,33 @@ void RetroPopup::paint(IRenderer& rr, const Rect& b, const PopupState& s) const 
     r->popClip();
 }
 
+// The scroll rows are small stepped triangles and the marker a bar of whole pixels.
+void RetroPopup::paintScrollArrow(IRenderer& rr, const Rect& cell, bool up, bool hot, bool enabled,
+                                  const PopupState&) const {
+    PixelRenderer* r = asPixel(rr);
+    if (!r)
+        return;
+    const RetroConfig::Popup& p = cfg().popup;
+    const Color ink = !enabled ? p.inkDim : (hot ? p.hotInk : p.ink);
+    if (hot && enabled)
+        r->fillRect(cell, p.hot);
+    const int cx = cell.x + cell.w / 2, cy = cell.y + cell.h / 2;
+    for (int i = 0; i < 3; ++i) { // three rows, 5 / 3 / 1 pixels wide
+        const int w = 5 - 2 * i;
+        r->hLine(cx - w / 2, up ? cy - 1 + i : cy + 1 - i, w, ink);
+    }
+}
+
+void RetroPopup::paintScrollMarker(IRenderer& rr, const Rect& track, float start, float extent,
+                                   const PopupState&) const {
+    PixelRenderer* r = asPixel(rr);
+    if (!r)
+        return;
+    const int y = track.y + static_cast<int>(start * static_cast<float>(track.h) + 0.5f);
+    const int h = std::max(3, static_cast<int>(extent * static_cast<float>(track.h) + 0.5f));
+    r->fillRect(Rect{track.x, std::min(y, track.bottom() - h), track.w, h}.intersect(track), cfg().popup.inkDim);
+}
+
 Rect RetroTooltip::layout(IRenderer& /*r*/, const TooltipState& s, int viewW, int viewH) const {
     const RetroConfig& c = cfg();
     const bool body = s.text && *s.text;

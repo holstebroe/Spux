@@ -266,6 +266,18 @@ public:
                std::function<void(int)> choose, int columns = 1);
     void closePopup() { popupOpen_ = false; }
     [[nodiscard]] bool popupOpen() const { return popupOpen_; }
+    // Where the open lists were laid out in the last frame (level 0 is the popup, level k its k-th submenu): the
+    // list's rectangle, and the rectangle of a row by its index in the whole list. A row of a long list that is
+    // scrolled out of its window has an empty rectangle. Both are empty for a level that is not open.
+    [[nodiscard]] Rect popupRect(std::size_t level) const {
+        return popupOpen_ && level < popup_.levels.size() ? popup_.levels[level].rect : Rect{};
+    }
+    [[nodiscard]] Rect popupRowRect(std::size_t level, int row) const {
+        return popupOpen_ && level < popup_.levels.size() && row >= 0 &&
+                       static_cast<std::size_t>(row) < popup_.levels[level].itemRects.size()
+                   ? popup_.levels[level].itemRects[static_cast<std::size_t>(row)]
+                   : Rect{};
+    }
 
     // --- parameter access (ids) -------------------------------------------------------------------------
     [[nodiscard]] const params::ParamInfo* info(std::uint32_t paramId) const;
@@ -336,8 +348,17 @@ private:
     struct PopupLevel { // one list of the popup as laid out in the last frame
         const std::vector<PopupItem>* items = nullptr;
         Rect rect, anchor;
-        std::vector<Rect> itemRects;
+        std::vector<Rect> itemRects; // by row of `items`; empty for a row outside the window of a scrolled list
         int hot = -1;
+        // A list taller than the view shows a window of its rows: what the painter is given instead of `items`
+        bool scrolls = false;
+        std::vector<PopupItem> window;
+        std::vector<Rect> windowRects;
+        std::vector<int> windowRow; // the row of `items` each window row stands for; -1: padding
+        Rect up, down, track;       // the scroll rows at the ends and the marker's strip
+        int rows = 0;               // rows of the whole list (per column)
+        int visible = 0;            // rows of the window (per column)
+        int first = 0;              // the window's first row
     };
     struct Popup {
         std::uint64_t id = 0;
@@ -350,7 +371,13 @@ private:
         std::vector<int> path;          // the rows whose submenus are open, outermost first
         std::vector<PopupLevel> levels; // the open lists, outermost first
         double leaveSince = -1.0;       // when the pointer left the open submenu's row for one without a submenu
+        std::vector<int> scroll;        // per level: the first row of its window; -1: not placed yet (show the choice)
+        double scrollAcc = 0.0;         // rows gained while the pointer rests on a scroll row
+        bool onScrollRow = false;       // the pointer rests on a scroll row (frames keep coming)
     };
+    void popupInput();
+    void popupScroll(std::size_t level, int rows);
+    void popupWindow(PopupLevel& lv, std::size_t level, const PopupState& ps, const PopupPainter& painter);
 
     template <class P, class S>
     bool paintWidget(std::uint64_t id, const Rect& b, const P& painter, const S& state, std::uint64_t key);

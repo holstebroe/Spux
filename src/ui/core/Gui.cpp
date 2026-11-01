@@ -235,7 +235,12 @@ void GuiCore::begin(IRenderer& r, double time, float dt, int width, int height) 
                     picked = static_cast<int>(i);
         }
         if (level >= 0 && picked < 0) {
-            // a press on a separator or a disabled item keeps the list open
+            // a press on a separator, a disabled item or a scroll row keeps the list open
+            const PopupLevel& lv = popup_.levels[static_cast<std::size_t>(level)];
+            if (lv.scrolls && lv.up.contains(static_cast<int>(at.x), static_cast<int>(at.y)))
+                popupScroll(static_cast<std::size_t>(level), -1);
+            else if (lv.scrolls && lv.down.contains(static_cast<int>(at.x), static_cast<int>(at.y)))
+                popupScroll(static_cast<std::size_t>(level), 1);
         } else if (level >= 0 &&
                    !(*popup_.levels[static_cast<std::size_t>(level)].items)[static_cast<std::size_t>(picked)]
                         .children.empty()) {
@@ -263,10 +268,86 @@ void GuiCore::begin(IRenderer& r, double time, float dt, int width, int height) 
         rightDownEvent_ = false;
     }
     if (popupOpen_) {
+        popupInput();
         for (const KeyEvent& k : keys_)
             if (k.key == KeyEvent::Key::Escape)
                 popupOpen_ = false;
         keys_.clear();
+    }
+}
+
+void GuiCore::popupScroll(std::size_t level, int rows) {
+    if (level >= popup_.levels.size() || !popup_.levels[level].scrolls)
+        return;
+    const PopupLevel& lv = popup_.levels[level];
+    if (popup_.scroll.size() <= level)
+        popup_.scroll.resize(level + 1, -1);
+    popup_.scroll[level] = std::clamp(lv.first + rows, 0, std::max(0, lv.rows - 1)); // the layout clamps the end
+}
+
+// The wheel, the keys and the scroll rows act on the lists as laid out in the last frame.
+void GuiCore::popupInput() {
+    popup_.onScrollRow = false;
+    int hover = -1, innermost = -1;
+    bool overList = false;
+    for (std::size_t k = popup_.levels.size(); k-- > 0;) {
+        const PopupLevel& lv = popup_.levels[k];
+        if (innermost < 0 && lv.scrolls)
+            innermost = static_cast<int>(k);
+        if (!overList && lv.rect.contains(static_cast<int>(mx_), static_cast<int>(my_))) {
+            overList = true;
+            hover = lv.scrolls ? static_cast<int>(k) : -1;
+        }
+    }
+    if (wheel_ != 0.0f && hover >= 0) {
+        int rows = static_cast<int>(std::lround(wheel_ * 3.0f));
+        if (rows == 0)
+            rows = wheel_ > 0.0f ? 1 : -1;
+        popupScroll(static_cast<std::size_t>(hover), -rows); // away from the user: toward the start
+        wheel_ = 0.0f;
+    }
+    const int target = hover >= 0 ? hover : innermost;
+    if (target >= 0)
+        for (const KeyEvent& k : keys_) {
+            const int all = popup_.levels[static_cast<std::size_t>(target)].rows;
+            switch (k.key) {
+            case KeyEvent::Key::Up:
+                popupScroll(static_cast<std::size_t>(target), -1);
+                break;
+            case KeyEvent::Key::Down:
+                popupScroll(static_cast<std::size_t>(target), 1);
+                break;
+            case KeyEvent::Key::Home:
+                popupScroll(static_cast<std::size_t>(target), -all);
+                break;
+            case KeyEvent::Key::End:
+                popupScroll(static_cast<std::size_t>(target), all);
+                break;
+            default:
+                break;
+            }
+        }
+    // while the pointer rests on a scroll row the list keeps moving
+    int dir = 0;
+    std::size_t at = 0;
+    for (std::size_t k = 0; k < popup_.levels.size() && dir == 0; ++k) {
+        const PopupLevel& lv = popup_.levels[k];
+        if (!lv.scrolls)
+            continue;
+        if (lv.first > 0 && lv.up.contains(static_cast<int>(mx_), static_cast<int>(my_)))
+            dir = -1, at = k;
+        else if (lv.first + lv.visible < lv.rows && lv.down.contains(static_cast<int>(mx_), static_cast<int>(my_)))
+            dir = 1, at = k;
+    }
+    if (dir != 0) {
+        popup_.onScrollRow = true;
+        popup_.scrollAcc += static_cast<double>(std::min(dt_, 0.1f)) * 14.0;
+        const int whole = static_cast<int>(popup_.scrollAcc);
+        popup_.scrollAcc -= whole;
+        if (whole > 0)
+            popupScroll(at, dir * whole);
+    } else {
+        popup_.scrollAcc = 0.0;
     }
 }
 
@@ -289,6 +370,8 @@ bool GuiCore::wantsFrame(double now) const {
         return true;
     if (popupOpen_ && popup_.leaveSince >= 0.0 && now - popup_.leaveSince >= 0.3)
         return true; // the grace for closing a submenu ends
+    if (popupOpen_ && popup_.onScrollRow)
+        return true; // a list scrolls while the pointer is on its end row
     return false;
 }
 
@@ -359,6 +442,112 @@ void GuiCore::flushEdits() {
     }
 }
 
+// A list taller than the view: lv holds the whole list laid out by the painter; this replaces its geometry with that of
+// a window of its rows, the painter laying out a slice of them (whole rows of columns), and adds the scroll rows and
+// the marker's strip. lv.itemRects stays indexed by row of the whole list (empty outside the window).
+void GuiCore::popupWindow(PopupLevel& lv, std::size_t level, const PopupState& ps, const PopupPainter& painter) {
+    const std::vector<PopupItem>& items = *lv.items;
+    const int n = static_cast<int>(items.size());
+    const int cols = std::max(1, ps.columns);
+    const int rows = std::max(1, (n + cols - 1) / cols);
+    const int rowPx = ps.theme->metrics.popupRow;
+    // what the painter adds around the rows, from the whole list's columns
+    auto rowH = [&](int c, int r) {
+        return r < rows && c * rows + r < n ? lv.itemRects[static_cast<std::size_t>(c * rows + r)].h : rowPx;
+    };
+    int tallest = 0;
+    for (int c = 0; c < cols; ++c) {
+        int sum = 0;
+        for (int r = 0; r < rows && c * rows + r < n; ++r)
+            sum += rowH(c, r);
+        tallest = std::max(tallest, sum);
+    }
+    const int pad = std::max(0, lv.rect.h - tallest) / 2;
+    const int budget = std::max(rowPx, h_ - 8 - 2 * pad - 2 * rowPx);
+    auto fits = [&](int first, int count) {
+        for (int c = 0; c < cols; ++c) {
+            int sum = 0;
+            for (int r = first; r < first + count; ++r)
+                sum += rowH(c, r);
+            if (sum > budget)
+                return false;
+        }
+        return true;
+    };
+    auto most = [&](int first) {
+        int count = 1;
+        while (first + count < rows && fits(first, count + 1))
+            ++count;
+        return count;
+    };
+    if (popup_.scroll.size() <= level)
+        popup_.scroll.resize(level + 1, -1);
+    int first = popup_.scroll[level];
+    if (first < 0) { // newly opened: the current choice in view, in the middle when it can be
+        first = 0;
+        if (ps.selected >= 0 && ps.selected < n)
+            first = std::max(0, ps.selected % rows - most(0) / 2);
+    }
+    first = std::clamp(first, 0, rows - 1);
+    int count = most(first);
+    while (first > 0 && first + count >= rows && fits(first - 1, count + 1)) { // at the end: fill the view upward
+        --first;
+        ++count;
+    }
+    popup_.scroll[level] = first;
+
+    lv.window.clear();
+    lv.windowRow.clear();
+    for (int c = 0; c < cols; ++c)
+        for (int k = 0; k < count; ++k) {
+            const int r = first + k, f = c * rows + r;
+            if (r < rows && f < n) {
+                const PopupItem& it = items[static_cast<std::size_t>(f)];
+                PopupItem w{it.label, it.separator, it.enabled, {}};
+                if (!it.children.empty())
+                    w.children.emplace_back(); // the painter only needs to know that there is a submenu
+                lv.window.push_back(std::move(w));
+                lv.windowRow.push_back(f);
+            } else {
+                lv.window.push_back(PopupItem{"", false, false, {}}); // fills a short column
+                lv.windowRow.push_back(-1);
+            }
+        }
+    PopupState ws = ps;
+    ws.items = &lv.window;
+    ws.selected = ws.hot = ws.open = -1;
+    ws.itemRects = nullptr;
+    int itemW = 0;
+    for (const Rect& rc : lv.itemRects)
+        itemW = std::max(itemW, rc.w);
+    ws.anchor.w = std::max(ws.anchor.w, itemW); // keeps the width of the whole list while the window moves
+    Rect sr = painter.layout(*r_, ws, w_, h_, lv.windowRects);
+    lv.windowRects.resize(lv.window.size());
+
+    const int height = sr.h + 2 * rowPx;
+    int y = level > 0 ? ps.anchor.y : sr.y;
+    y = std::max(4, std::min(y, h_ - 4 - height));
+    const int dy = y - sr.y + rowPx;
+    int left = sr.right(), right = sr.x;
+    for (Rect& rc : lv.windowRects) {
+        rc.y += dy;
+        left = std::min(left, rc.x);
+        right = std::max(right, rc.right());
+    }
+    lv.rect = Rect{sr.x, y, sr.w, height};
+    lv.up = Rect{left, y + pad, right - left, rowPx};
+    lv.down = Rect{left, y + height - pad - rowPx, right - left, rowPx};
+    lv.track = Rect{right - 4, y + pad + rowPx, 2, sr.h - 2 * pad};
+    lv.itemRects.assign(static_cast<std::size_t>(n), Rect{});
+    for (std::size_t i = 0; i < lv.window.size(); ++i)
+        if (lv.windowRow[i] >= 0)
+            lv.itemRects[static_cast<std::size_t>(lv.windowRow[i])] = lv.windowRects[i];
+    lv.scrolls = true;
+    lv.rows = rows;
+    lv.visible = count;
+    lv.first = first;
+}
+
 void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* tooltipPainter) {
     // widgets not drawn this frame are erased
     if (cache_) {
@@ -421,14 +610,21 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
                             it.y += dy;
                     }
                 }
+                if (lv.rect.h > h_ - 8 && items->size() > 1) {
+                    ps.anchor = lv.anchor;
+                    popupWindow(lv, k, ps, *popupPainter);
+                }
                 popup_.levels.push_back(std::move(lv));
                 if (k >= popup_.path.size())
                     break;
                 const int row = popup_.path[k];
                 if (row < 0 || static_cast<std::size_t>(row) >= items->size() ||
                     (*items)[static_cast<std::size_t>(row)].children.empty() ||
-                    static_cast<std::size_t>(row) >= popup_.levels[k].itemRects.size()) {
+                    static_cast<std::size_t>(row) >= popup_.levels[k].itemRects.size() ||
+                    popup_.levels[k].itemRects[static_cast<std::size_t>(row)].empty()) { // gone, or scrolled out
                     popup_.path.resize(k);
+                    if (popup_.scroll.size() > k + 1)
+                        popup_.scroll.resize(k + 1);
                     break;
                 }
                 const Rect& cell = popup_.levels[k].itemRects[static_cast<std::size_t>(row)];
@@ -475,7 +671,12 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
             if (want == popup_.path)
                 break;
             if (pass == 7)
-                break; // not settled: keep the path the layout was built for
+                break;            // not settled: keep the path the layout was built for
+            std::size_t same = 0; // the lists below the first changed row start over
+            while (same < want.size() && same < popup_.path.size() && want[same] == popup_.path[same])
+                ++same;
+            if (popup_.scroll.size() > same + 1)
+                popup_.scroll.resize(same + 1);
             popup_.path = std::move(want);
         }
         for (const PopupLevel& lv : popup_.levels)
@@ -524,7 +725,29 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
             ps.columns = k == 0 ? popup_.columns : 1;
             ps.itemRects = &lv.itemRects;
             ps.theme = theme_;
+            if (!lv.scrolls) {
+                popupPainter->paint(*r_, lv.rect, ps);
+                continue;
+            }
+            // the painter sees the window; the rows are numbered as in the window
+            auto inWindow = [&lv](int row) {
+                const auto it = std::find(lv.windowRow.begin(), lv.windowRow.end(), row);
+                return row < 0 || it == lv.windowRow.end() ? -1 : static_cast<int>(it - lv.windowRow.begin());
+            };
+            ps.items = &lv.window;
+            ps.itemRects = &lv.windowRects;
+            ps.selected = inWindow(ps.selected);
+            ps.hot = inWindow(ps.hot);
+            ps.open = inWindow(ps.open);
             popupPainter->paint(*r_, lv.rect, ps);
+            const Point mouse{mx_, my_};
+            r_->pushClip(lv.rect);
+            popupPainter->paintScrollArrow(*r_, lv.up, true, lv.up.contains(mouse), lv.first > 0, ps);
+            popupPainter->paintScrollArrow(*r_, lv.down, false, lv.down.contains(mouse),
+                                           lv.first + lv.visible < lv.rows, ps);
+            popupPainter->paintScrollMarker(*r_, lv.track, static_cast<float>(lv.first) / static_cast<float>(lv.rows),
+                                            static_cast<float>(lv.visible) / static_cast<float>(lv.rows), ps);
+            r_->popClip();
         }
     }
     if (!tipRect.empty())

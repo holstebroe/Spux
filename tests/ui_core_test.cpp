@@ -14,6 +14,7 @@
 #include "spux/ui/Gui.hpp"
 #include "spux/ui/Layout.hpp"
 #include "spux/ui/Live.hpp"
+#include "ui/PopupScroll.hpp"
 #include "ui/TestRenderer.hpp"
 #include "ui/TestStyle.hpp"
 
@@ -823,4 +824,16 @@ TEST_CASE("parameter id 0 is a parameter like any other (hovered, active, toolti
     gui.onMouseUp(40, 20, MouseButton::Left);
     frame(3.2);
     CHECK(gui.activeParam() == kNoParamId);
+}
+
+TEST_CASE("a popup list taller than the view scrolls; picks map to the whole list, submenus open beside their row") {
+    Rig f;
+    auto frame = [&](const std::function<void(GuiCore&)>& extra) {
+        f.run([&](TGui& g) {
+            if (extra)
+                extra(g);
+        });
+    };
+    uitest::checkLongList(f.gui, frame, f.r.width(), f.r.height());
+    uitest::checkLongListSubmenu(f.gui, frame);
 }

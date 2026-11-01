@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "ui/PopupScroll.hpp"
 #include "ui/RetroSupport.hpp"
 #include "ui/TestRenderer.hpp"
 
@@ -1338,4 +1339,24 @@ TEST_CASE("slider: a horizontal fader tall enough for text rows draws its label 
         return r.frame();
     };
     CHECK(render("LEVEL", "50") != render("", ""));
+}
+
+TEST_CASE("RetroStyle: a popup list taller than the view scrolls; picks map to the whole list, submenus open beside "
+          "their row") {
+    Host host;
+    RetroStyle style;
+    PixelRenderer r(240, 140);
+    RGui gui(host, style);
+    gui.setCaching(false);
+    double t = 0.0;
+    auto frame = [&](const std::function<void(uitest::GuiCore&)>& extra) {
+        r.clear(style.theme.colors.background);
+        gui.begin(r, t, 0.016f, 240, 140);
+        if (extra)
+            extra(gui);
+        gui.end();
+        t += 0.016;
+    };
+    uitest::checkLongList(gui, frame, 240, 140);
+    uitest::checkLongListSubmenu(gui, frame);
 }

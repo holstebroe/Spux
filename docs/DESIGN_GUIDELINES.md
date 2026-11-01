@@ -336,6 +336,12 @@ painter marks such a row with a chevron. `Gui::popup` with a path callback repor
 `byCategory` for a preset library that has categories. Submenus are opened by the pointer only; keyboard navigation of
 them is not built.
 
+A list taller than the view shows a window of its rows: `GuiCore` hands the popup painter only the window (so
+`layout` and `paint` need no change), puts a row at each end that scrolls while the pointer rests on it, and keeps
+the results as indices of the whole list. The wheel scrolls the list under the pointer; Up, Down, Home and End move
+through it; the current choice is in view on open. A painter may override `paintScrollArrow` and `paintScrollMarker`
+(the defaults draw a plain chevron and bar; a whole-pixel flavor draws whole pixels). A list that fits is not touched.
+
 ### Editor host
 
 The plugin implements an `EditorHost` core (parameters, edit queue, telemetry, flush request, UI state)
