@@ -530,96 +530,102 @@ TEST_CASE("a popup with submenus: the pointer opens them beside the row, a pick 
     CHECK(calls == 3);
 }
 
-TEST_CASE(
-    "a popup with 200 rows: height is clamped to view, wheel scrolls, last row can be picked, submenus map correctly") {
+TEST_CASE("a popup taller than the view scrolls: the last row is picked by its full index, a list that fits is unchanged") {
     Rig f;
     std::vector<PopupItem> items;
-    items.reserve(200);
-    for (int i = 0; i < 200; ++i) {
-        PopupItem it{"Item " + std::to_string(i)};
-        if (i == 50) {
-            it.children = {{"Sub 50-0"}, {"Sub 50-1"}};
-        }
-        items.push_back(it);
-    }
+    for (int i = 0; i < 200; ++i)
+        items.push_back({"Item " + std::to_string(i)});
     int chosen = -1;
-    std::vector<int> route;
-    bool openFlat = false, openPath = false;
-    const Rect anchor{50, 10, 100, 20};
-
+    bool open = false;
     auto page = [&](TGui& g) {
-        if (openFlat) {
-            openFlat = false;
-            g.popup("long", anchor, items, 0, [&](int c) { chosen = c; });
-        }
-        if (openPath) {
-            openPath = false;
-            g.popupPath("longPath", anchor, items, {}, [&](const std::vector<int>& r) { route = r; });
+        if (open) {
+            open = false;
+            g.popup("long", Rect{50, 10, 100, 20}, items, 0, [&](int c) { chosen = c; });
         }
     };
-
-    // 1. Open flat long popup
-    openFlat = true;
+    open = true;
     f.run(page);
     f.run(page);
     REQUIRE(f.gui.popupOpen());
 
-    // Verify popup height is no taller than view
-    // View height in Rig is 160 (Rig: 240 x 160)
-    // The popup must fit inside view: bottom <= 160 - 4
-    // Check scrolling via wheel
-    // Scroll down several notches to reach the end
-    for (int w = 0; w < 30; ++w) {
+    for (int w = 0; w < 30; ++w) { // the wheel scrolls the list under the pointer and stops at the end
         f.gui.onWheel(70, 70, -5.0f, false);
         f.run(page);
     }
-    REQUIRE(f.gui.popupOpen());
-
-    // Move to end via End key
     KeyEvent endK;
     endK.key = KeyEvent::Key::End;
     f.gui.onKey(endK);
     f.run(page);
+    REQUIRE(f.gui.popupOpen());
 
-    // Click on the last visible item row
-    // It should be item 199
-    // In TestPopup, popup ends around y=112, with downButton at 94..108, item 3 at 86..98.
-    // Clicking at y = 90 hits the last visible item!
+    // the last visible row sits just above the down row
     f.gui.onMouseMove(70, 90);
+    f.run(page);
     f.gui.onMouseDown(70, 90, MouseButton::Left, false);
     f.run(page);
     f.gui.onMouseUp(70, 90, MouseButton::Left);
     f.run(page);
-
     CHECK_FALSE(f.gui.popupOpen());
-    CHECK(chosen >= 180); // Scrolled to bottom, picked an item at the end of the 200-item list!
+    CHECK(chosen == 199);
 
-    // 2. Open popupPath with submenus in long list
-    openPath = true;
+    // Home returns to the top: the first row maps to index 0
+    chosen = -1;
+    open = true;
+    f.run(page);
+    f.run(page);
+    KeyEvent homeK;
+    homeK.key = KeyEvent::Key::Home;
+    f.gui.onKey(homeK);
+    f.run(page);
+    f.gui.onMouseMove(70, 55); // the first row sits below the up row
+    f.run(page);
+    f.gui.onMouseDown(70, 55, MouseButton::Left, false);
+    f.run(page);
+    f.gui.onMouseUp(70, 55, MouseButton::Left);
+    f.run(page);
+    CHECK_FALSE(f.gui.popupOpen());
+    CHECK(chosen == 0);
+}
+
+TEST_CASE("a submenu inside a scrolled list opens beside the right row and reports the full route") {
+    Rig f;
+    std::vector<PopupItem> items;
+    for (int i = 0; i < 200; ++i) {
+        PopupItem it{"Item " + std::to_string(i)};
+        if (i == 50)
+            it.children = {{"Sub 0"}, {"Sub 1"}};
+        items.push_back(it);
+    }
+    std::vector<int> route;
+    bool open = false;
+    auto page = [&](TGui& g) {
+        if (open) {
+            open = false;
+            g.popupPath("path", Rect{50, 10, 100, 20}, items, {}, [&](const std::vector<int>& r) { route = r; });
+        }
+    };
+    open = true;
     f.run(page);
     f.run(page);
     REQUIRE(f.gui.popupOpen());
-
-    // Scroll so item 50 is visible (e.g. scroll row ~ 45)
-    for (int s = 0; s < 45; ++s) {
-        KeyEvent downK;
-        downK.key = KeyEvent::Key::Down;
+    KeyEvent downK;
+    downK.key = KeyEvent::Key::Down;
+    for (int step = 0; step < 49; ++step) { // item 49 is the first visible row, item 50 the second
         f.gui.onKey(downK);
+        f.run(page);
     }
+    f.gui.onMouseMove(70, 66);
     f.run(page);
-
-    // Hover over item 50 to open its submenu
-    // Since scrollRow is 45, item 50 is visible at row 5
-    // Each row is 14 or 18 px
-    // Submenu opens beside item 50
-    // Let's verify popup is still open
-    CHECK(f.gui.popupOpen());
-
-    KeyEvent escK;
-    escK.key = KeyEvent::Key::Escape;
-    f.gui.onKey(escK);
     f.run(page);
-    CHECK_FALSE(f.gui.popupOpen());
+    f.gui.onMouseMove(170, 66); // the submenu opened beside item 50: pick its first row
+    f.run(page);
+    f.gui.onMouseDown(170, 66, MouseButton::Left, false);
+    f.run(page);
+    f.gui.onMouseUp(170, 66, MouseButton::Left);
+    f.run(page);
+    REQUIRE(route.size() == 2);
+    CHECK(route[0] == 50);
+    CHECK(route[1] == 0);
 }
 
 TEST_CASE("a submenu that does not fit on the right opens to the left of its list") {

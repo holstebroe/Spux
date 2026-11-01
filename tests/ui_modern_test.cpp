@@ -538,7 +538,7 @@ TEST_CASE("scrolling popup with 200 rows in ModernStyle: fits view height, wheel
     frame();
 
     CHECK_FALSE(gui.popupOpen());
-    CHECK(chosen >= 180);
+    CHECK(chosen >= 190); // the rows at the bottom of the window, by their index in the full list
 }
 
 TEST_CASE("the knob's hit area and depth handle follow its geometry") {

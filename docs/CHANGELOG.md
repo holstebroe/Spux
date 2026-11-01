@@ -5,6 +5,10 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-11-01: popup lists taller than the view scroll (wheel, arrow keys, Home/End, up and down rows, position marker; the choice
+  is scrolled into view; `PopupPainter::paintScrollButton` and `paintScrollMarker` are optional hooks with a default). Addition: a list
+  that fits is laid out and drawn as before.
+
 - 2026-10-31: a folder chooser in the file dialog (`FileDialogOptions::folder`: zenity, kdialog, Windows shell). Additions: files dialogs are unchanged.
 
 - 2026-10-31: file drops on X11 (XDND: `WindowOptions::acceptFiles` now works on Linux as on Windows), several files per open

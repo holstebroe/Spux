@@ -741,6 +741,14 @@ void GuiCore::endImpl(const PopupPainter* popupPainter, const TooltipPainter* to
                 break;
             if (pass == 7)
                 break; // not settled: keep the path the layout was built for
+            {
+                // a list that opens for another row starts at its own position, not where the last one was left
+                std::size_t d = 0;
+                while (d < want.size() && d < popup_.path.size() && want[d] == popup_.path[d])
+                    ++d;
+                if (popup_.scrollOffset.size() > d + 1)
+                    popup_.scrollOffset.resize(d + 1);
+            }
             popup_.path = std::move(want);
         }
         for (const PopupLevel& lv : popup_.levels)

@@ -1054,7 +1054,7 @@ TEST_CASE("scrolling popup with 200 rows in ClassicStyle: fits view height, whee
     frame();
 
     CHECK_FALSE(gui.popupOpen());
-    CHECK(chosen >= 180);
+    CHECK(chosen >= 190); // the rows at the bottom of the window, by their index in the full list
 }
 
 TEST_CASE("dropdown: a press opens the list; with drag, a drag steps the value and a click still opens") {
