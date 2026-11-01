@@ -67,6 +67,16 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
+Before every push run the CI formatter on all sources, with the same version as CI (a mismatch of one line fails the clang-format job):
+
+```
+pip install clang-format==18.1.8
+git ls-files '*.hpp' '*.cpp' '*.h' ':!:third_party/**' | xargs clang-format --dry-run -Werror
+```
+
+Fix what it reports with `clang-format -i` on the files you changed (generated headers carry `// clang-format off`). A green local build and
+test run does not cover this check.
+
 After DSP changes run the DSP tests and `spux_bench` (Release). After UI changes run the GUI tests
 (golden frames, software and offscreen GPU).
 
