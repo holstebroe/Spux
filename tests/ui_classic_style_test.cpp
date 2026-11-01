@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "ui/ClassicSupport.hpp"
+#include "ui/PopupScroll.hpp"
 #include "ui/TestRenderer.hpp"
 
 using namespace classic_test;
@@ -1403,4 +1404,24 @@ TEST_CASE("the editor shell: cached frames equal uncached frames, and only what 
         CHECK(diff < kPageW * kPageH / 200);
         CHECK(ui_test::ssim(cached, fresh, kPageW, kPageH) > 0.995);
     }
+}
+
+TEST_CASE("ClassicStyle: a popup list taller than the view scrolls; picks map to the whole list, submenus open beside "
+          "their row") {
+    Host host;
+    ClassicStyle style;
+    ShadedRenderer r(300, 200, 1);
+    CGui gui(host, style);
+    gui.setCaching(false);
+    double t = 0.0;
+    auto frame = [&](const std::function<void(uitest::GuiCore&)>& extra) {
+        r.clear(style.theme.colors.background);
+        gui.begin(r, t, 0.016f, 300, 200);
+        if (extra)
+            extra(gui);
+        gui.end();
+        t += 0.016;
+    };
+    uitest::checkLongList(gui, frame, 300, 200);
+    uitest::checkLongListSubmenu(gui, frame);
 }

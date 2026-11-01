@@ -5,6 +5,14 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-11-01: popup lists taller than the view scroll (all flavors). `GuiCore` shows a window of the rows: the wheel scrolls the
+  list under the pointer, Up/Down/Home/End move through the list that has the keyboard, a row at each end scrolls while the pointer
+  rests on it, a thin marker shows the position, and the current choice is in view on open. The painters get the sliced rows, so
+  `choose`, `choosePath` and submenu routes still report indices of the whole list. `PopupPainter::paintScrollArrow` and
+  `paintScrollMarker` are optional hooks with defaults; Classic, Modern and Retro draw their own marker (Retro whole pixels).
+  `GuiCore::popupRect` and `popupRowRect` report where the open lists were laid out. Additions: a list that fits is laid out and
+  drawn as before.
+
 - 2026-10-31: a folder chooser in the file dialog (`FileDialogOptions::folder`: zenity, kdialog, Windows shell). Additions: files dialogs are unchanged.
 
 - 2026-10-31: file drops on X11 (XDND: `WindowOptions::acceptFiles` now works on Linux as on Windows), several files per open

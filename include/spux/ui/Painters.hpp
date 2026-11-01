@@ -10,6 +10,7 @@
 // supply its own painter per widget call or for a whole widget type.
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -345,6 +346,31 @@ public:
     virtual void paint(IRenderer& r, const Rect& bounds, const PopupState& s) const = 0;
     // Room outside the popup's rectangle (its shadow).
     [[nodiscard]] virtual Margin margin() const { return {}; }
+
+    // A list taller than the view shows a window of its rows (GuiCore slices the rows it hands to layout() and
+    // paint()). These two hooks draw what is added to such a list, after paint(), inside the popup's bounds. The
+    // defaults draw a plain chevron and a plain bar; a flavor overrides them to match its look.
+    //
+    // The row at the top (up) or bottom of the window; `enabled` is false when the window is already at that end.
+    virtual void paintScrollArrow(IRenderer& r, const Rect& cell, bool up, bool hot, bool enabled,
+                                  const PopupState& s) const {
+        const Theme& t = *s.theme;
+        const Color ink = !enabled ? t.colors.textFaint : (hot ? t.colors.text : t.colors.textDim);
+        const float cx = static_cast<float>(cell.x) + static_cast<float>(cell.w) * 0.5f,
+                    cy = static_cast<float>(cell.y) + static_cast<float>(cell.h) * 0.5f;
+        const float dy = up ? -1.5f : 1.5f;
+        const Point chev[3] = {{cx - 4.0f, cy - dy}, {cx, cy + dy}, {cx + 4.0f, cy - dy}};
+        r.drawPolyline(chev, 3, ink, 1.2f);
+    }
+    // The position marker along `track`: where the window starts and how much of the list it shows, both as
+    // fractions (0 to 1) of the list.
+    virtual void paintScrollMarker(IRenderer& r, const Rect& track, float start, float extent,
+                                   const PopupState& s) const {
+        const int y = track.y + static_cast<int>(start * static_cast<float>(track.h) + 0.5f);
+        const int h = std::max(3, static_cast<int>(extent * static_cast<float>(track.h) + 0.5f));
+        r.fillRect(Rect{track.x, std::min(y, track.bottom() - h), track.w, h}.intersect(track),
+                   withAlpha(s.theme->colors.textDim, 0.6f));
+    }
 };
 
 class TooltipPainter {

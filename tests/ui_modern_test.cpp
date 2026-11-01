@@ -13,6 +13,7 @@
 #include "spux/ui/modern/ModernSurface.hpp"
 #include "spux/ui/modern/SoftRenderer.hpp"
 #include "ui/ModernSupport.hpp"
+#include "ui/PopupScroll.hpp"
 
 using namespace modern_test;
 
@@ -728,4 +729,24 @@ TEST_CASE("modernBackend: a surface to try first unless software is asked for, a
     CHECK(surface->degradation() == 0);
     surface->detach(); // safe without an attach, and twice
     surface->detach();
+}
+
+TEST_CASE("ModernStyle: a popup list taller than the view scrolls; picks map to the whole list, submenus open beside "
+          "their row") {
+    Host host;
+    ModernStyle style;
+    SoftRenderer r = makeSoft(300, 200, 1);
+    MGui gui(host, style);
+    gui.setCaching(false);
+    double t = 0.0;
+    auto frame = [&](const std::function<void(uitest::GuiCore&)>& extra) {
+        r.clear(style.theme.colors.background);
+        gui.begin(r, t, 0.016f, 300, 200);
+        if (extra)
+            extra(gui);
+        gui.end();
+        t += 0.016;
+    };
+    uitest::checkLongList(gui, frame, 300, 200);
+    uitest::checkLongListSubmenu(gui, frame);
 }

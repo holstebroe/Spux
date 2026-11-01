@@ -1148,6 +1148,15 @@ void ClassicPopup::paint(IRenderer& rr, const Rect& b, const PopupState& s) cons
     r->popClip();
 }
 
+void ClassicPopup::paintScrollMarker(IRenderer& r, const Rect& track, float start, float extent,
+                                     const PopupState& s) const {
+    const Theme& t = themeOf(s.theme, cfg());
+    const int y = track.y + static_cast<int>(start * static_cast<float>(track.h) + 0.5f);
+    const int h = std::max(4, static_cast<int>(extent * static_cast<float>(track.h) + 0.5f));
+    r.fillRoundRect(Rect{track.x, std::min(y, track.bottom() - h), track.w, h}.intersect(track), 1.0f,
+                    withAlpha(t.colors.textDim, 0.7f));
+}
+
 Rect ClassicTooltip::layout(IRenderer& r, const TooltipState& s, int viewW, int viewH) const {
     const bool body = s.text && *s.text;
     const float w = std::max(ShadedRenderer::inkWidth(ShadedRenderer::labelFont(), s.title ? s.title : "", 6.5f),
