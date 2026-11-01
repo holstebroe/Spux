@@ -200,9 +200,9 @@ void ShadedRenderer::drawShadow(const Rect& r, float radius, float spread, Argb 
 // --- text ---------------------------------------------------------------------------------------------------
 
 void ShadedRenderer::ink(const AtlasFont& font, const char* text, float x, float capTop, float cap, Argb c,
-                         float wear) {
+                         float wear, bool mixedCase) {
     Graphics g = graphics();
-    classic::drawText(g, font, text, x, capTop, cap, c, wear);
+    classic::drawText(g, font, text, x, capTop, cap, c, wear, mixedCase);
 }
 
 void ShadedRenderer::inkCentered(const AtlasFont& font, const char* text, float centerX, float capTop, float cap,
@@ -211,11 +211,11 @@ void ShadedRenderer::inkCentered(const AtlasFont& font, const char* text, float 
 }
 
 void ShadedRenderer::drawText(const char* text, int x, int y, Argb c, int scale) {
-    ink(kLabelFont, text, static_cast<float>(x), static_cast<float>(y), kBitmapCap * static_cast<float>(scale), c);
+    ink(kLabelFont, text, static_cast<float>(x), static_cast<float>(y), kBitmapCap * static_cast<float>(scale), c, 0.f, mixedCase_);
 }
 
 int ShadedRenderer::textWidth(const char* text, int scale) const {
-    return static_cast<int>(std::ceil(classic::textWidth(kLabelFont, text, kBitmapCap * static_cast<float>(scale))));
+    return static_cast<int>(std::ceil(classic::textWidth(kLabelFont, text, kBitmapCap * static_cast<float>(scale), mixedCase_)));
 }
 
 int ShadedRenderer::textHeight(int scale) const { return static_cast<int>(kBitmapCap) * scale; }
@@ -223,13 +223,13 @@ int ShadedRenderer::textHeight(int scale) const { return static_cast<int>(kBitma
 void ShadedRenderer::drawTextPx(const char* text, float x, float y, Argb c, float px, Align align, FontWeight weight) {
     const AtlasFont& font = weight == FontWeight::Bold ? kDisplayFont : kLabelFont;
     const float cap = px * kCapPerPx;
-    const float w = classic::textWidth(font, text, cap);
+    const float w = classic::textWidth(font, text, cap, mixedCase_);
     const float left = align == Align::Left ? x : align == Align::Center ? x - 0.5f * w : x - w;
-    ink(font, text, left, y, cap, c);
+    ink(font, text, left, y, cap, c, 0.f, mixedCase_);
 }
 
 float ShadedRenderer::textWidthPx(const char* text, float px, FontWeight weight) const {
-    return classic::textWidth(weight == FontWeight::Bold ? kDisplayFont : kLabelFont, text, px * kCapPerPx);
+    return classic::textWidth(weight == FontWeight::Bold ? kDisplayFont : kLabelFont, text, px * kCapPerPx, mixedCase_);
 }
 
 // --- the worn panel ---------------------------------------------------------------------------------------

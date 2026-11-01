@@ -159,14 +159,15 @@ struct AtlasFont {
 };
 
 // Text width in logical pixels at the given cap height.
-float textWidth(const AtlasFont& font, const char* text, float capHeight);
+// `mixedCase` draws lower case with its own glyphs; otherwise it draws as capitals, as the fonts always did.
+float textWidth(const AtlasFont& font, const char* text, float capHeight, bool mixedCase = false);
 // Draws text with its left edge at x and its capitals' tops at capTop.
 // `wear` (0..1) makes the ink patchy, like old silk-screen print.
 void drawText(Graphics& g, const AtlasFont& font, const char* text, float x, float capTop, float capHeight,
-              uint32_t argb, float wear = 0.f);
+              uint32_t argb, float wear = 0.f, bool mixedCase = false);
 inline void drawTextCentered(Graphics& g, const AtlasFont& font, const char* text, float centerX, float capTop,
-                             float capHeight, uint32_t argb, float wear = 0.f) {
-    drawText(g, font, text, centerX - textWidth(font, text, capHeight) / 2.f, capTop, capHeight, argb, wear);
+                             float capHeight, uint32_t argb, float wear = 0.f, bool mixedCase = false) {
+    drawText(g, font, text, centerX - textWidth(font, text, capHeight, mixedCase) / 2.f, capTop, capHeight, argb, wear, mixedCase);
 }
 
 // --- Panel -------------------------------------------------------------------
