@@ -782,8 +782,8 @@ void ClassicButton::paint(IRenderer& rr, const Rect& b, const ButtonState& s) co
                 textX = x0 + 6.f + static_cast<float>(iw) + (x1 - x0 - 6.f - static_cast<float>(iw)) * 0.5f;
             }
             if (text)
-                r->inkCentered(ShadedRenderer::labelFont(), s.label, textX, capTopIn(y0, y1 - y0, c.buttonCap), c.buttonCap, ink,
-                               c.wear);
+                r->inkCentered(ShadedRenderer::labelFont(), s.label, textX, capTopIn(y0, y1 - y0, c.buttonCap),
+                               c.buttonCap, ink, c.wear);
         }
         break;
     }
