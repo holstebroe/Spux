@@ -5,6 +5,8 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-11-02: `ClassicConfig::buttonCap` (default 5, the size so far): label cap height of plain buttons and tab cells, so a plugin with a larger window can print larger button lettering. No existing output changes.
+
 - 2026-11-01: lower case and the characters between Z and a in the Classic label and display fonts (ASCII 91 to 126; `tools/extend_gui_fonts.py`
   adds them to the atlas without touching the existing glyphs). `ShadedRenderer::setMixedCase(true)` draws `drawText` / `drawTextPx` lower case with
   its own glyphs; off by default, so lower case still draws as capitals and no existing output changes. `classic::textWidth` and `drawText` take

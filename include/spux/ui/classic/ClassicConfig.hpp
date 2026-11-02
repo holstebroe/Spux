@@ -34,6 +34,7 @@ struct ClassicConfig {
     Argb ink = 0xF2E9E8E2, inkDim = 0xC0A8AAA6, frameInk = 0xB08E908C, valueInk = 0xFFFFD58A, inkOn = 0xFFFFFFFF;
     float wear = 0.08f;                                      // patchiness of the ink (0..1)
     float labelCap = 6.0f, valueCap = 8.0f, titleCap = 6.5f; // cap heights in logical pixels
+    float buttonCap = 5.0f;                                  // label cap height of plain buttons and tab cells
 
     PanelSurface surface = PanelSurface::Slate;
     bool trims = false; // Worn: the darker extrusions along the top and bottom edges
