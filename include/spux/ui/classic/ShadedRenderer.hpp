@@ -12,6 +12,7 @@
 // override here (blend modes, emission, bloom) are the plain defaults of IRenderer.
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -89,8 +90,8 @@ public:
     // A worn silver panel (paintWornPanel) over `r`. The texture of one size is rendered once and kept, so
     // a redraw of the background copies it; a size or trim change renders it again.
     void wornPanel(const Rect& r, bool trims);
-    // Brushed steel (paintBrushedPanel) over `r`, cached and copied the same way. The cache holds one panel:
-    // asking for the other kind, size or finish renders it again.
+    // Brushed steel (paintBrushedPanel) over `r`, cached and copied the same way. The cache holds the last few
+    // panels (kind, size and finish), so a page with a window panel and smaller panels renders each one once.
     void brushedPanel(const Rect& r, Color light, Color dark, const BrushedSteel& steel);
 
 private:
@@ -111,8 +112,13 @@ private:
         }
     };
     void paintPanelTexture(const Rect& r, const PanelKey& key);
-    PanelKey panelKey_;
-    std::vector<std::uint32_t> worn_; // the cached texture, either kind
+    struct PanelTexture {
+        PanelKey key;
+        std::vector<std::uint32_t> pixels;
+        std::uint64_t used = 0; // the use count when it was last drawn; the least recently used one is replaced
+    };
+    std::array<PanelTexture, 4> panels_;
+    std::uint64_t panelUses_ = 0;
 };
 
 // The renderer a Classic painter was given, or null when it draws on something else.
