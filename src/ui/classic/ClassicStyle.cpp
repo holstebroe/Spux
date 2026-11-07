@@ -920,6 +920,29 @@ void ClassicKeyboard::paint(IRenderer& rr, const Rect& b, const KeyboardState& s
         const bool down = s.down && s.down[k], sounding = s.lit && s.lit[k];
         const bool hot = s.hotKey == k && !down;
         const float x0 = kr.x0 + 0.5f, x1 = kr.x1 - 0.5f;
+        if (c.keyPress != KeyPress::Tint && (down || sounding)) {
+            const bool sunk = c.keyPress == KeyPress::Sunken;
+            shadeBox(g, x0, top + 3.f, x1, top + h, [&](float xx, float y) {
+                const float v = (y - top) / h, edge = std::min(xx - x0, x1 - xx);
+                Color col;
+                if (sunk) {
+                    // ivory below the felt and between the neighbors, which cast their shadows on it
+                    col = scale(Color{0.94f, 0.92f, 0.86f}, 0.9f);
+                    col = scale(col, 0.45f + 0.55f * smoothstep(0.f, 0.35f, v));
+                    col = scale(col, 0.55f + 0.45f * smoothstep(0.f, 5.f, edge));
+                    if (y > top + h - 1.5f)
+                        col = scale(col, 0.55f); // the front edge, mostly hidden below its neighbors'
+                } else {
+                    col = scale(Color{0.70f, 0.69f, 0.66f}, 0.78f + 0.22f * v);
+                    if (edge < 1.f)
+                        col = scale(col, 0.7f);
+                    if (y > top + h - 4.f)
+                        col = scale(col, 0.75f);
+                }
+                return toArgb(col, 1.f);
+            });
+            continue;
+        }
         shadeBox(g, x0, top + 3.f, x1, top + h, [&](float xx, float y) {
             const float v = (y - top) / h;
             Color col = down ? Color{0.80f, 0.76f, 0.62f} : Color{0.94f, 0.92f, 0.86f};
@@ -941,6 +964,26 @@ void ClassicKeyboard::paint(IRenderer& rr, const Rect& b, const KeyboardState& s
         const keyboard::KeyRect kr = keyboard::keyRect(b, s.first, s.last, k, lay);
         const bool down = s.down && s.down[k], sounding = s.lit && s.lit[k];
         const float cx = 0.5f * (kr.x0 + kr.x1), bw = kr.x1 - kr.x0;
+        if (c.keyPress != KeyPress::Tint && (down || sounding)) {
+            const bool sunk = c.keyPress == KeyPress::Sunken;
+            // sunk: a smaller shadow and a shorter lit front bevel; shaded: a lighter grey key
+            if (sunk)
+                softShadow(g, kr.x0, top + 3.f, kr.x1, kr.y1, 1.f, 1.2f, 0.35f, 0.5f, 0.5f);
+            else
+                softShadow(g, kr.x0, top + 3.f, kr.x1, kr.y1, 1.f, 2.5f, 0.5f, 1.f, 1.5f);
+            shadeBox(g, kr.x0, top + 3.f, kr.x1, kr.y1, [&](float xx, float y) {
+                const float v = (y - top) / (kr.y1 - top);
+                const float ridge = 1.f - std::fabs((xx - cx) / (bw * 0.5f));
+                Color col = sunk ? Color{0.045f, 0.045f, 0.05f} : Color{0.17f, 0.17f, 0.18f};
+                if (sunk)
+                    col = v > 0.95f ? scale(Color{0.30f, 0.30f, 0.32f}, 0.6f + 0.4f * ridge) // a thin lit front edge
+                                    : scale(col, (0.35f + 0.65f * smoothstep(0.f, 0.3f, v)) * (1.f + 0.4f * ridge));
+                else
+                    col = scale(col, 1.f + 0.5f * ridge * (v > 0.85f ? 1.6f : 0.3f));
+                return toArgb(col, 1.f);
+            });
+            continue;
+        }
         softShadow(g, kr.x0, top + 3.f, kr.x1, kr.y1, 1.f, 2.5f, 0.5f, 1.f, 1.5f);
         shadeBox(g, kr.x0, top + 3.f, kr.x1, kr.y1, [&](float xx, float y) {
             const float v = (y - top) / (kr.y1 - top);

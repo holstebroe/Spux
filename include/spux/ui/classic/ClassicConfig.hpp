@@ -20,6 +20,10 @@ enum class ToggleShape { Rocker, Lever };
 // gradient with the lines of a brushed finish along x).
 enum class PanelSurface { Slate, Worn, Brushed };
 
+// How a pressed or sounding piano key looks: tinted with the accent, shaded darker (grey ivory, a lighter black
+// key), or sunk into the keybed (shadows from the felt and the neighbors on the key, a shorter front edge).
+enum class KeyPress { Tint, Shade, Sunken };
+
 // Values of ButtonState::variant that ClassicStyle draws.
 enum ButtonVariant : int {
     kButtonPlain = 0, // a dark rounded button with a light edge; a bright edge when on
@@ -102,8 +106,9 @@ struct ClassicConfig {
         float radius = 4.0f;
     } display;
 
-    // The felt strip along the top of a keyboard, behind the keys.
+    // The felt strip along the top of a keyboard, behind the keys, and how pressed and sounding keys look.
     Argb keyboardFelt = 0xFF5A1E1A;
+    KeyPress keyPress = KeyPress::Tint;
 
     struct Button {
         Color top{0.215f, 0.225f, 0.24f}, bottom{0.125f, 0.13f, 0.14f}; // face, top to bottom
