@@ -5,6 +5,8 @@ commit as the regenerated files (guidelines section 3). Newest first.
 
 ## Unreleased
 
+- 2026-11-07: Win32 window: a window class left registered by an earlier load of the same DLL at the same address (Windows does not unregister a DLL's classes when it unloads) is replaced instead of failing every later editor until the host restarts.
+
 - 2026-11-07: `ShadedRenderer` keeps the last four worn or brushed panel textures instead of one. A page that draws a window panel and a smaller untitled panel rendered the window's texture again every frame (about 75 ms for a 900 x 700 brushed panel); now each is rendered once. Same pixels.
 
 - 2026-11-02: `ClassicConfig::buttonCap` (default 5, the size so far): label cap height of plain buttons and tab cells, so a plugin with a larger window can print larger button lettering. No existing output changes.

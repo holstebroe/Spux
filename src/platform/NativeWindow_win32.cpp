@@ -4,7 +4,7 @@
 //
 // The window class is registered by the module (plugin DLL) that contains this code, under a name made
 // from that module's handle: the host process and other plugins, possibly with another spux version,
-// never share or clash with it.
+// never share or clash with it. A class left by an earlier load of the same DLL at the same address is replaced.
 #if defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -59,6 +59,13 @@ public:
             wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
             wc.style = CS_OWNDC | CS_DBLCLKS;
             registered = RegisterClassW(&wc) != 0;
+            // Windows keeps a class a DLL registered after the DLL is unloaded: a host that unloads the plugin and
+            // loads it again at the same address finds the old class under this name. No window of it can exist
+            // (its module is gone), so it is replaced.
+            if (!registered && GetLastError() == ERROR_CLASS_ALREADY_EXISTS) {
+                UnregisterClassW(className, inst);
+                registered = RegisterClassW(&wc) != 0;
+            }
         });
         if (!registered)
             return false;
