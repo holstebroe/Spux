@@ -263,16 +263,23 @@ void ShadedRenderer::paintPanelTexture(const Rect& r, const PanelKey& key) {
     if (r.empty())
         return;
     const int s = layers_.scale();
-    if (!(panelKey_ == key)) {
-        worn_.assign(static_cast<std::size_t>(r.w) * static_cast<std::size_t>(r.h) * static_cast<std::size_t>(s * s),
-                     0);
-        Graphics g(worn_.data(), static_cast<std::uint32_t>(r.w), static_cast<std::uint32_t>(r.h), s);
+    PanelTexture* tex = nullptr;
+    for (PanelTexture& p : panels_)
+        if (p.key == key)
+            tex = &p;
+    if (tex == nullptr) {
+        tex = &*std::min_element(panels_.begin(), panels_.end(),
+                                 [](const PanelTexture& a, const PanelTexture& b) { return a.used < b.used; });
+        tex->pixels.assign(
+            static_cast<std::size_t>(r.w) * static_cast<std::size_t>(r.h) * static_cast<std::size_t>(s * s), 0);
+        Graphics g(tex->pixels.data(), static_cast<std::uint32_t>(r.w), static_cast<std::uint32_t>(r.h), s);
         if (key.kind == 1)
             paintWornPanel(g, r.w, r.h, key.trims);
         else
             paintBrushedPanel(g, r.w, r.h, key.light, key.dark, key.steel);
-        panelKey_ = key;
+        tex->key = key;
     }
+    tex->used = ++panelUses_;
     const Graphics g = graphics();
     const int x0 = std::max(g.clipX0(), r.x * s), x1 = std::min(g.clipX1(), r.right() * s);
     const int y0 = std::max(g.clipY0(), r.y * s), y1 = std::min(g.clipY1(), r.bottom() * s);
@@ -283,7 +290,7 @@ void ShadedRenderer::paintPanelTexture(const Rect& r, const PanelKey& key) {
     const std::size_t srcRow = static_cast<std::size_t>(r.w) * static_cast<std::size_t>(s);
     for (int y = y0; y < y1; ++y)
         std::memcpy(base + static_cast<std::size_t>(y) * row + x0,
-                    worn_.data() + static_cast<std::size_t>(y - r.y * s) * srcRow +
+                    tex->pixels.data() + static_cast<std::size_t>(y - r.y * s) * srcRow +
                         static_cast<std::size_t>(x0 - r.x * s),
                     static_cast<std::size_t>(x1 - x0) * sizeof(std::uint32_t));
 }

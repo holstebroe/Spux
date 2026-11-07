@@ -782,8 +782,8 @@ void ClassicButton::paint(IRenderer& rr, const Rect& b, const ButtonState& s) co
                 textX = x0 + 6.f + static_cast<float>(iw) + (x1 - x0 - 6.f - static_cast<float>(iw)) * 0.5f;
             }
             if (text)
-                r->inkCentered(ShadedRenderer::labelFont(), s.label, textX, capTopIn(y0, y1 - y0, 5.f), 5.f, ink,
-                               c.wear);
+                r->inkCentered(ShadedRenderer::labelFont(), s.label, textX, capTopIn(y0, y1 - y0, c.buttonCap),
+                               c.buttonCap, ink, c.wear);
         }
         break;
     }
@@ -1209,7 +1209,7 @@ void ClassicTabs::paint(IRenderer& rr, const Rect& b, const TabsState& s) const 
         const char* text = s.labels && s.labels[i] ? s.labels[i] : "";
         r->inkCentered(ShadedRenderer::labelFont(), text,
                        static_cast<float>(cell.x) + static_cast<float>(cell.w) * 0.5f,
-                       capTopIn(static_cast<float>(cell.y), static_cast<float>(cell.h), 5.f), 5.f,
+                       capTopIn(static_cast<float>(cell.y), static_cast<float>(cell.h), c.buttonCap), c.buttonCap,
                        on ? c.inkOn : (i == s.hotIndex ? c.ink : c.inkDim), c.wear);
     }
     if (s.focused)
